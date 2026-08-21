@@ -1,0 +1,29 @@
+# macOS Audio Recording
+
+A locally-run macOS utility that captures the audio of a single running application and lets you trim and export it.
+
+## Language
+
+**Source**:
+The single running application whose audio is captured. Chosen once and remembered.
+_Avoid_: Target, input, device, channel
+
+**Recording**:
+The audio captured in one continuous run from start to stop, saved automatically.
+_Avoid_: Take, clip, session, capture
+
+**Library**:
+The set of Recordings the app keeps and lists.
+_Avoid_: Archive, history, gallery
+
+**Trim**:
+Choosing which part of a Recording survives, by its start and end points.
+_Avoid_: Cut, crop, edit, splice
+
+**Export**:
+Producing a finished audio file from a Recording at a chosen Quality Preset.
+_Avoid_: Save, render, bounce, share
+
+**Quality Preset**:
+A named audio-quality setting offered at Export, each implying a file size.
+_Avoid_: Profile, format, bitrate setting
