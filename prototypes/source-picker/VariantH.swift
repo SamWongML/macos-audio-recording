@@ -9,7 +9,8 @@ import SwiftUI
 /// in the row, because the row already carries the motion and colour that told the person
 /// "this app is making noise" — moving the control elsewhere makes them look away from it.
 /// The glyph is kept legible over the moving waveform by **layout**, a trailing lane the
-/// waveform is inset around, reinforced by a `.thinMaterial` puck — not by z-order.
+/// waveform is inset around — not by z-order, and not by a material behind the glyph
+/// (that was tried and removed; see the row body).
 ///
 /// The rejected big blue capsule is best read as a *size* violation rather than a colour
 /// one: "Use style — not size — to visually distinguish the preferred choice among
@@ -20,7 +21,6 @@ struct VariantH: View {
     @Bindable var model: SourceModel
     @State private var recordingID: String?
     @State private var hovered: String?
-    @FocusState private var focused: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let laneWidth: CGFloat = 34
@@ -72,17 +72,15 @@ struct VariantH: View {
                 Spacer(minLength: 8)
 
                 ZStack {
-                    // The puck is a fixed material and the glyph a fixed colour, so every
-                    // idle row's circle looks identical. Hover and focus are expressed by
-                    // the puck brightening underneath — varying the *glyph's* opacity made
-                    // two idle rows read as two different controls.
-                    Circle()
-                        .fill(.thinMaterial)
-                        .overlay {
-                            if hovered == source.id || focused == source.id {
-                                Circle().fill(.primary.opacity(0.12))
-                            }
-                        }
+                    // No material behind the glyph. `.thinMaterial` is a *vibrancy*
+                    // material: it samples whatever is behind it, and the panel's backdrop
+                    // is not identical from the first row to the second — so it faithfully
+                    // reproduced that difference and two idle circles came out different
+                    // shades. The waveform is already inset out of this lane, so there is
+                    // nothing here to need contrast against.
+                    if hovered == source.id {
+                        Circle().fill(.primary.opacity(0.12))
+                    }
                     Image(systemName: isRecording ? "record.circle.fill" : "circle")
                         .font(.system(size: 17))
                         .foregroundStyle(isRecording ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
@@ -108,7 +106,7 @@ struct VariantH: View {
         }
         // Plain, so the row keeps list styling instead of acquiring button chrome.
         .buttonStyle(.plain)
-        .focused($focused, equals: source.id)
+        .focusEffectDisabled()
         .onHover { hovered = $0 ? source.id : nil }
     }
 }
