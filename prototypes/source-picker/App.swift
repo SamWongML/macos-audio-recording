@@ -40,6 +40,7 @@ struct SourcePickerPrototypeApp: App {
     @State private var model = SourceModel()
     @State private var variant = Variant(rawValue: ProcessInfo.processInfo.environment["VARIANT"] ?? "a") ?? .a
     @State private var showsEvidence = false
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// Fast enough that a video starting in Chrome shows up while the panel is open.
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -97,6 +98,16 @@ struct SourcePickerPrototypeApp: App {
 
                 if showsEvidence { evidence }
                 switcher
+            }
+            .background {
+                // Reduce Transparency is a system-wide setting, not a per-app style
+                // choice: when it is on, vibrancy must give way to an opaque background
+                // rather than merely getting thicker.
+                if reduceTransparency {
+                    Color(nsColor: .windowBackgroundColor)
+                } else {
+                    Rectangle().fill(.ultraThickMaterial)
+                }
             }
             .onAppear { model.refresh() }
             .onReceive(tick) { _ in

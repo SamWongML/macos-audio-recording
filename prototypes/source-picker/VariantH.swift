@@ -20,6 +20,7 @@ struct VariantH: View {
     @Bindable var model: SourceModel
     @State private var recordingID: String?
     @State private var hovered: String?
+    @FocusState private var focused: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let laneWidth: CGFloat = 34
@@ -62,25 +63,38 @@ struct VariantH: View {
         .onChange(of: model.sources) { _, sources in monitor.sync(with: sources) }
     }
 
-    /// The keyboard path. `.keyboardShortcut(.defaultAction)` is literally the API for
-    /// "the button people are most likely to choose", and the system draws its own default
-    /// coloration — so this needs no manual accent capsule. Bordered and regular-sized,
-    /// never prominent-and-large.
+    /// The keyboard path, and only the keyboard path.
+    ///
+    /// This used to be a Record button that acted on `playing.first`, which is arbitrary
+    /// the moment two apps are playing — the button named no target, so it was a guess
+    /// wearing a label. It now acts strictly on the **focused** row (⇥ / ↑ / ↓ to move,
+    /// ⏎ to fire) and says which app that is, so the target is never in doubt. With
+    /// nothing focused there is nothing to record, and it says so instead of guessing.
+    private var target: Source? {
+        if let recordingID { return model.sources.first { $0.id == recordingID } }
+        return model.playing.first { $0.id == focused }
+    }
+
     private var footer: some View {
-        HStack {
-            Text(recordingID.flatMap { id in model.sources.first { $0.id == id }?.name }
-                 ?? "Click an app to record it")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+            if let target {
+                // Text + Text is soft-deprecated at macOS 26; interpolate instead.
+                Text("\(recordingID == nil ? "Record" : "Recording") \(Text(target.name).foregroundStyle(.primary))")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(model.playing.isEmpty ? "Nothing is playing" : "Select an app to record")
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             Button(recordingID == nil ? "Record" : "Stop") {
-                recordingID = recordingID == nil ? model.playing.first?.id : nil
+                recordingID = recordingID == nil ? target?.id : nil
             }
             .buttonStyle(.bordered)
             .controlSize(.regular)
             .keyboardShortcut(.defaultAction)
-            .disabled(model.playing.isEmpty)
+            .disabled(target == nil)
         }
+        .font(.caption)
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
     }
@@ -101,7 +115,7 @@ struct VariantH: View {
                     Image(systemName: isRecording ? "record.circle.fill" : "circle")
                         .font(.system(size: 17))
                         .foregroundStyle(isRecording ? AnyShapeStyle(.red)
-                                                     : AnyShapeStyle(.secondary.opacity(hovered == source.id ? 0.9 : 0.45)))
+                                                     : AnyShapeStyle(.secondary.opacity(hovered == source.id || focused == source.id ? 0.9 : 0.45)))
                         .contentTransition(.symbolEffect(.replace))
                         .symbolEffect(.pulse, options: .repeating, isActive: isRecording)
                         .symbolEffectsRemoved(reduceMotion)
@@ -126,6 +140,7 @@ struct VariantH: View {
         }
         // Plain, so the row keeps list styling instead of acquiring button chrome.
         .buttonStyle(.plain)
+        .focused($focused, equals: source.id)
         .onHover { hovered = $0 ? source.id : nil }
     }
 }
