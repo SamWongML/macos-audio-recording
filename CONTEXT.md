@@ -17,7 +17,7 @@ The set of Recordings the app keeps and lists.
 _Avoid_: Archive, history, gallery
 
 **Trim**:
-Choosing which part of a Recording survives, by its start and end points.
+The start and end points that select which part of a Recording is Exported. Choosing them never alters the Recording, so a Trim can be widened, narrowed, or undone at any time.
 _Avoid_: Cut, crop, edit, splice
 
 **Export**:
