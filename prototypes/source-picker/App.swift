@@ -16,7 +16,7 @@ extension String {
 import SwiftUI
 
 enum Variant: String, CaseIterable, Identifiable {
-    case a, b, c, d, e, f, g
+    case a, b, c, d, e, f, g, h
     var id: String { rawValue }
     var key: String { rawValue.uppercased() }
     var title: String {
@@ -28,6 +28,7 @@ enum Variant: String, CaseIterable, Identifiable {
         case .e: VariantE.title
         case .f: VariantF.title
         case .g: VariantG.title
+        case .h: VariantH.title
         }
     }
     var next: Variant { Self.allCases[(Self.allCases.firstIndex(of: self)! + 1) % Self.allCases.count] }
@@ -91,6 +92,7 @@ struct SourcePickerPrototypeApp: App {
                 case .e: VariantE(model: model)
                 case .f: VariantF(model: model)
                 case .g: VariantG(model: model)
+                case .h: VariantH(model: model)
                 }
 
                 if showsEvidence { evidence }

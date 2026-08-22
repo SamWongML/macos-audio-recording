@@ -74,7 +74,24 @@ affordance.
 | **D** List + record dock | Two zones: list picks, a permanent dock underneath records | Full-width prominent button, docked |
 | **E** Row expands to record | One zone: the selected row grows to reveal Record inside itself | Prominent button, inside the row |
 | **F** Waveform rows | Playing rows are painted by their own **real** amplitude | Small trailing `record.circle` glyph |
-| **G** Variable symbol + hover | Quiet rows; `speaker.wave.3` filled by level | Glyph swaps to a Record button on hover |
+| **G** Variable symbol + hover | Quiet rows, **no taps at all**; `speaker.wave.3` two-state | Glyph swaps to a Record button on hover |
+| **H** Row is the record control | Real waveform, inset around a reserved trailing lane | The row itself — no button chrome |
+
+**G vs. H is the real decision, and it is a product choice, not a style choice.** G is what
+the picker can show *for free*: `kAudioProcessPropertyIsRunningOutput` is a boolean that
+costs no permission, so G shows silent-or-sounding and nothing more. H spends the System
+Audio Recording grant to show true amplitude. The waveform research's sharpest caution is
+to **never open a tap per row just to populate a list**, because that surfaces the
+permission prompt before the person has asked to record anything.
+
+H also carries the record-affordance research's top recommendation: the row *is* the
+control. No button chrome, no coloured capsule — a `circle` glyph that becomes a pulsing
+`record.circle.fill`, kept legible over the moving waveform by **layout** (a trailing lane
+the waveform is inset around) plus a `.thinMaterial` puck, not by z-order. The rejected
+blue capsule reads as a *size* violation rather than a colour one: "Use style — not size —
+to visually distinguish the preferred choice among multiple options" (HIG, Buttons: Style).
+The keyboard path is a plain `.bordered` button with `.keyboardShortcut(.defaultAction)`,
+which the system colours itself.
 
 **F and G deliberately disagree**, and that is the point of having both. F answers the
 brief as asked — real amplitude waves as the row background. G is what

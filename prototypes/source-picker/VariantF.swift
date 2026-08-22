@@ -11,6 +11,9 @@ import SwiftUI
 struct WaveformBackground: View {
     var ring: LevelRing
     var isSelected: Bool
+    /// Width at the trailing edge the waveform must not draw into, so the record
+    /// affordance sits in clear space rather than on top of moving pixels.
+    var trailingInset: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -49,6 +52,7 @@ struct WaveformBackground: View {
                 .init(color: .black, location: 0.55),
                 .init(color: .black, location: 1.0),
             ], startPoint: .leading, endPoint: .trailing))
+            .padding(.trailing, trailingInset)
         }
     }
 }

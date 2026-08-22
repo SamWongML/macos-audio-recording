@@ -29,7 +29,17 @@ struct SpeakerLevel: View {
     }
 }
 
-/// Variant G — quiet rows, value-driven indicator, action revealed on hover.
+/// Variant G — quiet rows, value-driven indicator, action revealed on hover, **and no
+/// Core Audio taps at all**.
+///
+/// This is the deliberate counterweight to F and H. The research's sharpest caution is to
+/// never open a tap per row just to populate the list: that surfaces the permission prompt
+/// before the person has asked to record anything. So G degrades to the two-state fill the
+/// research recommends for the no-grant case — silent or producing sound — driven purely
+/// by `kAudioProcessPropertyIsRunningOutput`, which costs no permission whatsoever.
+///
+/// Flipping between G and H is therefore a real product choice, not a style choice: G is
+/// what the picker can show for free, H is what it can show if it spends the grant.
 ///
 /// `.onHover` is the only hover primitive macOS has: `HoverEffect` and
 /// `listRowHoverEffect` are both explicitly `@available(macOS, unavailable)`. Swapping a
@@ -42,19 +52,14 @@ struct VariantG: View {
     @State private var showsOthers = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var monitor: LevelMonitor { .shared }
-
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Playing Audio").font(.headline)
                 Spacer()
-                if monitor.looksUnpermitted {
-                    Image(systemName: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .help("Taps are running but every sample is zero — System Audio Recording is probably not granted. There is no API to check.")
-                }
+                Text("no permission needed")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -84,8 +89,6 @@ struct VariantG: View {
             .frame(height: 280)
         }
         .frame(width: 320)
-        .onAppear { monitor.sync(with: model.sources) }
-        .onChange(of: model.sources) { _, sources in monitor.sync(with: sources) }
     }
 
     @ViewBuilder
@@ -110,7 +113,9 @@ struct VariantG: View {
                     .buttonStyle(.plain)
                     .help("Record \(source.name)")
                 } else {
-                    SpeakerLevel(level: monitor.levels[source.bundleID] ?? 0,
+                    // Two states, not a continuous level: without a tap there is no
+                    // amplitude to show, and pretending otherwise would be a lie.
+                    SpeakerLevel(level: source.isPlaying ? 1 : 0,
                                  isPlaying: source.isPlaying)
                 }
             }
