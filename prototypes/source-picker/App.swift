@@ -3,10 +3,20 @@
 //  from the bar at the bottom of the panel (or the ← / → keys).
 
 import Combine
+
+extension String {
+    func appendToFile(_ path: String) throws {
+        if let handle = FileHandle(forWritingAtPath: path) {
+            handle.seekToEndOfFile(); handle.write(data(using: .utf8)!); handle.closeFile()
+        } else {
+            try write(toFile: path, atomically: true, encoding: .utf8)
+        }
+    }
+}
 import SwiftUI
 
 enum Variant: String, CaseIterable, Identifiable {
-    case a, b, c, d, e
+    case a, b, c, d, e, f
     var id: String { rawValue }
     var key: String { rawValue.uppercased() }
     var title: String {
@@ -16,6 +26,7 @@ enum Variant: String, CaseIterable, Identifiable {
         case .c: VariantC.title
         case .d: VariantD.title
         case .e: VariantE.title
+        case .f: VariantF.title
         }
     }
     var next: Variant { Self.allCases[(Self.allCases.firstIndex(of: self)! + 1) % Self.allCases.count] }
@@ -31,6 +42,43 @@ struct SourcePickerPrototypeApp: App {
     /// Fast enough that a video starting in Chrome shows up while the panel is open.
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
+    /// PROBE=1 exercises the tap path headlessly, from app launch — the scene's own timer
+    /// cannot do this, because MenuBarExtra content is not built until the panel opens.
+    init() {
+        let argv = CommandLine.arguments
+        if ProcessInfo.processInfo.environment["PROBE"] == "2" || argv.contains("probe-global") {
+            // Global tap: if this reads zero too, the problem is the permission, not the
+            // process list we are targeting.
+            Task.detached(priority: .userInitiated) {
+                let tap = SourceTap(processes: [], name: "global", global: true)
+                for _ in 0..<12 {
+                    try? await Task.sleep(for: .seconds(1))
+                    let peak = tap.ring.snapshot().max() ?? 0
+                    let line = "GLOBAL peak=\(String(format: "%.4f", peak)) failure=\(tap.failure ?? "none")\n"
+                    FileHandle.standardError.write(line.data(using: .utf8)!)
+                    try? line.appendToFile("/tmp/global.log")
+                }
+            }
+            return
+        }
+        guard ProcessInfo.processInfo.environment["PROBE"] == "1" || argv.contains("probe") else { return }
+        let probeModel = SourceModel()
+        let timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                probeModel.refresh()
+                LevelMonitor.shared.sync(with: probeModel.sources)
+                var line = "PROBE \(probeModel.playing.count) playing / \(probeModel.sources.count) apps"
+                for source in probeModel.playing {
+                    let peak = LevelMonitor.shared.ring(for: source.bundleID)?.snapshot().max()
+                    line += " | \(source.name): peak=\(peak.map { String(format: "%.4f", $0) } ?? "-") \(LevelMonitor.shared.failures[source.bundleID] ?? "")"
+                }
+                FileHandle.standardError.write((line + "\n").data(using: .utf8)!)
+                try? (line + "\n").appendToFile("/tmp/probe.log")
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
     var body: some Scene {
         MenuBarExtra("Source Picker Prototype", systemImage: "waveform.badge.magnifyingglass") {
             VStack(spacing: 0) {
@@ -40,13 +88,16 @@ struct SourcePickerPrototypeApp: App {
                 case .c: VariantC(model: model)
                 case .d: VariantD(model: model)
                 case .e: VariantE(model: model)
+                case .f: VariantF(model: model)
                 }
 
                 if showsEvidence { evidence }
                 switcher
             }
             .onAppear { model.refresh() }
-            .onReceive(tick) { _ in model.refresh() }
+            .onReceive(tick) { _ in
+                model.refresh()
+            }
         }
         .menuBarExtraStyle(.window)
     }

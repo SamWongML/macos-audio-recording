@@ -16,12 +16,13 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSMinimumSystemVersion</key><string>27.0</string>
   <key>LSUIElement</key><true/>
+  <key>NSAudioCaptureUsageDescription</key><string>AppTape shows a live waveform for each app that is playing audio.</string>
 </dict></plist>
 PLIST
 
 xcrun swiftc -parse-as-library -O -o "$APP/Contents/MacOS/SourcePickerPrototype" \
-  AudioSources.swift Variants.swift Variants2.swift App.swift
-codesign --force --sign - "$APP"
+  AudioSources.swift LevelMonitor.swift Variants.swift Variants2.swift VariantF.swift App.swift
+codesign --force --sign "Apple Development: senwong1991@gmail.com (DV2H9Y6436)" "$APP"
 
 echo "Running — look for the waveform icon in the menu bar. ← / → switch variants, ⌘Q quits."
 open "$APP"
