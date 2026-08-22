@@ -94,7 +94,7 @@ struct VariantB: View {
     @State private var hovered: String?
 
     private var listed: [Source] {
-        showsAllApps ? model.sources : (model.playing.isEmpty ? model.sources : model.playing)
+        showsAllApps ? model.sources : model.playing
     }
 
     var body: some View {
@@ -112,6 +112,10 @@ struct VariantB: View {
 
             Divider()
 
+            if listed.isEmpty {
+                NothingPlaying { showsAllApps = true }
+                    .frame(height: 240)
+            } else {
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(listed) { source in
@@ -146,6 +150,7 @@ struct VariantB: View {
                 .padding(6)
             }
             .frame(height: 240)
+            }
         }
         .frame(width: 320)
     }
