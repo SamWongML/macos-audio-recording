@@ -8,6 +8,7 @@
 
 import CoreAudio
 import Foundation
+import Observation
 import Synchronization
 
 // MARK: - Ring of recent amplitudes
@@ -170,6 +171,7 @@ final class SourceTap {
 
 /// Keeps exactly one `SourceTap` alive per currently-playing Source.
 @MainActor
+@Observable
 final class LevelMonitor {
     static let shared = LevelMonitor()
 
@@ -201,6 +203,35 @@ final class LevelMonitor {
 
     func ring(for bundleID: String) -> LevelRing? { taps[bundleID]?.ring }
 
+    /// Smoothed 0...1 level per bundle ID, resampled on a slow timer rather than read
+    /// per render frame.
+    ///
+    /// The research is explicit about this: Apple's own frame-rate guidance puts "small,
+    /// low-speed animations... progress bar" in an 8-24 Hz tier, and reserves high rates
+    /// for high-impact animation "used sparingly to minimize power consumption". A level
+    /// readout in a list row is squarely the former, so it is sampled at 12 Hz and the
+    /// view redraws on the value, not on a display link.
+    private(set) var levels: [String: Float] = [:]
+    private var sampler: Timer?
+
+    private func startSampling() {
+        guard sampler == nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 12.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                for (bundleID, tap) in self.taps {
+                    let peak = tap.ring.snapshot().suffix(24).max() ?? 0
+                    // Fall fast enough to track speech, slow enough not to strobe.
+                    let previous = self.levels[bundleID] ?? 0
+                    self.levels[bundleID] = max(peak, previous * 0.72)
+                }
+                self.levels = self.levels.filter { self.taps[$0.key] != nil }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        sampler = timer
+    }
+
     func sync(with sources: [Source]) {
         noteSignalIfAny()
         let wanted = Set(sources.filter { $0.isPlaying && !$0.processes.isEmpty }.map(\.bundleID))
@@ -230,6 +261,7 @@ final class LevelMonitor {
                     } else {
                         self.taps[bundleID] = tap
                         if self.firstStart == nil { self.firstStart = Date() }
+                        self.startSampling()
                     }
                 }
             }

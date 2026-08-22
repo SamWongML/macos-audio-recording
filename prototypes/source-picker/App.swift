@@ -16,7 +16,7 @@ extension String {
 import SwiftUI
 
 enum Variant: String, CaseIterable, Identifiable {
-    case a, b, c, d, e, f
+    case a, b, c, d, e, f, g
     var id: String { rawValue }
     var key: String { rawValue.uppercased() }
     var title: String {
@@ -27,6 +27,7 @@ enum Variant: String, CaseIterable, Identifiable {
         case .d: VariantD.title
         case .e: VariantE.title
         case .f: VariantF.title
+        case .g: VariantG.title
         }
     }
     var next: Variant { Self.allCases[(Self.allCases.firstIndex(of: self)! + 1) % Self.allCases.count] }
@@ -70,7 +71,7 @@ struct SourcePickerPrototypeApp: App {
                 var line = "PROBE \(probeModel.playing.count) playing / \(probeModel.sources.count) apps"
                 for source in probeModel.playing {
                     let peak = LevelMonitor.shared.ring(for: source.bundleID)?.snapshot().max()
-                    line += " | \(source.name): peak=\(peak.map { String(format: "%.4f", $0) } ?? "-") \(LevelMonitor.shared.failures[source.bundleID] ?? "")"
+                    line += " | \(source.name): peak=\(peak.map { String(format: "%.3f", $0) } ?? "-") level=\(String(format: "%.3f", LevelMonitor.shared.levels[source.bundleID] ?? -1)) \(LevelMonitor.shared.failures[source.bundleID] ?? "")"
                 }
                 FileHandle.standardError.write((line + "\n").data(using: .utf8)!)
                 try? (line + "\n").appendToFile("/tmp/probe.log")
@@ -89,6 +90,7 @@ struct SourcePickerPrototypeApp: App {
                 case .d: VariantD(model: model)
                 case .e: VariantE(model: model)
                 case .f: VariantF(model: model)
+                case .g: VariantG(model: model)
                 }
 
                 if showsEvidence { evidence }

@@ -20,7 +20,7 @@ struct LevelBars: View {
 
     var body: some View {
         if isPlaying && !reduceMotion {
-            TimelineView(.animation) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: false)) { context in
                 let time = context.date.timeIntervalSinceReferenceDate
                 bars { index in 0.3 + 0.7 * abs(sin(time * 3.2 + Double(index) * 1.15)) }
             }

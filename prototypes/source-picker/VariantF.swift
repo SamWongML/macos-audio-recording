@@ -14,7 +14,7 @@ struct WaveformBackground: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { _ in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion)) { _ in
             Canvas(opaque: false, rendersAsynchronously: true) { context, size in
                 let samples = ring.snapshot()
                 guard !samples.isEmpty else { return }

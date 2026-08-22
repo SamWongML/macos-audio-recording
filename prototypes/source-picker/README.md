@@ -61,3 +61,45 @@ the ▤ table before choosing a variant.
   says only via a toggle.
 - With the ▤ table open: do any apps show "no audio process"? Those are apps a tap by
   bundle ID would find nothing to attach to.
+
+## Variants D–G (second round)
+
+B was chosen as the baseline, with two objections: its `All` toggle did nothing when
+nothing was playing (it silently widened the list while the header still read "Playing
+Audio" — fixed, it now shows an explicit empty state), and it never committed to a Record
+affordance.
+
+| | Structure | Record affordance |
+|---|---|---|
+| **D** List + record dock | Two zones: list picks, a permanent dock underneath records | Full-width prominent button, docked |
+| **E** Row expands to record | One zone: the selected row grows to reveal Record inside itself | Prominent button, inside the row |
+| **F** Waveform rows | Playing rows are painted by their own **real** amplitude | Small trailing `record.circle` glyph |
+| **G** Variable symbol + hover | Quiet rows; `speaker.wave.3` filled by level | Glyph swaps to a Record button on hover |
+
+**F and G deliberately disagree**, and that is the point of having both. F answers the
+brief as asked — real amplitude waves as the row background. G is what
+[`docs/research/waveform-in-list-rows.md`](https://github.com/SamWongML/macos-audio-recording/blob/research/waveform-rows/docs/research/waveform-in-list-rows.md)
+recommends instead: `Image(systemName:variableValue:)` redrawn a few times a second, with
+**no perpetual animation in the list at all**, because Apple's Motion guidance argues
+against continuous motion on frequently-recurring UI and its frame-rate guidance puts a
+level readout in an 8–24 Hz tier. Look at both before deciding.
+
+### Real amplitude, and what it costs
+
+F and G both install a **real Core Audio process tap per playing app**. Verified: Chrome
+and QuickTime tapped simultaneously stayed correctly isolated — Chrome varied 0.57–0.75 on
+real content while QuickTime held a constant 0.3662 on a pure 440 Hz sine.
+
+Two traps found in the process, both worth carrying into the spec:
+
+- **An ungranted tap returns silence with `AudioDeviceStart` reporting `noErr`.** No error,
+  just zeros. Combined with there being no API to query the grant (issue #3), the app can
+  only *guess* the permission state — the `looksUnpermitted` heuristic here (taps running
+  several seconds, every sample zero) is indistinguishable from genuinely silent playback.
+- **TCC attribution follows the responsible process.** The same signed bundle read all-zero
+  when launched straight from a terminal, and real audio when launched via `open`. Test
+  through LaunchServices or you will chase a phantom bug.
+
+This means F and G take the System Audio Recording grant **just to draw the picker**,
+before the user has asked to record anything. That is a product decision, not an
+implementation detail, and it probably belongs to issue #14 (first-run permission flow).

@@ -21,7 +21,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 xcrun swiftc -parse-as-library -O -o "$APP/Contents/MacOS/SourcePickerPrototype" \
-  AudioSources.swift LevelMonitor.swift Variants.swift Variants2.swift VariantF.swift App.swift
+  AudioSources.swift LevelMonitor.swift Variants.swift Variants2.swift VariantF.swift VariantG.swift App.swift
 codesign --force --sign "Apple Development: senwong1991@gmail.com (DV2H9Y6436)" "$APP"
 
 echo "Running — look for the waveform icon in the menu bar. ← / → switch variants, ⌘Q quits."
