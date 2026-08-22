@@ -24,19 +24,35 @@ struct WaveformBackground: View {
 
                 let midY = size.height / 2
                 let step = size.width / CGFloat(samples.count - 1)
-                var path = Path()
 
-                // Top edge left-to-right, then the mirrored bottom edge back, so the two
-                // meet in a single closed shape rather than two strokes.
+                // Points along the top edge, then the same points mirrored back along the
+                // bottom, so the outline closes into one shape.
+                func point(_ index: Int, mirrored: Bool) -> CGPoint {
+                    let amplitude = CGFloat(samples[index]) * midY * 0.92
+                    return CGPoint(x: CGFloat(index) * step, y: mirrored ? midY + amplitude : midY - amplitude)
+                }
+
+                // Quadratic segments through the midpoints, using each sample as the
+                // control point. A straight polyline at this density reads as jagged; the
+                // curve is what makes it look like a waveform rather than a chart.
+                func trace(_ path: inout Path, mirrored: Bool, reversed: Bool) {
+                    let indices = reversed ? Array(samples.indices.reversed()) : Array(samples.indices)
+                    guard let first = indices.first else { return }
+                    path.addLine(to: point(first, mirrored: mirrored))
+                    for offset in 1..<indices.count {
+                        let previous = point(indices[offset - 1], mirrored: mirrored)
+                        let current = point(indices[offset], mirrored: mirrored)
+                        let midpoint = CGPoint(x: (previous.x + current.x) / 2,
+                                               y: (previous.y + current.y) / 2)
+                        path.addQuadCurve(to: midpoint, control: previous)
+                    }
+                    path.addLine(to: point(indices[indices.count - 1], mirrored: mirrored))
+                }
+
+                var path = Path()
                 path.move(to: CGPoint(x: 0, y: midY))
-                for (index, sample) in samples.enumerated() {
-                    let amplitude = CGFloat(sample) * midY * 0.92
-                    path.addLine(to: CGPoint(x: CGFloat(index) * step, y: midY - amplitude))
-                }
-                for (index, sample) in samples.enumerated().reversed() {
-                    let amplitude = CGFloat(sample) * midY * 0.92
-                    path.addLine(to: CGPoint(x: CGFloat(index) * step, y: midY + amplitude))
-                }
+                trace(&path, mirrored: false, reversed: false)
+                trace(&path, mirrored: true, reversed: true)
                 path.closeSubpath()
 
                 context.fill(path, with: .linearGradient(
@@ -44,7 +60,6 @@ struct WaveformBackground: View {
                     startPoint: .zero,
                     endPoint: CGPoint(x: size.width, y: 0)))
             }
-            .animation(reduceMotion ? nil : .linear(duration: 0.05), value: samples)
             .opacity(isSelected ? 0.9 : 0.6)
             // Keep the waveform off the icon and the title.
             .mask(LinearGradient(stops: [

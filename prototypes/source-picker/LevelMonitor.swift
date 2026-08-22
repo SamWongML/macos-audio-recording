@@ -224,17 +224,38 @@ final class LevelMonitor {
     /// view's input genuinely change, so the redraw is guaranteed.
     private(set) var waveforms: [String: [Float]] = [:]
 
+    /// Un-smoothed history, kept so each tick extends the envelope rather than
+    /// re-deriving it from a smoothed copy (which would compound the smoothing).
+    private var traces: [String: [Float]] = [:]
+
     private var sampler: Timer?
 
-    /// Bucketed peaks — the ring holds one entry per IOProc callback (~93/s), far more
-    /// than a 300pt-wide row can show.
-    private static func downsample(_ samples: [Float], to count: Int) -> [Float] {
-        guard samples.count > count, count > 0 else { return samples }
-        let bucket = Double(samples.count) / Double(count)
-        return (0..<count).map { index in
-            let start = Int(Double(index) * bucket)
-            let end = min(samples.count, Int(Double(index + 1) * bucket))
-            return samples[start..<max(start + 1, end)].max() ?? 0
+    /// How many points the trace holds. At the 20 Hz sampler that is a **7 second
+    /// window**, and it scrolls exactly one point per tick — roughly a third of the speed
+    /// the first version ran at, which read as frantic rather than alive.
+    ///
+    /// Deriving the window from the sampler rather than from the audio ring is what makes
+    /// the motion calm and, more importantly, *predictable*: the IOProc's callback rate
+    /// depends on the device's buffer size, so a window measured in ring entries would
+    /// scroll at whatever speed the hardware happened to pick.
+    private static let traceLength = 140
+
+    /// Fast attack, slow release — the classic meter envelope. A rising edge is followed
+    /// almost immediately so transients are not swallowed; a falling edge eases out, which
+    /// is what stops the trace looking jittery.
+    private static func follow(_ previous: Float, _ target: Float) -> Float {
+        let coefficient: Float = target > previous ? 0.6 : 0.12
+        return previous + (target - previous) * coefficient
+    }
+
+    /// A light spatial pass over the finished trace, so neighbouring points do not form
+    /// hard corners for the curve to fight.
+    private static func smoothed(_ trace: [Float]) -> [Float] {
+        guard trace.count > 2 else { return trace }
+        return trace.indices.map { index in
+            let previous = trace[max(0, index - 1)]
+            let next = trace[min(trace.count - 1, index + 1)]
+            return previous * 0.25 + trace[index] * 0.5 + next * 0.25
         }
     }
 
@@ -246,16 +267,33 @@ final class LevelMonitor {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 Diag.hit("sampler")
+
+                // Build the three dictionaries locally and assign each exactly once.
+                // Writing an @Observable property twice per tick (once in the loop, once
+                // to drop stale keys) published two change notifications and drew every
+                // frame twice — measured 40 canvas draws against a 20 Hz sampler.
+                // Rebuilding from `taps` also drops departed Sources for free.
+                var levels: [String: Float] = [:]
+                var traces: [String: [Float]] = [:]
+                var waveforms: [String: [Float]] = [:]
+
                 for (bundleID, tap) in self.taps {
-                    let samples = tap.ring.snapshot()
-                    let peak = samples.suffix(24).max() ?? 0
-                    // Fall fast enough to track speech, slow enough not to strobe.
-                    let previous = self.levels[bundleID] ?? 0
-                    self.levels[bundleID] = max(peak, previous * 0.72)
-                    self.waveforms[bundleID] = Self.downsample(samples, to: 110)
+                    // Only the entries written since the last tick: at 20 Hz that is a
+                    // handful of IOProc callbacks, so this is "the peak of the last 50ms".
+                    let peak = tap.ring.snapshot().suffix(8).max() ?? 0
+
+                    levels[bundleID] = Self.follow(self.levels[bundleID] ?? 0, peak)
+
+                    var trace = self.traces[bundleID] ?? [Float](repeating: 0, count: Self.traceLength)
+                    trace.append(Self.follow(trace.last ?? 0, peak))
+                    if trace.count > Self.traceLength { trace.removeFirst(trace.count - Self.traceLength) }
+                    traces[bundleID] = trace
+                    waveforms[bundleID] = Self.smoothed(trace)
                 }
-                self.levels = self.levels.filter { self.taps[$0.key] != nil }
-                self.waveforms = self.waveforms.filter { self.taps[$0.key] != nil }
+
+                self.levels = levels
+                self.traces = traces
+                self.waveforms = waveforms
             }
         }
         RunLoop.main.add(timer, forMode: .common)

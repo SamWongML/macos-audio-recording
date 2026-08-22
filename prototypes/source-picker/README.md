@@ -156,3 +156,23 @@ DIAG canvasDraw=20/s sampler=20/s
 Locked 1:1 with the sampler, with no `TimelineView` involved. This also lands where the
 waveform research pointed: drive the indicator from the audio callback a few times a
 second, not from a display-linked animation loop.
+
+## Smoothing the trace
+
+Three changes, in order of how much each mattered:
+
+1. **A longer, deterministic window.** The trace is no longer downsampled out of the audio
+   ring — the sampler appends one point per tick, so the window is exactly
+   `traceLength / 20Hz` = **7 seconds**, and it scrolls one point per frame. Deriving the
+   window from the sampler rather than from the ring also makes it *predictable*: the
+   IOProc's callback rate follows the device's buffer size, so a window measured in ring
+   entries scrolled at whatever speed the hardware happened to pick.
+2. **An attack/release envelope** (`follow`) instead of raw bucket peaks — fast rise so
+   transients survive, slow fall so the trace stops jittering. Verified against a burst
+   tone: the level snaps to full on each burst and decays 0.070 → 0.005 → 0.000 through
+   the silence.
+3. **Quadratic path segments** through the midpoints instead of a polyline, which is what
+   makes it read as a waveform rather than a chart.
+
+The `.animation(value: samples)` modifier was removed: animating the array does not
+interpolate the drawn path, so it only implied a smoothing that was never happening.

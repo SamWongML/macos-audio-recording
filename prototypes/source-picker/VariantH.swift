@@ -72,11 +72,20 @@ struct VariantH: View {
                 Spacer(minLength: 8)
 
                 ZStack {
-                    Circle().fill(.thinMaterial)
+                    // The puck is a fixed material and the glyph a fixed colour, so every
+                    // idle row's circle looks identical. Hover and focus are expressed by
+                    // the puck brightening underneath — varying the *glyph's* opacity made
+                    // two idle rows read as two different controls.
+                    Circle()
+                        .fill(.thinMaterial)
+                        .overlay {
+                            if hovered == source.id || focused == source.id {
+                                Circle().fill(.primary.opacity(0.12))
+                            }
+                        }
                     Image(systemName: isRecording ? "record.circle.fill" : "circle")
                         .font(.system(size: 17))
-                        .foregroundStyle(isRecording ? AnyShapeStyle(.red)
-                                                     : AnyShapeStyle(.secondary.opacity(hovered == source.id || focused == source.id ? 0.9 : 0.45)))
+                        .foregroundStyle(isRecording ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
                         .contentTransition(.symbolEffect(.replace))
                         .symbolEffect(.pulse, options: .repeating, isActive: isRecording)
                         .symbolEffectsRemoved(reduceMotion)
