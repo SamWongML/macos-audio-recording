@@ -48,6 +48,7 @@ struct SourcePickerPrototypeApp: App {
     /// PROBE=1 exercises the tap path headlessly, from app launch — the scene's own timer
     /// cannot do this, because MenuBarExtra content is not built until the panel opens.
     init() {
+        Diag.start()
         let argv = CommandLine.arguments
         if ProcessInfo.processInfo.environment["PROBE"] == "2" || argv.contains("probe-global") {
             // Global tap: if this reads zero too, the problem is the permission, not the

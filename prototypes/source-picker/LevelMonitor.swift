@@ -212,20 +212,50 @@ final class LevelMonitor {
     /// readout in a list row is squarely the former, so it is sampled at 12 Hz and the
     /// view redraws on the value, not on a display link.
     private(set) var levels: [String: Float] = [:]
+
+    /// Drawable waveform samples per bundle ID, oldest to newest.
+    ///
+    /// This is published as observable *data* rather than read out of the ring by a
+    /// `TimelineView`, and that is the whole point: the ring is mutated by the realtime
+    /// audio thread, which SwiftUI cannot see. A `Canvas` whose closure only reads the
+    /// ring has unchanging inputs, so SwiftUI elides the redraw and the waveform freezes
+    /// until something else in the view invalidates. Measured: the timeline ticked 48/s
+    /// while the canvas actually drew 4/s and then 0/s. Publishing the samples makes the
+    /// view's input genuinely change, so the redraw is guaranteed.
+    private(set) var waveforms: [String: [Float]] = [:]
+
     private var sampler: Timer?
+
+    /// Bucketed peaks — the ring holds one entry per IOProc callback (~93/s), far more
+    /// than a 300pt-wide row can show.
+    private static func downsample(_ samples: [Float], to count: Int) -> [Float] {
+        guard samples.count > count, count > 0 else { return samples }
+        let bucket = Double(samples.count) / Double(count)
+        return (0..<count).map { index in
+            let start = Int(Double(index) * bucket)
+            let end = min(samples.count, Int(Double(index + 1) * bucket))
+            return samples[start..<max(start + 1, end)].max() ?? 0
+        }
+    }
 
     private func startSampling() {
         guard sampler == nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 12.0, repeats: true) { [weak self] _ in
+        // 20 Hz: inside the 8-24 Hz tier Apple's frame-rate guidance gives for "small,
+        // low-speed animations", and smooth enough for a scrolling trace.
+        let timer = Timer(timeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
+                Diag.hit("sampler")
                 for (bundleID, tap) in self.taps {
-                    let peak = tap.ring.snapshot().suffix(24).max() ?? 0
+                    let samples = tap.ring.snapshot()
+                    let peak = samples.suffix(24).max() ?? 0
                     // Fall fast enough to track speech, slow enough not to strobe.
                     let previous = self.levels[bundleID] ?? 0
                     self.levels[bundleID] = max(peak, previous * 0.72)
+                    self.waveforms[bundleID] = Self.downsample(samples, to: 110)
                 }
                 self.levels = self.levels.filter { self.taps[$0.key] != nil }
+                self.waveforms = self.waveforms.filter { self.taps[$0.key] != nil }
             }
         }
         RunLoop.main.add(timer, forMode: .common)

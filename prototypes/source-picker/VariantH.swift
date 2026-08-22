@@ -53,50 +53,11 @@ struct VariantH: View {
                 }
                 .padding(6)
             }
-            .frame(height: 250)
-
-            Divider()
-            footer
+            .frame(height: 296)
         }
         .frame(width: 320)
         .onAppear { monitor.sync(with: model.sources) }
         .onChange(of: model.sources) { _, sources in monitor.sync(with: sources) }
-    }
-
-    /// The keyboard path, and only the keyboard path.
-    ///
-    /// This used to be a Record button that acted on `playing.first`, which is arbitrary
-    /// the moment two apps are playing — the button named no target, so it was a guess
-    /// wearing a label. It now acts strictly on the **focused** row (⇥ / ↑ / ↓ to move,
-    /// ⏎ to fire) and says which app that is, so the target is never in doubt. With
-    /// nothing focused there is nothing to record, and it says so instead of guessing.
-    private var target: Source? {
-        if let recordingID { return model.sources.first { $0.id == recordingID } }
-        return model.playing.first { $0.id == focused }
-    }
-
-    private var footer: some View {
-        HStack(spacing: 8) {
-            if let target {
-                // Text + Text is soft-deprecated at macOS 26; interpolate instead.
-                Text("\(recordingID == nil ? "Record" : "Recording") \(Text(target.name).foregroundStyle(.primary))")
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(model.playing.isEmpty ? "Nothing is playing" : "Select an app to record")
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(recordingID == nil ? "Record" : "Stop") {
-                recordingID = recordingID == nil ? target?.id : nil
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .keyboardShortcut(.defaultAction)
-            .disabled(target == nil)
-        }
-        .font(.caption)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
     }
 
     @ViewBuilder
@@ -128,11 +89,9 @@ struct VariantH: View {
             .background {
                 ZStack {
                     if isRecording { Color.red.opacity(0.10) }
-                    if let ring = monitor.ring(for: source.bundleID) {
-                        WaveformBackground(ring: ring,
-                                           isSelected: isRecording,
-                                           trailingInset: laneWidth)
-                    }
+                    WaveformBackground(samples: monitor.waveforms[source.bundleID] ?? [],
+                                       isSelected: isRecording,
+                                       trailingInset: laneWidth)
                 }
             }
             .clipShape(.rect(cornerRadius: 9))

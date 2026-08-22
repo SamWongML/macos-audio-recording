@@ -120,3 +120,39 @@ Two traps found in the process, both worth carrying into the spec:
 This means F and G take the System Audio Recording grant **just to draw the picker**,
 before the user has asked to record anything. That is a product decision, not an
 implementation detail, and it probably belongs to issue #14 (first-run permission flow).
+
+## The waveform froze, and why
+
+The first version of the waveform read its samples out of `LevelRing` inside a
+`TimelineView(.animation)`. It looked right in code and was wrong in practice: the
+waveform only advanced when something *else* in the UI changed.
+
+Instrumented with `--args diag`, which prints per-second counts of every redraw source:
+
+```
+DIAG canvasDraw=4/s  sampler=6/s  timelineTick=28/s     <- first second
+DIAG                 sampler=12/s timelineTick=48/s     <- canvas stopped drawing entirely
+```
+
+The timeline was ticking 48 times a second. The `Canvas` drew four times, then never
+again. The reason is that **the ring is mutated by the realtime audio thread, which SwiftUI
+cannot observe**: the `Canvas` closure read the ring but nothing in its *inputs* ever
+changed, so SwiftUI correctly concluded there was nothing to redraw. A `TimelineView` that
+discards its context (`{ _ in ... }`) does not by itself make the subtree's inputs change.
+
+The fix is to stop treating the waveform as animation and treat it as data:
+`LevelMonitor.waveforms` publishes a downsampled `[Float]` per Source at 20 Hz, and
+`WaveformBackground` takes that array as a plain stored property. The view's input now
+genuinely changes on every sample, so the redraw is guaranteed rather than hoped for.
+
+After, in steady state:
+
+```
+DIAG canvasDraw=20/s sampler=20/s
+DIAG canvasDraw=20/s sampler=20/s
+DIAG canvasDraw=20/s sampler=20/s
+```
+
+Locked 1:1 with the sampler, with no `TimelineView` involved. This also lands where the
+waveform research pointed: drive the indicator from the audio callback a few times a
+second, not from a display-linked animation loop.

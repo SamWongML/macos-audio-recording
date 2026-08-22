@@ -9,7 +9,8 @@ import SwiftUI
 /// drawn low-opacity and masked to fade out under the text on the leading edge, leaving
 /// the trailing two-thirds — where there is no text — carrying the signal.
 struct WaveformBackground: View {
-    var ring: LevelRing
+    /// Plain data, deliberately. See `LevelMonitor.waveforms` for why this is not a ring.
+    var samples: [Float]
     var isSelected: Bool
     /// Width at the trailing edge the waveform must not draw into, so the record
     /// affordance sits in clear space rather than on top of moving pixels.
@@ -17,10 +18,9 @@ struct WaveformBackground: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion)) { _ in
-            Canvas(opaque: false, rendersAsynchronously: true) { context, size in
-                let samples = ring.snapshot()
-                guard !samples.isEmpty else { return }
+        Canvas(opaque: false) { context, size in
+                Diag.hit("canvasDraw")
+                guard samples.count > 1 else { return }
 
                 let midY = size.height / 2
                 let step = size.width / CGFloat(samples.count - 1)
@@ -44,6 +44,7 @@ struct WaveformBackground: View {
                     startPoint: .zero,
                     endPoint: CGPoint(x: size.width, y: 0)))
             }
+            .animation(reduceMotion ? nil : .linear(duration: 0.05), value: samples)
             .opacity(isSelected ? 0.9 : 0.6)
             // Keep the waveform off the icon and the title.
             .mask(LinearGradient(stops: [
@@ -53,7 +54,6 @@ struct WaveformBackground: View {
                 .init(color: .black, location: 1.0),
             ], startPoint: .leading, endPoint: .trailing))
             .padding(.trailing, trailingInset)
-        }
     }
 }
 
@@ -138,9 +138,8 @@ struct VariantF: View {
         .background {
             ZStack {
                 if isSelected { Color.accentColor.opacity(0.14) }
-                if let ring = monitor.ring(for: source.bundleID) {
-                    WaveformBackground(ring: ring, isSelected: isSelected)
-                }
+                WaveformBackground(samples: monitor.waveforms[source.bundleID] ?? [],
+                                   isSelected: isSelected)
             }
         }
         .clipShape(.rect(cornerRadius: 9))
