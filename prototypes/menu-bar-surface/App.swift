@@ -98,6 +98,37 @@ enum Launch {
             .dropFirst(key.count + 1)
             .description
     }
+
+    /// Relaunch into `variant`, carrying the current icon treatment.
+    ///
+    /// Scaffolding, and the honest way to do it: `MenuBarExtra`'s `isInserted` is only
+    /// read when the scene is built, so which of the two menu bar implementations owns the
+    /// bar is a launch-time decision. Pretending otherwise is what broke.
+    ///
+    /// The relaunch is handed to a detached `sh`, and this instance quits **first**. Going
+    /// the other way round — `NSWorkspace.openApplication` with
+    /// `createsNewApplicationInstance`, then terminate — was tried and left the new
+    /// instance with **no menu bar item at all** (`x=0`, never placed): two instances of
+    /// the same `LSUIElement` bundle overlap, and the one still holding the slot wins.
+    @MainActor
+    static func relaunch(into variant: Variant) {
+        let passthrough = CommandLine.arguments.dropFirst().filter {
+            !$0.hasPrefix("variant:") && !$0.hasPrefix("icon:") && !$0.hasPrefix("switchto:")
+        }
+        let arguments = passthrough + [
+            "variant:\(variant.rawValue)",
+            "icon:\(Shell.shared.iconTreatment.rawValue)",
+        ]
+        let quoted = ([Bundle.main.bundleURL.path] + arguments)
+            .map { "'" + $0.replacingOccurrences(of: "'", with: "'\\''") + "'" }
+        let command = "sleep 1; open -a \(quoted[0]) --args \(quoted.dropFirst().joined(separator: " "))"
+
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", command]
+        try? task.run()
+        NSApp.terminate(nil)
+    }
 }
 
 /// Singleton rather than `@State`, because K's popover is hosted by AppKit and has no
@@ -111,8 +142,9 @@ final class Shell {
     var variant: Variant = Launch.value("variant").flatMap(Variant.init(rawValue:)) ?? .i {
         didSet {
             guard variant != oldValue else { return }
-            if variant.usesStatusItem { StatusItemTransport.shared.install() }
-            else { StatusItemTransport.shared.remove() }
+            // Only crossing the K boundary needs anything; I ↔ J ↔ L is an instant swap
+            // of the panel's contents.
+            if variant.usesStatusItem != oldValue.usesStatusItem { Launch.relaunch(into: variant) }
         }
     }
     var iconTreatment: IconTreatment = Launch.value("icon").flatMap(IconTreatment.init(rawValue:)) ?? .glyphSwap
@@ -192,20 +224,30 @@ struct MenuBarSurfacePrototypeApp: App {
         MainActor.assumeIsolated {
             // K's status item is installed by `Shell.variant`'s `didSet`, which has not
             // fired yet for the initial value — so seed it here.
-            if Shell.shared.variant.usesStatusItem { StatusItemTransport.shared.install() }
+            if Shell.shared.variant.usesStatusItem {
+                StatusItemTransport.shared.install()
+                // Nothing else in K is on screen, and the switcher lives in its popover —
+                // so open it, or a relaunch into K looks like the app failed to start.
+                let reveal = Timer(timeInterval: 0.4, repeats: false) { _ in
+                    MainActor.assumeIsolated { StatusItemTransport.shared.showPopover() }
+                }
+                RunLoop.main.add(reveal, forMode: .common)
+            }
             Self.startProbeIfAsked()
         }
     }
 
-    /// `PROBE=1` drives a Recording with no human and no audio, purely so the *menu bar*
-    /// can be measured while the panel is closed. Two things this prototype needs to know
-    /// and cannot learn by looking:
+    /// `probe` drives a Recording with no human and no audio, purely so the *menu bar* can
+    /// be measured while the panel is closed. Three things this prototype needed to know
+    /// and could not learn by looking:
     ///
     /// 1. does a `MenuBarExtra` label rebuild at 1 Hz when nothing is on screen, or does
-    ///    it go stale the way the source-picker `Canvas` did, and
-    /// 2. does `withObservationTracking` keep K's `NSStatusButton` title live.
+    ///    it go stale the way the source-picker `Canvas` did,
+    /// 2. does `withObservationTracking` keep K's `NSStatusButton` title live, and
+    /// 3. is there ever more than one item in the bar (`switchto:`, below).
     ///
-    /// Run with `DIAG=1 PROBE=1` and read `/tmp/ticks.log`.
+    /// `./run.sh` then `open -a build/…app --args diag probe [variant:k] [icon:timeOnly]
+    /// [switchto:l]`; read `/tmp/ticks.log` and `/tmp/switch.log`.
     @MainActor
     private static func startProbeIfAsked() {
         let environment = ProcessInfo.processInfo.environment
@@ -220,30 +262,55 @@ struct MenuBarSurfacePrototypeApp: App {
         }
         RunLoop.main.add(timer, forMode: .common)
 
-        // How many status items this process actually owns. `MenuBarExtra` puts an
-        // `NSStatusBarWindow` in `NSApp.windows`, so counting them is the only in-process
-        // way to check that `isInserted: false` really removes the SwiftUI item rather
-        // than merely hiding it — which decides whether variant K shows one item or two.
+        // How many status items this process actually owns, and whether any of them
+        // actually reached the bar. `MenuBarExtra` puts an `NSStatusBarWindow` in
+        // `NSApp.windows`, and an item that was never placed sits at x=0.
         let census = Timer(timeInterval: 6.0, repeats: false) { _ in
-            MainActor.assumeIsolated {
-                let bars = NSApp.windows.filter { $0.className.contains("StatusBar") }
-                let detail = bars.map { window in
-                    "\(window.className)(visible=\(window.isVisible) x=\(Int(window.frame.minX)) w=\(Int(window.frame.width)))"
-                }.joined(separator: " ")
-                let line = "PROBE variant=\(Shell.shared.variant.key) ownStatusItem=\(StatusItemTransport.shared.buttonFrameDescription)"
-                    + " statusBarWindows=\(bars.count) \(detail)\n"
-                FileHandle.standardError.write(line.data(using: .utf8)!)
-                try? line.appendToFile("/tmp/census.log")
-            }
+            MainActor.assumeIsolated { Self.log("CENSUS " + Self.census()) }
         }
         RunLoop.main.add(census, forMode: .common)
+
+        // `switchto:<variant>` drives the *switching* path, which the launch-into-a-variant
+        // probes never touch — and which is where the reported stuck button lived. It is
+        // dropped on relaunch, so the next instance just censuses.
+        guard let target = Launch.value("switchto").flatMap(Variant.init(rawValue:)) else { return }
+        let step = Timer(timeInterval: 4.0, repeats: false) { _ in
+            MainActor.assumeIsolated {
+                Self.log("SWITCH -> \(target.key)")
+                Shell.shared.variant = target
+            }
+        }
+        RunLoop.main.add(step, forMode: .common)
+    }
+
+    @MainActor
+    private static func census() -> String {
+        let bars = NSApp.windows.filter { $0.className.contains("StatusBar") }
+        let placed = bars.filter { $0.frame.minX > 0 }
+        let detail = bars.map { "x=\(Int($0.frame.minX))w=\(Int($0.frame.width))" }.joined(separator: " ")
+        return "variant=\(Shell.shared.variant.key) inBar=\(placed.count) ownItem=\(StatusItemTransport.shared.buttonFrameDescription) all[\(detail)]"
+    }
+
+    private static func log(_ line: String) {
+        FileHandle.standardError.write((line + "\n").data(using: .utf8)!)
+        try? (line + "\n").appendToFile("/tmp/switch.log")
     }
 
     var body: some Scene {
-        // `isInserted` is the only lever `MenuBarExtra` gives over its own presence, and
-        // it is what lets K take the menu bar over without a second item appearing.
-        MenuBarExtra(isInserted: Binding(get: { !shell.variant.usesStatusItem },
-                                         set: { _ in })) {
+        // Evaluated **once**, at launch — and that is now the whole contract.
+        //
+        // An `App`'s scene body does not re-evaluate when an `@Observable` it reads
+        // changes. Measured, not assumed: reading `variant` inside the `isInserted`
+        // getter, reading it directly in the body, and holding `Shell` in `@State` all
+        // behaved identically — the scene was built once and `isInserted` never read
+        // again. That was the stuck menu bar button: switching to K installed K's item
+        // while the SwiftUI item stayed put, two items landing on the same coordinate
+        // with clicks going to whichever was on top.
+        //
+        // So crossing the K boundary relaunches instead (see `Launch.relaunch`), which
+        // keeps this a launch-time decision — the only kind `MenuBarExtra` honours.
+        let usesStatusItem = shell.variant.usesStatusItem
+        MenuBarExtra(isInserted: .constant(!usesStatusItem)) {
             VStack(spacing: 0) {
                 switch shell.variant {
                 case .i: VariantI(model: model)

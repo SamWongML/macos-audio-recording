@@ -58,6 +58,11 @@ final class StatusItemTransport {
         popover = nil
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
+        // Must be reset, or a later `install()` short-circuits `startObserving()` and the
+        // button title stays frozen at whatever second it was removed on. The tracking
+        // chain has already broken by then: `track()`'s callback bails on `item == nil`
+        // without re-arming, and nothing else ever re-arms it.
+        observing = false
     }
 
     // MARK: - The click
@@ -78,11 +83,15 @@ final class StatusItemTransport {
     }
 
     private func togglePopover() {
-        guard let button = item?.button else { return }
         if let popover, popover.isShown {
             popover.performClose(nil)
             return
         }
+        showPopover()
+    }
+
+    func showPopover() {
+        guard let button = item?.button else { return }
         let popover = self.popover ?? makePopover()
         self.popover = popover
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
