@@ -27,3 +27,11 @@ _Avoid_: Save, render, bounce, share
 **Quality Preset**:
 A named audio-quality setting offered at Export, each implying a file size.
 _Avoid_: Profile, format, bitrate setting
+
+**Loudness**:
+How loud a Recording sounds over time, measured to a modern standard rather than read off its peaks. Exporting can correct it to a fixed target, so Recordings captured from different Sources play back at the same level.
+_Avoid_: Volume, level, amplitude, loudness units
+
+**Gain**:
+A level offset, in decibels, chosen by hand for one Recording. It applies on top of any Loudness correction and, like Trim, never alters the Recording itself.
+_Avoid_: Volume, boost, makeup, adjustment
