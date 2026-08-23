@@ -145,21 +145,30 @@ final class StatusItemTransport {
         let recording = Session.shared.isRecording
         Diag.hit("statusItemRefresh")
 
+        let tinted = recording && treatment.tintsRed
+
+        // Same lesson as the SwiftUI label, from the other direction: `contentTintColor`
+        // is **ignored** by `NSStatusBarButton` — measured, template or not, the glyph
+        // came out black. A status bar button draws template images in the menu bar's own
+        // appearance, full stop. Colour has to arrive pre-rendered.
         if let name = treatment.symbolName(recording: recording) {
-            let image = NSImage(systemSymbolName: name, accessibilityDescription: recording ? "Recording" : "AppTape")
-            // **Template, always.** The earlier `isTemplate = false` while recording was
-            // exactly backwards: an SF Symbol is a monochrome glyph, so turning off
-            // template mode does not give it colour — it just opts out of the one
-            // mechanism that would have coloured it, and `contentTintColor` tints
-            // *template* images only. Result was a black glyph with the tint ignored.
-            image?.isTemplate = true
-            button.image = image
+            button.image = MenuBarGlyph.image(symbol: name, tinted: tinted)
         } else {
             button.image = nil
         }
-        button.contentTintColor = (recording && treatment.tintsRed) ? .systemRed : nil
-        button.title = treatment.showsTime && recording ? " " + Session.shared.elapsedText : ""
-        button.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        button.contentTintColor = nil
+
+        // Unlike a `MenuBarExtra` label — which renders exactly one image, so a glyph and a
+        // coloured clock cannot coexist — a status bar button carries an image *and* an
+        // attributed title. So K can have both in red, which `MenuBarExtra` cannot.
+        if treatment.showsTime && recording {
+            button.attributedTitle = NSAttributedString(string: " " + Session.shared.elapsedText, attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
+                .foregroundColor: tinted ? NSColor.systemRed : NSColor.labelColor,
+            ])
+        } else {
+            button.attributedTitle = NSAttributedString(string: "")
+        }
         button.toolTip = recording
             ? "Recording \(Session.shared.recording?.name ?? "") — click to stop, right-click for the panel"
             : "AppTape"
