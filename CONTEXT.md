@@ -9,11 +9,11 @@ The single running application whose audio is captured. Chosen once and remember
 _Avoid_: Target, input, device, channel
 
 **Recording**:
-The audio captured in one continuous run from start to stop, saved automatically.
+The audio captured in one continuous run from start to stop, saved automatically. An audio file the user places in the Library by hand is treated as a Recording too, since everything the app offers applies to it identically.
 _Avoid_: Take, clip, session, capture
 
 **Library**:
-The set of Recordings the app keeps and lists.
+The folder of Recordings the app lists. It is an ordinary visible folder rather than a private store, so the user can rearrange it in Finder and the app follows.
 _Avoid_: Archive, history, gallery
 
 **Trim**:
