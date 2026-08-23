@@ -25,7 +25,7 @@ Producing a finished audio file from a Recording at a chosen Quality Preset.
 _Avoid_: Save, render, bounce, share
 
 **Quality Preset**:
-A named audio-quality setting offered at Export, each implying a file size.
+A named audio-quality setting offered at Export. The quality it names is what determines how large the exported file will be, so choosing a Quality Preset is how the size is chosen — but that size is only ever estimated, never promised.
 _Avoid_: Profile, format, bitrate setting
 
 **Loudness**:
