@@ -20,7 +20,7 @@ PLIST
 
 xcrun swiftc -parse-as-library -O -o "$APP/Contents/MacOS/EditorWindowPrototype" \
   Diag.swift Library.swift Fixtures.swift Waveform.swift Player.swift Timeline.swift \
-  Export.swift Model.swift VariantM.swift VariantN.swift VariantO.swift VariantP.swift App.swift
+  Export.swift Model.swift VariantM.swift VariantN.swift VariantO.swift VariantP.swift VariantQ.swift App.swift
 
 codesign --force --sign "Apple Development: senwong1991@gmail.com (DV2H9Y6436)" "$APP"
 

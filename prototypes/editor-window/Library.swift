@@ -62,6 +62,25 @@ final class Recording: Identifiable {
     func resetTrim() { trim = 0...duration }
 }
 
+/// A day's worth of Recordings. Any sidebar over a Library that spans more than one day
+/// needs this: with 28 Recordings the row subtitle "21:51" cannot tell today's Spotify from
+/// last Tuesday's, and three of the Sources repeat.
+struct RecordingDay: Identifiable {
+    let date: Date
+    let recordings: [Recording]
+    var id: Date { date }
+
+    var title: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
+        if let days = calendar.dateComponents([.day], from: date, to: .now).day, days < 7 {
+            return date.formatted(.dateTime.weekday(.wide))
+        }
+        return date.formatted(.dateTime.day().month(.abbreviated))
+    }
+}
+
 enum Library {
     static var folder: URL {
         FileManager.default.urls(for: .musicDirectory, in: .userDomainMask)[0]
@@ -76,6 +95,15 @@ enum Library {
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])) ?? []
         return urls.compactMap(Recording.init(url:))
             .sorted { ($0.recordedAt ?? .distantPast) > ($1.recordedAt ?? .distantPast) }
+    }
+
+    /// Newest day first, newest Recording first within a day.
+    static func grouped(_ recordings: [Recording]) -> [RecordingDay] {
+        let calendar = Calendar.current
+        let buckets = Dictionary(grouping: recordings) {
+            calendar.startOfDay(for: $0.recordedAt ?? .distantPast)
+        }
+        return buckets.keys.sorted(by: >).map { RecordingDay(date: $0, recordings: buckets[$0]!) }
     }
 }
 

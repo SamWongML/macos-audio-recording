@@ -4,7 +4,7 @@
 import SwiftUI
 
 enum Variant: String, CaseIterable, Identifiable {
-    case m, n, o, p
+    case m, n, o, p, q
     var id: Self { self }
 
     var letter: String { rawValue.uppercased() }
@@ -14,6 +14,7 @@ enum Variant: String, CaseIterable, Identifiable {
         case .n: "Library split"
         case .o: "Inspector"
         case .p: "Tape deck"
+        case .q: "Inspector + sidebar"
         }
     }
     var claim: String {
@@ -22,13 +23,14 @@ enum Variant: String, CaseIterable, Identifiable {
         case .n: "One window forever. The Library is a sidebar and selecting a row swaps the Recording."
         case .o: "Export is a panel that is about to grow, so give it a permanent home now."
         case .p: "You find the edit by ear. The playhead sets Trim; the waveform only confirms it."
+        case .q: "O's inspector with N's sidebar. One window, three columns, and only one pane control."
         }
     }
     /// What "play" means here — deliberately not the same across variants.
     var playScope: PlayScope {
         switch self {
         case .m, .n: .whole
-        case .o: .trimLooping
+        case .o, .q: .trimLooping
         case .p: .fromPlayhead
         }
     }
@@ -41,6 +43,14 @@ final class Editor {
     var selection: Recording?
     var variant: Variant = .m
     var precision: Precision = .whole
+    /// Only meaningful in Q. The three answers from `docs/research/sidebar-and-inspector.md`.
+    var paneControls: PaneControls = .permanentInspector
+
+    /// Both pane visibilities live here and not in the view, so the View menu can drive them.
+    /// The HIG's Sidebars page is explicit that the sidebar must not start hidden: "Avoid
+    /// hiding the sidebar by default to ensure that it remains discoverable."
+    var sidebarVisibility: NavigationSplitViewVisibility = .all
+    var showsInspector = true
 
     let player = Player()
     let settings = ExportSettings()

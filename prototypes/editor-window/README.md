@@ -7,20 +7,26 @@ with three answers to "how do you land a Trim handle accurately". Not production
 ./run.sh   # builds, signs, launches. ⌘Q quits.
 ```
 
-- **⌥← / ⌥→** switch the **variant** — M Document · N Library split · O Inspector · P Tape deck
+- **⌥← / ⌥→** switch the **variant** — M Document · N Library split · O Inspector · P Tape deck ·
+  **Q Inspector + sidebar**
 - **⌥↑ / ⌥↓** switch the **precision treatment** independently — Whole · Zoom · Loupe
 - In the timeline: **⌘= / ⌘−** zoom · **[** or **]** picks the In or Out handle · **← / →**
   nudges it (**⇧** for one second a step) · **space** plays
 - The switcher's **Recording** popup jumps between fixtures without going through a variant's
   own Library
 
-**First run writes ~575 MB of fixture Recordings into `~/Music/AppTape`** — real CAF masters
+**First run writes ~800 MB of fixture Recordings into `~/Music/AppTape`** — real CAF masters
 in ADR-0003's format (Float32, stereo, 48 kHz) and ADR-0006's naming, because there is no
 capture path yet and every question here needs real audio to answer. Delete them with:
 
 ```sh
-rm ~/Music/AppTape/{Safari,Spotify,QuickTime\ Player,Google\ Chrome}\ 2026-08-23*.caf
+rm ~/Music/AppTape/*\ 2026-08-1*\ at\ *.caf ~/Music/AppTape/*\ 2026-08-2*\ at\ *.caf
 ```
+
+Four of them are the headliners in the table below. **Twenty-four more are short filler**,
+7–90 seconds, spread across the previous week, because a Library of four rows answers nothing
+about browsing one — and several Sources deliberately repeat on the same day, which is the
+case that breaks a list keyed on the Source alone.
 
 The four are chosen to be awkward rather than pretty:
 
@@ -170,7 +176,45 @@ so the prototype parses it out of the filename — and a rename that drops the d
 drops the Source with it, leaving "Kettle noises" as its own Source. **Capture must write
 the Source xattr**, or a renamed Recording forgets where it came from.
 
-## The four variants
+## Variant Q — the merged one
+
+Added after the first round: O won on its inspector and lost on its Library, because a
+toolbar popover is fine at four Recordings and useless at twenty-eight. Q is O's inspector
+with N's sidebar, so the window has three columns.
+
+That raises the question of whether a leading sidebar toggle and a trailing inspector toggle
+have to read as two redundant mirrored twins. It is researched properly in
+**[`docs/research/sidebar-and-inspector.md`](https://github.com/SamWongML/macos-audio-recording/blob/research/sidebar-inspector/docs/research/sidebar-and-inspector.md)**
+(branch `research/sidebar-inspector`) — HIG pages quoted verbatim, Apple's own apps checked on
+this machine, SDK claims cited to interface file and line. The short version:
+
+- There is **no Inspectors page in the HIG at all** (`/inspectors` 404s). Inspector guidance
+  lives inside **Panels** and **Split views**, and the canonical **View menu** table lists
+  Show/Hide Sidebar with **no Inspector row**.
+- The **Toolbars** page does put the sidebar control on the leading edge and "buttons that
+  open nearby inspectors" on the trailing edge — implicit sanction of opposite ends, but it
+  never asks for the two to look alike.
+- Of Apple's own apps, most have a sidebar and no inspector; Numbers/Pages/Keynote have an
+  Inspector item and **no** Sidebar item. **Xcode 27 is the one app with both, and it
+  deliberately does not mirror them** — a two-icon segmented pill on the leading edge against
+  a lone circular button on the trailing edge.
+
+The prototype ships the research's three answers as a switcher axis (visible only in Q), so
+they can be compared rather than argued about:
+
+| | The toolbar carries… | The cost |
+|---|---|---|
+| **Permanent inspector** *(recommended)* | only the system's leading sidebar toggle; the trailing edge is empty | Export can never be hidden, so the window has a hard minimum width of about 840 pt |
+| **Asymmetric pair** | the leading sidebar glyph, and a **labelled `Export` pill** on the trailing edge | two things now say "Export" — the pill *reveals the panel*, it does not export |
+| **Menu only** | nothing; both panes live on View ▸ Show Sidebar (⌃⌘S) and Show Export Panel (⌥⌘I) | the title bar reflows and the subtitle collapses onto the title line |
+
+**Permanent inspector is the recommendation**, on three converging grounds: #9 requires the
+estimated size to update continuously while a Trim handle is dragged, so hiding that panel
+defeats its purpose; SwiftUI's own API is asymmetric in exactly this direction (finding 12);
+and it is what variant O already decided. With it, there is exactly **one** pane control in
+the window, on the leading edge where the HIG puts it — so there is nothing to mirror.
+
+## The four earlier variants
 
 | | The window is… | The Library is… | Export lives… | Play means… |
 |---|---|---|---|---|
@@ -234,6 +278,62 @@ Independent of layout, so any variant can wear any of them (⌥↑ / ⌥↓).
   toolbar is the most crowded of the four.
 - **Reduce Transparency and Reduce Motion.** The loupe is a `.regularMaterial` popover and the
   numeric readouts use `.contentTransition(.numericText())`.
+
+## Four more findings, from building Q
+
+### 10. `SidebarCommands()` or `InspectorCommands()` leaves this app with no windows at all
+
+Adding either one — alone, together, inside a custom `Commands` struct or as the entire
+`.commands { }` body — takes the app from three windows to **zero**. It still launches, still
+runs its event loop, still builds all 28 envelopes; it just never creates a window, so there
+is nothing on screen and no crash to look at.
+
+Bisected to the single line, then checked for scope: a minimal one-scene app with
+`SidebarCommands()` is **fine**, and so is a two-scene app that mirrors this one's
+`defaultLaunchBehavior(.presented)` / `.suppressed` pair. **So this is not "SwiftUI 27 is
+broken"** — the trigger is narrower than that and is not yet isolated. Recorded as a hazard,
+not a diagnosis. Q's View-menu items are hand-built out of `CommandGroup(after: .sidebar)`
+instead, which is no loss: hand-building lets them read "Show Export Panel" rather than the
+generic "Show Inspector".
+
+### 11. `.toolbar(removing: .sidebarToggle)` only bites on the sidebar column's own content
+
+Applied to the detail view it does nothing. Applied to the `NavigationSplitView` itself it
+does nothing. Applied to the `List` inside the sidebar closure, the toggle disappears — and
+the toolbar reflows, collapsing `navigationSubtitle` onto the title line.
+
+### 12. The framework is asymmetric here, not just the HIG
+
+`ToolbarDefaultItemKind` has exactly three members — `sidebarToggle`, `title`, `search` —
+and **no inspector case at all** (SwiftUI interface line 22464). `NavigationSplitView` adds a
+sidebar toggle for free; `.inspector(isPresented:content:)` adds nothing and has no
+"always visible" form, only a `Binding<Bool>`. `SidebarCommands` shipped in macOS 11;
+`InspectorCommands` did not arrive until macOS 14. Build the two panes with what the
+framework hands you and you land on "sidebar toggles, inspector doesn't" without trying.
+
+### 13. Xcode's trick — different *shapes* at the two edges — is not reachable from SwiftUI
+
+Two icon-only `ToolbarItem` buttons at opposite ends render as **identical circular glass
+capsules**; changing the glyph is not enough to stop them reading as a pair. There is no
+segmented-pill toolbar item to match Xcode's leading control. The one differentiator plain
+SwiftUI leaves is a **visible text label**, which is why the Asymmetric-pair treatment's
+trailing control is a labelled `Export` pill rather than another glyph.
+
+### And the sidebar row took three passes
+
+Worth recording because two of them look right on paper:
+
+1. **Waveform behind the whole row** — the construction issue #6 settled for the menu bar
+   panel. It does not survive the move: that panel's rows are almost all waveform with one
+   small glyph, while a Library row carries a Source, a time and a duration, and
+   "Google Chrome 21:51 ✂" on top of a loud waveform is just noisy.
+2. **Waveform in a fixed 68 pt lane**, N's shape. In a 268 pt sidebar the lane plus the
+   duration plus the spacing left under 100 pt for the text and **every Source truncated** —
+   "QuickTim…", "Goo…", "Spoti…".
+3. **Waveform behind the row but masked away from both ends**, fading in past the text and
+   out again before the duration. Nothing is drawn under a glyph, nothing truncates, and the
+   drawn region stays a fixed *fraction* of the row so two silhouettes remain comparable —
+   which is the only reason the waveform is in the row at all, given that Sources repeat.
 
 ## Deliberately left out
 

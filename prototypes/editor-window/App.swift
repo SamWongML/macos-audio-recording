@@ -1,7 +1,8 @@
 //  PROTOTYPE — throwaway app shell for issue #7. Not production code.
 //
 //  Two axes, because layout and trim precision are independent questions:
-//    ⌥← / ⌥→   variant   M Document · N Library split · O Inspector · P Tape deck
+//    ⌥← / ⌥→   variant   M Document · N Library split · O Inspector · P Tape deck ·
+//                        Q Inspector + sidebar
 //    ⌥↑ / ⌥↓   precision Whole · Zoom · Loupe
 //  and inside the timeline: ⌘= / ⌘− zoom, [ / ] select the In / Out handle, ← / → nudge it
 //  (⇧ for one second a step).
@@ -18,7 +19,7 @@ import SwiftUI
 struct EditorWindowPrototypeApp: App {
     @State private var editor = Editor()
 
-    init() { Diag.start() }
+    init() { Diag.note("app init"); Diag.start() }
 
     var body: some Scene {
         Window("Prototype switcher", id: "switcher") {
@@ -34,7 +35,7 @@ struct EditorWindowPrototypeApp: App {
         Window("AppTape", id: "editor") {
             SingleWindowHost(editor: editor)
         }
-        .defaultSize(width: 900, height: 520)
+        .defaultSize(width: 1140, height: 620)
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
         .commands { EditorCommands(editor: editor) }
@@ -61,6 +62,7 @@ private struct SingleWindowHost: View {
             case .n: VariantN(editor: editor)
             case .o: VariantO(editor: editor)
             case .p: VariantP(editor: editor)
+            case .q: VariantQ(editor: editor)
             case .m: ContentUnavailableView("M uses document windows", systemImage: "macwindow")
             }
         }
@@ -92,6 +94,8 @@ private struct EditorCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        // SidebarCommands is macOS 11; InspectorCommands did not arrive until macOS 14 —
+        // the same asymmetry that runs through the rest of this API.
         CommandGroup(replacing: .newItem) {
             Button("Open Recording…") { open() }
                 .keyboardShortcut("o", modifiers: .command)
@@ -163,6 +167,19 @@ private struct Switcher: View {
                 }
             }
             .frame(width: 330)
+
+            if editor.variant == .q {
+                Picker("Pane controls", selection: Binding(
+                    get: { editor.paneControls }, set: { editor.paneControls = $0 })) {
+                    ForEach(PaneControls.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 330)
+                Text(editor.paneControls.blurb)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 330, alignment: .leading)
+            }
 
             if editor.precision == .loupe {
                 Toggle("Pin the loupe open (it normally lives only while you drag)",

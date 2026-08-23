@@ -14,18 +14,40 @@ enum Fixtures {
     struct Spec {
         let source: String
         let seconds: Double
+        let daysAgo: Int        // spreads the Library over a week, so grouping has something to group
         let clock: String       // "HH.mm.ss", so Finder order is deterministic
         let shape: (Double, Double) -> Float   // (t, duration) -> sample
     }
 
     /// Deliberately awkward material: a long one that makes pixel density hurt, a flat one
     /// that tells you nothing about position, and a quiet head that begs to be trimmed off.
-    static let specs: [Spec] = [
-        Spec(source: "Safari", seconds: 20 * 60, clock: "09.14.02", shape: lecture),
-        Spec(source: "Google Chrome", seconds: 3 * 60, clock: "11.47.31", shape: podcast),
-        Spec(source: "Spotify", seconds: 90, clock: "14.02.55", shape: music),
-        Spec(source: "QuickTime Player", seconds: 30, clock: "16.20.08", shape: tone),
+    static let headliners: [Spec] = [
+        Spec(source: "Safari", seconds: 20 * 60, daysAgo: 0, clock: "09.14.02", shape: lecture),
+        Spec(source: "Google Chrome", seconds: 3 * 60, daysAgo: 0, clock: "11.47.31", shape: podcast),
+        Spec(source: "Spotify", seconds: 90, daysAgo: 0, clock: "14.02.55", shape: music),
+        Spec(source: "QuickTime Player", seconds: 30, daysAgo: 0, clock: "16.20.08", shape: tone),
     ]
+
+    /// Twenty-four more, short and cheap (~100 MB all told), because a Library of four rows
+    /// answers nothing about browsing one. Several Sources repeat on the same day, which is
+    /// the case that breaks a list keyed on the Source alone.
+    static let crowd: [Spec] = {
+        let sources = ["Safari", "Google Chrome", "Spotify", "zoom.us", "Music", "Podcasts",
+                       "Discord", "VLC", "Google Chrome", "Safari", "Music", "Spotify"]
+        let shapes: [(Double, Double) -> Float] = [podcast, music, lecture, tone]
+        var out: [Spec] = []
+        for i in 0..<24 {
+            let long = i % 8 == 3
+            out.append(Spec(source: sources[i % sources.count],
+                            seconds: long ? Double(60 + i * 3) : Double(7 + (i * 5) % 23),
+                            daysAgo: i / 4,
+                            clock: String(format: "%02d.%02d.%02d", 8 + (i * 3) % 11, (i * 17) % 60, (i * 7) % 60),
+                            shape: shapes[i % shapes.count]))
+        }
+        return out
+    }()
+
+    static var specs: [Spec] { headliners + crowd }
 
     // MARK: - Shapes
 
@@ -100,16 +122,31 @@ enum Fixtures {
 
     // MARK: - Writing
 
+    /// The fixture clock. Fixed, not `Date()`, so filenames and mtimes stay reproducible.
+    private static let today = DateComponents(calendar: .current, year: 2026, month: 8, day: 23,
+                                              hour: 12).date!
+
     static func ensureLibrary() throws {
         let dir = Library.folder
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
+        let stamp = DateFormatter()
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        stamp.dateFormat = "yyyy-MM-dd"
+
         for spec in specs {
-            let url = dir.appending(path: "\(spec.source) 2026-08-23 at \(spec.clock).caf")
+            let day = Calendar.current.date(byAdding: .day, value: -spec.daysAgo, to: today)!
+            let url = dir.appending(path: "\(spec.source) \(stamp.string(from: day)) at \(spec.clock).caf")
             guard !FileManager.default.fileExists(atPath: url.path) else { continue }
             try Diag.time("fixture \(spec.source) \(Int(spec.seconds))s") {
                 try write(spec, to: url)
             }
+            // The Library sorts on mtime, so it has to agree with the name.
+            let parts = spec.clock.split(separator: ".").compactMap { Int($0) }
+            let recordedAt = Calendar.current.date(bySettingHour: parts[0], minute: parts[1],
+                                                   second: parts[2], of: day)!
+            try? FileManager.default.setAttributes([.modificationDate: recordedAt],
+                                                   ofItemAtPath: url.path)
         }
     }
 
