@@ -113,13 +113,11 @@ struct VariantP: View {
             Divider().frame(height: 22).padding(.horizontal, 6)
 
             Button("Mark In") {
-                let inPoint = min(editor.player.position, recording.trim.upperBound - 0.2)
-                recording.trim = max(0, inPoint)...recording.trim.upperBound
+                recording.trim.setStart(editor.player.position)
             }
             .keyboardShortcut("i")
             Button("Mark Out") {
-                let outPoint = max(editor.player.position, recording.trim.lowerBound + 0.2)
-                recording.trim = recording.trim.lowerBound...min(recording.duration, outPoint)
+                recording.trim.setEnd(editor.player.position)
             }
             .keyboardShortcut("o")
             Button("Clear") { recording.resetTrim() }

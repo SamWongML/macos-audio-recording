@@ -4,6 +4,104 @@
 import AVFoundation
 import Foundation
 
+
+/// A Trim: the two points that select which part of a Recording is Exported.
+///
+/// **Invalid states are unrepresentable.** Every mutation goes through this type, so no call
+/// site ever clamps, and the three invariants below hold by construction:
+///
+/// - `0 <= start`
+/// - `end <= duration`
+/// - `end - start >= minimumLength` (unless the Recording is itself shorter than that, in
+///   which case the Trim is the whole thing and neither point can move)
+///
+/// This exists because the ad-hoc version did not hold any of them. The clamping was written
+/// out by hand at five separate call sites — drag, keyboard nudge, Mark In, Mark Out, and the
+/// extended attribute reader — as a pair of nested `min`/`max` per site. Two constraints, applied
+/// in sequence, and **whichever was applied second won**, so each one could push the value
+/// straight through the other. Fuzzing the old logic produced all four failures:
+///
+/// ```
+/// dragEnd    from (29.900, 29.950) -> t=-5   gives  (29.900, 30.100)   past the end of the file
+/// dragStart  from ( 0.000,  0.050) -> t=-5   gives  (-0.150,  0.050)   before the beginning
+/// markOut    from (30.000, 30.000) -> p=-5   gives  (30.000, 30.000)   start and end crossed
+/// markIn     from ( 0.000,  0.050) -> p=-5   gives  ( 0.000,  0.050)   shorter than the minimum
+/// ```
+///
+/// The fix is not a better pair of clamps. It is to clamp **once**, into an interval that is
+/// provably non-empty, and to have exactly one place that knows how.
+struct Trim: Equatable {
+    /// An Export has to contain something.
+    static let minimumLength = 0.2
+
+    private(set) var start: Double
+    private(set) var end: Double
+    let duration: Double
+
+    /// A Recording shorter than the minimum cannot be trimmed at all — the whole thing is the
+    /// Trim. #30 owns what else an adopted file that short should do.
+    var isFixed: Bool { duration < Self.minimumLength }
+
+    init(duration: Double) {
+        self.duration = duration.isFinite ? Swift.max(0, duration) : 0
+        self.start = 0
+        self.end = self.duration
+    }
+
+    /// Sanitising initialiser: takes any two numbers from anywhere — an extended attribute
+    /// written by an older build, a file that has since been replaced by a shorter one — and
+    /// lands on a valid Trim rather than trusting them or trapping.
+    init(start: Double, end: Double, duration: Double) {
+        self = Trim(duration: duration)
+        guard !isFixed else { return }
+        setEnd(end)
+        setStart(start)
+    }
+
+    var range: ClosedRange<Double> { start...end }
+    var lowerBound: Double { start }
+    var upperBound: Double { end }
+    var length: Double { end - start }
+    var isWholeRecording: Bool { start <= 0.0005 && end >= duration - 0.0005 }
+
+    /// The interval `start` is allowed to occupy. Non-empty whenever the Recording is longer
+    /// than the minimum, because `end` is itself never below `minimumLength`.
+    private var startLimits: ClosedRange<Double> { 0...Swift.max(0, end - Self.minimumLength) }
+    private var endLimits: ClosedRange<Double> {
+        Swift.min(duration, start + Self.minimumLength)...duration
+    }
+
+    /// Non-finite input leaves the Trim alone rather than moving a handle to nowhere.
+    /// NaN is reachable: the lane converts a pixel to a time with `px / width * span`, and a
+    /// zero-width lane during a layout pass makes that `inf * 0`. `min` and `max` propagate
+    /// NaN silently, so without this guard a single bad layout would write `nan` into the
+    /// extended attribute and the Recording would come back broken on the next launch.
+    /// Fuzzing found this and nothing else once the clamping was centralised.
+    mutating func setStart(_ t: Double) {
+        guard !isFixed, t.isFinite else { return }
+        start = t.clamped(to: startLimits)
+    }
+
+    mutating func setEnd(_ t: Double) {
+        guard !isFixed, t.isFinite else { return }
+        end = t.clamped(to: endLimits)
+    }
+
+    mutating func nudgeStart(by delta: Double) { setStart(start + delta) }
+    mutating func nudgeEnd(by delta: Double) { setEnd(end + delta) }
+
+    mutating func reset() {
+        start = 0
+        end = duration
+    }
+}
+
+extension Double {
+    func clamped(to limits: ClosedRange<Double>) -> Double {
+        Swift.min(Swift.max(self, limits.lowerBound), limits.upperBound)
+    }
+}
+
 /// One Recording, as ADR-0006 defines it: a file in ~/Music/AppTape whose *name is its name*.
 @Observable
 final class Recording: Identifiable {
@@ -12,7 +110,8 @@ final class Recording: Identifiable {
     let sampleRate: Double
 
     /// Trim, in seconds. Never alters the file — written back as an xattr on change.
-    var trim: ClosedRange<Double> {
+    /// Mutate it only through `Trim`'s own operations; nothing outside that type clamps.
+    var trim: Trim {
         didSet { Xattr.writeTrim(trim, to: url) }
     }
 
@@ -52,14 +151,14 @@ final class Recording: Identifiable {
         self.frameCount = file.length
         self.sampleRate = file.fileFormat.sampleRate
         let duration = Double(file.length) / file.fileFormat.sampleRate
-        self.trim = Xattr.readTrim(from: url, duration: duration) ?? 0...duration
+        self.trim = Xattr.readTrim(from: url, duration: duration) ?? Trim(duration: duration)
         self.envelope = Envelope(sampleRate: file.fileFormat.sampleRate)
     }
 
-    var trimmedDuration: Double { trim.upperBound - trim.lowerBound }
-    var isTrimmed: Bool { trim.lowerBound > 0.0005 || trim.upperBound < duration - 0.0005 }
+    var trimmedDuration: Double { trim.length }
+    var isTrimmed: Bool { !trim.isWholeRecording }
 
-    func resetTrim() { trim = 0...duration }
+    func resetTrim() { trim.reset() }
 }
 
 /// A day's worth of Recordings. Any sidebar over a Library that spans more than one day
@@ -133,14 +232,19 @@ enum Xattr {
 
     private static let trimKey = "com.samwongml.apptape.trim"
 
-    static func readTrim(from url: URL, duration: Double) -> ClosedRange<Double>? {
+    /// Note what this no longer does: it does not validate. It hands whatever it found to
+    /// `Trim`, which is the only thing that decides what a valid Trim is. The old version
+    /// checked `parts[1] > parts[0]` and then applied `min(parts[1], duration)`, which could
+    /// pull the end back below the start and trap on `a...b` — reachable simply by pointing
+    /// the app at a shorter file with the same name.
+    static func readTrim(from url: URL, duration: Double) -> Trim? {
         guard let raw = readString(trimKey, from: url) else { return nil }
         let parts = raw.split(separator: ",").compactMap { Double($0) }
-        guard parts.count == 2, parts[0] >= 0, parts[1] > parts[0] else { return nil }
-        return parts[0]...min(parts[1], duration)
+        guard parts.count == 2 else { return nil }
+        return Trim(start: parts[0], end: parts[1], duration: duration)
     }
 
-    static func writeTrim(_ trim: ClosedRange<Double>, to url: URL) {
-        writeString("\(trim.lowerBound),\(trim.upperBound)", name: trimKey, to: url)
+    static func writeTrim(_ trim: Trim, to url: URL) {
+        writeString("\(trim.start),\(trim.end)", name: trimKey, to: url)
     }
 }

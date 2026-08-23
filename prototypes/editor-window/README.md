@@ -335,6 +335,58 @@ Worth recording because two of them look right on paper:
    drawn region stays a fixed *fraction* of the row so two silhouettes remain comparable —
    which is the only reason the waveform is in the row at all, given that Sources repeat.
 
+### 14. The Trim handles could cross, and the cause was five copies of the rule
+
+Reported from use: dragging the start handle past the end swapped them. The cause was not
+the drag code. **Every one of five call sites re-derived the clamping by hand** — drag,
+keyboard nudge, Mark In, Mark Out, and the extended-attribute reader — each as a pair of
+nested `min`/`max`. Two constraints applied in sequence, and **whichever was applied second
+won**, so either could push the value straight through the other.
+
+Fuzzing the old logic found four distinct failure classes, not one:
+
+```
+dragEnd    from (29.900, 29.950) -> t=-5   gives  (29.900, 30.100)   past the end of the file
+dragStart  from ( 0.000,  0.050) -> t=-5   gives  (-0.150,  0.050)   before the beginning
+markOut    from (30.000, 30.000) -> p=-5   gives  (30.000, 30.000)   start and end crossed
+markIn     from ( 0.000,  0.050) -> p=-5   gives  ( 0.000,  0.050)   shorter than the minimum
+```
+
+The last two are the interesting ones: **a Recording shorter than the 0.2 s minimum makes the
+old rule unsatisfiable**, so it produced a zero-length Trim rather than admitting the case.
+And `readTrim` could trap outright — it checked `end > start` and *then* applied
+`min(end, duration)`, which can pull the end back below the start, so `a...b` crashes. That is
+reachable just by pointing the app at a shorter file with the same name, which
+[ADR-0006](../../docs/adr/0006-the-library-is-a-folder.md) explicitly permits.
+
+The durable fix is a **`Trim` type that makes invalid states unrepresentable** (`Library.swift`).
+`start` and `end` are `private(set)`; the only ways in are `setStart`, `setEnd`, `nudgeStart`,
+`nudgeEnd` and `reset`, and each clamps **once**, into an interval that is provably non-empty:
+
+```swift
+private var startLimits: ClosedRange<Double> { 0...max(0, end - Self.minimumLength) }
+private var endLimits: ClosedRange<Double> { min(duration, start + Self.minimumLength)...duration }
+```
+
+Every call site now delegates — no view clamps anything — and the "too short to trim" case is
+named (`isFixed`) instead of producing nonsense.
+
+Re-fuzzed after the change: **5,578,352 reachable states across six durations (0 s, 0.05 s,
+0.2 s, 0.5 s, 30 s, 20 min), four rounds of mutation deep, with `nan` and `±inf` in the input
+set — zero violations.**
+
+That fuzz found one more real bug, which no amount of staring would have: **`NaN` propagates
+silently through `min`/`max`**. It is reachable — the lane converts a pixel to a time with
+`px / width * span`, and a zero-width lane during a layout pass makes that `inf * 0` — and a
+single bad layout would have written `nan` into the extended attribute, so the Recording would
+come back permanently broken on the next launch. `setStart`/`setEnd` now ignore non-finite
+input.
+
+Confirmed in the running app, not just in the fuzzer: with the keyboard path (`[` / `]` then
+⇧←/⇧→, 1 s a press) on the 180 s fixture, pushing the start handle 200 s to the right stops at
+`179.8, 180.0`, and pushing the end handle 200 s to the left stops at `0.0, 0.2`. Exactly the
+minimum apart, in both directions, and never crossed.
+
 ## Deliberately left out
 
 - **What Export does while it runs** — [#27](https://github.com/SamWongML/macos-audio-recording/issues/27).

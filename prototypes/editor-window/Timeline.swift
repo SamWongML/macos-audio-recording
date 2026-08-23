@@ -177,13 +177,9 @@ struct TrimTimeline: View {
     }
 
     private func move(_ handle: TimelineState.Handle, to t: Double) {
-        let minimum = 0.2
         switch handle {
-        case .start:
-            recording.trim = min(max(0, t), recording.trim.upperBound - minimum)...recording.trim.upperBound
-        case .end:
-            recording.trim = recording.trim.lowerBound...max(min(recording.duration, t),
-                                                            recording.trim.lowerBound + minimum)
+        case .start: recording.trim.setStart(t)
+        case .end: recording.trim.setEnd(t)
         }
     }
 
@@ -398,15 +394,9 @@ enum TimelineKeys {
     }
 
     private static func nudge(_ recording: Recording, _ handle: TimelineState.Handle, by delta: Double) {
-        let minimum = 0.2
         switch handle {
-        case .start:
-            let t = recording.trim.lowerBound + delta
-            recording.trim = min(max(0, t), recording.trim.upperBound - minimum)...recording.trim.upperBound
-        case .end:
-            let t = recording.trim.upperBound + delta
-            recording.trim = recording.trim.lowerBound...max(min(recording.duration, t),
-                                                            recording.trim.lowerBound + minimum)
+        case .start: recording.trim.nudgeStart(by: delta)
+        case .end: recording.trim.nudgeEnd(by: delta)
         }
     }
 }

@@ -63,7 +63,7 @@ final class Player {
         let range: ClosedRange<Double>
         switch scope {
         case .whole:        range = 0...recording.duration
-        case .trimLooping:  range = recording.trim
+        case .trimLooping:  range = recording.trim.range
         case .fromPlayhead: range = min(position, recording.duration - 0.05)...recording.duration
         }
         var from = position
