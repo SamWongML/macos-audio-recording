@@ -19,7 +19,18 @@ import SwiftUI
 struct EditorWindowPrototypeApp: App {
     @State private var editor = Editor()
 
-    init() { Diag.note("app init"); Diag.start() }
+    init() {
+        Diag.start()
+        // Self-report, because the outside instruments are not always trustworthy: the
+        // Screen Recording and Accessibility grants this session used to inspect windows
+        // both lapsed mid-run, and every external check then reported "no windows" for a
+        // perfectly healthy app — including a four-line control app. Ask the app itself.
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            let titles = NSApp.windows.filter(\.isVisible).map { "\($0.title)@\(Int($0.frame.origin.x)),\(Int($0.frame.origin.y))" }
+            Diag.note("windows=\(titles.count) [\(titles.joined(separator: " | "))]")
+        }
+    }
 
     var body: some Scene {
         Window("Prototype switcher", id: "switcher") {

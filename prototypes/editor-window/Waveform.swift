@@ -140,42 +140,102 @@ enum EnvelopeLoader {
     nonisolated(unsafe) private static var loupeFile: (url: URL, file: AVAudioFile)?
     private static let loupeLock = NSLock()
 
-    /// Raw frames for the loupe — a narrow window read straight off the file, no envelope.
-    nonisolated static func rawPeaks(url: URL, around centre: Double, span: Double, columns: Int) -> [Envelope.Column] {
-        guard columns > 0 else { return [] }
+    private static func cachedFile(_ url: URL) -> AVAudioFile? {
         loupeLock.lock()
+        defer { loupeLock.unlock() }
         if loupeFile?.url != url { loupeFile = (try? AVAudioFile(forReading: url)).map { (url, $0) } }
-        let cached = loupeFile?.file
-        loupeLock.unlock()
-        guard let file = cached else { return [] }
-        let rate = file.processingFormat.sampleRate
-        let start = max(0, AVAudioFramePosition((centre - span / 2) * rate))
-        let frames = AVAudioFrameCount(min(Double(file.length - start), span * rate))
-        guard frames > 0,
-              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frames)
-        else { return [] }
-        file.framePosition = start
-        guard (try? file.read(into: buffer, frameCount: frames)) != nil,
-              let channels = buffer.floatChannelData else { return [] }
+        return loupeFile?.file
+    }
 
-        let n = Int(buffer.frameLength)
+    /// Raw frames for the loupe, on a **fixed time grid**.
+    ///
+    /// The contract is the whole point, and the first version had none. It read
+    /// `start = max(0, (centre - span/2) * rate)` for `min(remaining, span)` frames and drew
+    /// whatever came back across the full box. Both clamps quietly broke the picture:
+    ///
+    /// - **At the head**, asking for ±2 s around 0.5 s returned `[0, 4 s]` — real audio, but
+    ///   the crosshair is drawn at the box's centre, so it pointed at 2.0 s while the label
+    ///   underneath read 0:00.50. The magnifier was off by 1.5 seconds.
+    /// - **At the tail**, asking around `duration − 0.5` returned only 2.5 s of frames, still
+    ///   stretched across the same 212 points. Seconds-per-pixel silently changed from 53 to
+    ///   85, so the same drag travelled a different distance depending on where you were.
+    /// - **Anywhere**, `per = n / columns` with a `while i < n` loop emitted `ceil(n / per)`
+    ///   columns — 221 where 220 were asked for — so the drawn width per column never quite
+    ///   matched the requested one.
+    ///
+    /// So this returns **exactly `columns` entries covering exactly
+    /// `[centre - span/2, centre + span/2]`**, bucketed on that time grid rather than on
+    /// however many frames happened to be readable. Seconds-per-pixel is therefore
+    /// `span / columns` always, the middle column is always exactly `centre`, and the part of
+    /// the window that lies off either end of the file is *reported* rather than faked, so it
+    /// can be drawn as an edge instead of passing for silence.
+    nonisolated static func loupeWindow(url: URL, centre: Double, span: Double, columns: Int) -> LoupeWindow {
+        var window = LoupeWindow(columns: Array(repeating: .init(min: 0, max: 0, rms: 0), count: max(0, columns)),
+                                 inside: 0..<0, span: span, centre: centre)
+        guard columns > 0, let file = cachedFile(url) else { return window }
+
+        let rate = file.processingFormat.sampleRate
+        let duration = Double(file.length) / rate
+        let t0 = centre - span / 2
+        let dt = span / Double(columns)
+
+        // Column i covers [t0 + i·dt, t0 + (i+1)·dt). Keep the ones that overlap the file.
+        let first = max(0, Int(((0 - t0) / dt).rounded(.down)))
+        let last = min(columns, Int(((duration - t0) / dt).rounded(.up)))
+        guard first < last else { return window }
+
+        let readStart = max(0, AVAudioFramePosition(((t0 + Double(first) * dt) * rate).rounded(.down)))
+        let readEnd = min(file.length, AVAudioFramePosition(((t0 + Double(last) * dt) * rate).rounded(.up)))
+        guard readEnd > readStart,
+              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
+                                            frameCapacity: AVAudioFrameCount(readEnd - readStart))
+        else { return window }
+
+        file.framePosition = readStart
+        guard (try? file.read(into: buffer, frameCount: AVAudioFrameCount(readEnd - readStart))) != nil,
+              let channels = buffer.floatChannelData else { return window }
+
+        let available = Int(buffer.frameLength)
         let channelCount = Int(file.processingFormat.channelCount)
-        let per = max(1, n / columns)
-        var out = [Envelope.Column]()
-        var i = 0
-        while i < n {
-            let end = min(i + per, n)
+
+        for i in first..<last {
+            // Absolute frame bounds for this column, then into buffer-local indices.
+            let lo = Int(max(readStart, AVAudioFramePosition(((t0 + Double(i) * dt) * rate).rounded(.down))) - readStart)
+            let hi = Int(min(readEnd, AVAudioFramePosition(((t0 + Double(i + 1) * dt) * rate).rounded(.up))) - readStart)
+            let a = Swift.min(Swift.max(0, lo), available)
+            let b = Swift.min(Swift.max(a, hi), available)
+            guard b > a else { continue }
+
             var mn: Float = 0, mx: Float = 0, sq: Float = 0
-            for f in i..<end {
+            for f in a..<b {
                 var v: Float = 0
                 for c in 0..<channelCount { v += channels[c][f] }
                 v /= Float(channelCount)
                 mn = Swift.min(mn, v); mx = Swift.max(mx, v); sq += v * v
             }
-            out.append(.init(min: mn, max: mx, rms: (sq / Float(end - i)).squareRoot()))
-            i = end
+            window.columns[i] = .init(min: mn, max: mx, rms: (sq / Float(b - a)).squareRoot())
         }
-        return out
+
+        window.inside = first..<last
+        return window
+    }
+}
+
+/// One loupe magnification: a fixed-scale slice of the master, with the part that falls off
+/// either end of the file identified rather than silently drawn as silence.
+struct LoupeWindow: Equatable {
+    var columns: [Envelope.Column]
+    /// Indices of `columns` that lie inside the file. Everything else is past an edge.
+    var inside: Range<Int>
+    var span: Double
+    var centre: Double
+
+    var secondsPerColumn: Double { columns.isEmpty ? 0 : span / Double(columns.count) }
+    /// The fraction of the box, 0...1, where the file begins and ends.
+    var insideFraction: ClosedRange<Double> {
+        guard !columns.isEmpty else { return 0...0 }
+        return Double(inside.lowerBound) / Double(columns.count)
+            ... Double(inside.upperBound) / Double(columns.count)
     }
 }
 
@@ -212,11 +272,11 @@ struct WaveformShape: View {
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, pair) in pairs.enumerated() {
             let v = shape(Double(pair.1))
-            p.addLine(to: CGPoint(x: Double(i) * step, y: mid - max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - max(v * scale, 0.5)))
         }
         for (i, pair) in pairs.enumerated().reversed() {
             let v = shape(Double(-pair.0))
-            p.addLine(to: CGPoint(x: Double(i) * step, y: mid + max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + max(v * scale, 0.5)))
         }
         p.closeSubpath()
         return p
@@ -243,11 +303,11 @@ struct WaveformPath: Shape {
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, column) in columns.enumerated() {
             let v = pow(min(1, max(0, Double(column.max))), curve)
-            p.addLine(to: CGPoint(x: Double(i) * step, y: mid - Swift.max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - Swift.max(v * scale, 0.5)))
         }
         for (i, column) in columns.enumerated().reversed() {
             let v = pow(min(1, max(0, Double(-column.min))), curve)
-            p.addLine(to: CGPoint(x: Double(i) * step, y: mid + Swift.max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + Swift.max(v * scale, 0.5)))
         }
         p.closeSubpath()
         return p

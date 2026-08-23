@@ -123,6 +123,7 @@ struct VariantQ: View {
             }
             .navigationTitle(recording.name)
             .navigationSubtitle(recording.source)
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .toolbar { paneToolbar }
             .inspector(isPresented: inspectorBinding) {
                 ExportInspector(recording: recording, settings: editor.settings)

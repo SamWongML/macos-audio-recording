@@ -250,26 +250,82 @@ struct TrimTimeline: View {
 
     /// Raw frames around the handle being dragged, read straight off the master. No mode to
     /// enter and no navigation to learn — it exists only while your finger is down.
+    ///
+    /// Its scale is fixed by contract (see `EnvelopeLoader.loupeWindow`): the box always
+    /// shows exactly `span` seconds, so the crosshair down the middle is always exactly the
+    /// time in the label, and dragging a handle always moves the picture at the same rate.
+    /// Near the head or the tail the file simply runs out, and that is drawn as an edge.
     private func loupe(width: Double) -> some View {
         let span = 4.0
+        let boxWidth = 212.0
         // While dragging it follows the handle; pinned open from the switcher it follows the
         // playhead, so it can be judged with no mouse held down.
         let centre = state.draggingHandle == nil ? player.position : state.loupeCentre
+        let window = EnvelopeLoader.loupeWindow(url: recording.url, centre: centre,
+                                                span: span, columns: 220)
         // Normalised to its own window. Unscaled it was a flat line exactly where it
         // matters most — the quiet gap between two phrases, which is where an edit lands.
-        let columns = Envelope.normalised(
-            EnvelopeLoader.rawPeaks(url: recording.url, around: centre, span: span, columns: 220))
-        let x = min(max(110, (centre - visible.lowerBound)
-                        / (visible.upperBound - visible.lowerBound) * width), width - 110)
+        let columns = Envelope.normalised(window.columns)
+        let bounds = window.insideFraction
+
+        let x = min(max(boxWidth / 2, (centre - visible.lowerBound)
+                        / (visible.upperBound - visible.lowerBound) * width),
+                    width - boxWidth / 2)
+
         return VStack(spacing: 3) {
-            WaveformShape(columns: columns,
-                          peakStyle: AnyShapeStyle(.tint.opacity(0.5)),
-                          bodyStyle: AnyShapeStyle(.tint))
-                .frame(width: 212, height: 54)
-                .overlay { Rectangle().fill(.primary).frame(width: 1.5) }
-            Text(Format.time(centre, precise: true))
-                .font(.system(.caption, design: .monospaced))
-                .monospacedDigit()
+            ZStack {
+                // Everything outside the file, so the head and the tail look like an end
+                // rather than like two seconds of silence.
+                HStack(spacing: 0) {
+                    Rectangle().fill(.black.opacity(0.28))
+                        .frame(width: boxWidth * bounds.lowerBound)
+                    Spacer(minLength: 0)
+                    Rectangle().fill(.black.opacity(0.28))
+                        .frame(width: boxWidth * (1 - bounds.upperBound))
+                }
+
+                // Masked to the part of the window that is actually in the file. Without
+                // this, the zero columns off either end draw as a flat hairline, which reads
+                // as two seconds of silence rather than as the end of the Recording.
+                WaveformShape(columns: columns,
+                              peakStyle: AnyShapeStyle(.tint.opacity(0.5)),
+                              bodyStyle: AnyShapeStyle(.tint))
+                    .mask {
+                        HStack(spacing: 0) {
+                            Color.clear.frame(width: boxWidth * bounds.lowerBound)
+                            Color.black.frame(width: boxWidth * (bounds.upperBound - bounds.lowerBound))
+                            Color.clear
+                        }
+                    }
+
+                // A hairline exactly where the Recording begins or ends.
+                HStack(spacing: 0) {
+                    if bounds.lowerBound > 0 {
+                        Spacer(minLength: 0).frame(width: boxWidth * bounds.lowerBound - 1)
+                        Rectangle().fill(.separator).frame(width: 1)
+                    }
+                    Spacer(minLength: 0)
+                    if bounds.upperBound < 1 {
+                        Rectangle().fill(.separator).frame(width: 1)
+                        Spacer(minLength: 0).frame(width: boxWidth * (1 - bounds.upperBound) - 1)
+                    }
+                }
+
+                // The crosshair is the contract made visible: it sits at the box's centre,
+                // and the box's centre is `centre`.
+                Rectangle().fill(.primary).frame(width: 1.5)
+            }
+            .frame(width: boxWidth, height: 54)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+
+            HStack(spacing: 5) {
+                Text(Format.time(centre, precise: true))
+                    .font(.system(.caption, design: .monospaced))
+                    .monospacedDigit()
+                Text("±\(Int(span / 2))s")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(7)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 9))
@@ -277,7 +333,7 @@ struct TrimTimeline: View {
         .shadow(radius: 10, y: 3)
         // Inside the lane, not above it: floated above, it was clipped by the window on a
         // layout that puts the waveform near the top.
-        .offset(x: x - 113, y: 10)
+        .offset(x: x - (boxWidth / 2 + 7), y: 10)
         .allowsHitTesting(false)
     }
 
