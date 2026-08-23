@@ -95,6 +95,16 @@ final class Session {
         return saved
     }
 
+    /// Scaffolding. Every variant's recording state, and every icon treatment, is only
+    /// visible *while a Recording runs* — and starting one needs an app actually playing
+    /// audio, which is not always true when someone sits down to judge this. So the
+    /// switcher can start one against a Source that does not exist.
+    func toggleDemo() {
+        if isRecording { stop(); return }
+        start(Source(bundleID: "com.example.DemoSource", name: "Demo Source", icon: nil,
+                     isPlaying: true, processes: []))
+    }
+
     func toggle(_ source: Source) {
         if recording?.bundleID == source.bundleID { stop() } else if recording == nil { start(source) }
     }

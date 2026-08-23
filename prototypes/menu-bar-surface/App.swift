@@ -273,6 +273,56 @@ struct MenuBarSurfacePrototypeApp: App {
         // `switchto:<variant>` drives the *switching* path, which the launch-into-a-variant
         // probes never touch — and which is where the reported stuck button lived. It is
         // dropped on relaunch, so the next instance just censuses.
+        // Control for the snapshot instrument itself. Paints a hard red, explicitly
+        // non-template image into K's status button. If *this* comes back black, the
+        // snapshot is lying and every colour conclusion drawn from it is void.
+        if CommandLine.arguments.contains("redcontrol") {
+            let step = Timer(timeInterval: 5.0, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    let size = NSSize(width: 18, height: 18)
+                    let image = NSImage(size: size, flipped: false) { rect in
+                        NSColor.systemRed.setFill()
+                        NSBezierPath(ovalIn: rect).fill()
+                        return true
+                    }
+                    image.isTemplate = false
+                    StatusItemTransport.shared.forceImage(image)
+                    Self.log("REDCONTROL painted a non-template red disc")
+                }
+            }
+            RunLoop.main.add(step, forMode: .common)
+            let shot = Timer(timeInterval: 6.0, repeats: false) { _ in
+                MainActor.assumeIsolated { Self.snapshotMenuBarItem(named: "redcontrol") }
+            }
+            RunLoop.main.add(shot, forMode: .common)
+            return
+        }
+
+        // `iconprobe` cycles the icon treatment at *runtime* and measures the menu bar
+        // item after each step. Launch-time icon settings were measured before; whether a
+        // running change reaches the bar is a different question, and the ↑/↓ report says
+        // it may not be.
+        if CommandLine.arguments.contains("iconprobe") {
+            for (index, treatment) in IconTreatment.allCases.enumerated() {
+                let at = 5.0 + Double(index) * 2.0
+                let step = Timer(timeInterval: at, repeats: false) { _ in
+                    MainActor.assumeIsolated {
+                        Shell.shared.iconTreatment = treatment
+                        Self.log("ICON -> \(treatment.rawValue)")
+                    }
+                }
+                RunLoop.main.add(step, forMode: .common)
+                let after = Timer(timeInterval: at + 1.0, repeats: false) { _ in
+                    MainActor.assumeIsolated {
+                        Self.log("  after \(treatment.rawValue): recording=\(Session.shared.isRecording) " + Self.census())
+                        Self.snapshotMenuBarItem(named: treatment.rawValue)
+                    }
+                }
+                RunLoop.main.add(after, forMode: .common)
+            }
+            return
+        }
+
         guard let target = Launch.value("switchto").flatMap(Variant.init(rawValue:)) else { return }
         let step = Timer(timeInterval: 4.0, repeats: false) { _ in
             MainActor.assumeIsolated {
@@ -283,12 +333,37 @@ struct MenuBarSurfacePrototypeApp: App {
         RunLoop.main.add(step, forMode: .common)
     }
 
+    /// Render the *placed* status bar window to a PNG.
+    ///
+    /// `screencapture` from a shell without the Screen Recording grant silently returns a
+    /// desktop-picture-only image, so it cannot see the menu bar at all. Caching our own
+    /// window's display needs no permission and shows exactly what is on screen — which is
+    /// the only way to answer whether the red tint survives into a menu bar label.
+    @MainActor
+    static func snapshotMenuBarItem(named name: String) {
+        guard let window = NSApp.windows
+            .filter({ $0.className.contains("StatusBar") && $0.frame.minX > 0 })
+            .max(by: { $0.frame.width < $1.frame.width }),
+              let view = window.contentView,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+            Self.log("  snapshot \(name): no placed status bar window")
+            return
+        }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        guard let png = rep.representation(using: .png, properties: [:]) else { return }
+        let path = "/tmp/icon-\(name).png"
+        try? png.write(to: URL(fileURLWithPath: path))
+        Self.log("  snapshot \(name): \(path) \(Int(view.bounds.width))x\(Int(view.bounds.height))")
+    }
+
     @MainActor
     private static func census() -> String {
         let bars = NSApp.windows.filter { $0.className.contains("StatusBar") }
         let placed = bars.filter { $0.frame.minX > 0 }
         let detail = bars.map { "x=\(Int($0.frame.minX))w=\(Int($0.frame.width))" }.joined(separator: " ")
-        return "variant=\(Shell.shared.variant.key) inBar=\(placed.count) ownItem=\(StatusItemTransport.shared.buttonFrameDescription) all[\(detail)]"
+        let model = SourceModel(); model.refresh()
+        let names = model.playing.map(\.name).joined(separator: ", ")
+        return "variant=\(Shell.shared.variant.key) playing=\(model.playing.count) [\(names)] inBar=\(placed.count) ownItem=\(StatusItemTransport.shared.buttonFrameDescription) all[\(detail)]"
     }
 
     private static func log(_ line: String) {
@@ -391,23 +466,122 @@ private struct MenuBarLabel: View {
     var body: some View {
         let recording = session.isRecording
         let treatment = shell.iconTreatment
+        let tinted = recording && treatment.tintsRed
         let _ = Diag.hit("menuBarLabel")
 
+        let symbol = treatment.symbolName(recording: recording)
+
         HStack(spacing: 3) {
-            if let symbol = treatment.symbolName(recording: recording) {
-                Image(systemName: symbol)
-                    .foregroundStyle(recording && treatment.tintsRed ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+            if let symbol {
+                // `Image(systemName:)` + `.foregroundStyle(.red)` renders **black** here.
+                // Measured by snapshotting the real status bar window: SwiftUI hands the
+                // menu bar a template image and the colour is dropped. Only a
+                // pre-rendered, explicitly non-template `NSImage` survives, so the
+                // tinting has to happen before SwiftUI sees it.
+                Image(nsImage: MenuBarGlyph.image(symbol: symbol, tinted: tinted))
             }
             if treatment.showsTime && recording {
-                Text(session.elapsedText)
-                    .monospacedDigit()
-                    .foregroundStyle(recording && treatment.tintsRed ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+                // A label renders **one** image. Two `Image`s and the second is silently
+                // dropped (the item measured 34pt instead of 77pt); `Image` + `Text`
+                // renders both. So a red clock is only available when there is no glyph
+                // beside it — with a glyph, the clock stays a `Text` and takes the menu
+                // bar's own colour. Which is arguably the better end of the trade anyway:
+                // a rasterised clock stops adapting to the bar's appearance.
+                if symbol == nil {
+                    Image(nsImage: MenuBarGlyph.text(session.elapsedText, tinted: tinted))
+                } else {
+                    Text(session.elapsedText).monospacedDigit()
+                }
             }
         }
     }
 }
 
+/// Draws an SF Symbol into a non-template `NSImage`, tinted or left as a template.
+///
+/// Only needed because a SwiftUI `MenuBarExtra` label discards `foregroundStyle`. An
+/// untinted glyph stays a template so the menu bar keeps handling light/dark and the
+/// highlighted state itself; only the recording state opts out.
+enum MenuBarGlyph {
+    static func text(_ string: String, tinted: Bool) -> NSImage {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: tinted ? NSColor.systemRed : NSColor.labelColor,
+        ]
+        let attributed = NSAttributedString(string: string, attributes: attributes)
+        let size = attributed.size()
+        let image = NSImage(size: NSSize(width: ceil(size.width), height: ceil(size.height)),
+                            flipped: false) { rect in
+            attributed.draw(in: rect)
+            return true
+        }
+        // A template would repaint it in the bar's own colour and throw the tint away.
+        image.isTemplate = !tinted
+        return image
+    }
+
+    static func image(symbol: String, tinted: Bool) -> NSImage {
+        let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+        guard let base = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(configuration) else {
+            return NSImage(size: NSSize(width: 16, height: 16))
+        }
+        guard tinted else {
+            base.isTemplate = true
+            return base
+        }
+        let tint = NSImage(size: base.size, flipped: false) { rect in
+            base.draw(in: rect)
+            NSColor.systemRed.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tint.isTemplate = false
+        return tint
+    }
+}
+
 // MARK: - Scaffolding
+
+/// All four treatments as the menu bar would draw them **while recording**, current one
+/// boxed.
+///
+/// Here because cycling blind was useless: every treatment is identical when idle — each
+/// branch in `IconTreatment` is gated on `recording` — so ↑ / ↓ genuinely changed nothing
+/// visible unless a Recording happened to be running. Showing all four at once also beats
+/// cycling even when one *is* running, since the question is a comparison.
+private struct IconTreatmentPreview: View {
+    private var shell: Shell { .shared }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(IconTreatment.allCases) { treatment in
+                let current = treatment == shell.iconTreatment
+                Button { shell.iconTreatment = treatment } label: {
+                    HStack(spacing: 2) {
+                        if let symbol = treatment.symbolName(recording: true) {
+                            Image(nsImage: MenuBarGlyph.image(symbol: symbol, tinted: true))
+                        }
+                        if treatment.showsTime {
+                            Text("00:07").font(.system(size: 10).monospacedDigit())
+                        }
+                    }
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(current ? Color.white.opacity(0.22) : .clear, in: .rect(cornerRadius: 5))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(current ? Color.white.opacity(0.8) : .clear, lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(treatment.title)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
 
 /// Deliberately ugly: this bar is scaffolding, not part of any design being judged.
 struct SwitcherBar: View {
@@ -432,12 +606,15 @@ struct SwitcherBar: View {
             HStack(spacing: 8) {
                 Button { shell.iconTreatment = shell.iconTreatment.previous } label: { Image(systemName: "chevron.up") }
                     .keyboardShortcut(.upArrow, modifiers: [])
-                Text("menu bar icon — \(shell.iconTreatment.title)")
-                    .font(.caption.monospaced())
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
+                IconTreatmentPreview()
                 Button { shell.iconTreatment = shell.iconTreatment.next } label: { Image(systemName: "chevron.down") }
                     .keyboardShortcut(.downArrow, modifiers: [])
+                Button {
+                    Session.shared.toggleDemo()
+                } label: {
+                    Image(systemName: Session.shared.isRecording ? "stop.fill" : "record.circle")
+                }
+                .help("Start a Recording against a fake Source, so the recording state and the menu bar icon are reachable with nothing playing")
             }
         }
         .buttonStyle(.bordered)

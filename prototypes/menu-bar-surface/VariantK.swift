@@ -30,6 +30,7 @@ final class StatusItemTransport {
     private var item: NSStatusItem?
     private var popover: NSPopover?
     private var observing = false
+    private var stopRefreshing = false
 
     var isInstalled: Bool { item != nil }
 
@@ -51,6 +52,13 @@ final class StatusItemTransport {
         self.item = item
         refresh()
         startObserving()
+    }
+
+    /// Probe hook only — bypasses `refresh()` so the control image is not overwritten.
+    func forceImage(_ image: NSImage) {
+        stopRefreshing = true
+        item?.button?.image = image
+        item?.button?.title = ""
     }
 
     func remove() {
@@ -132,16 +140,19 @@ final class StatusItemTransport {
     }
 
     private func refresh() {
-        guard let button = item?.button else { return }
+        guard !stopRefreshing, let button = item?.button else { return }
         let treatment = Shell.shared.iconTreatment
         let recording = Session.shared.isRecording
         Diag.hit("statusItemRefresh")
 
         if let name = treatment.symbolName(recording: recording) {
             let image = NSImage(systemSymbolName: name, accessibilityDescription: recording ? "Recording" : "AppTape")
-            // Template so the menu bar tints it for light/dark and for the highlighted
-            // state — except while recording, where `.contentTintColor` has to win.
-            image?.isTemplate = !(recording && treatment.tintsRed)
+            // **Template, always.** The earlier `isTemplate = false` while recording was
+            // exactly backwards: an SF Symbol is a monochrome glyph, so turning off
+            // template mode does not give it colour — it just opts out of the one
+            // mechanism that would have coloured it, and `contentTintColor` tints
+            // *template* images only. Result was a black glyph with the tint ignored.
+            image?.isTemplate = true
             button.image = image
         } else {
             button.image = nil

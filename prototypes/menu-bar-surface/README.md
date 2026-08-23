@@ -8,7 +8,10 @@ menu bar. Not production code.
 ```
 
 - **← / →** switch the panel variant (I J K L)
-- **↑ / ↓** switch the menu bar **icon** treatment, independently of the panel
+- **↑ / ↓** switch the menu bar **icon** treatment, independently of the panel — the
+  switcher previews all four side by side, and they are clickable
+- **⏺** starts a Recording against a fake Source, so the recording state and the menu bar
+  icon are reachable with nothing playing
 - **▤** opens the raw Core Audio process table (evidence, not part of any variant)
 
 **Crossing into or out of K relaunches the app** (about a second, and K's popover opens
@@ -28,7 +31,7 @@ and all four variants inherit it unchanged from `Baseline.swift`. What varies is
 **recording** does to that panel, what the **menu bar item** becomes, and how the
 **editor** is reached. The editor window itself is a deliberate stub; issue #7 designs it.
 
-## Four findings before any layout question
+## Six findings before any layout question
 
 ### 1. `MenuBarExtra` cannot intercept its own click
 
@@ -70,15 +73,15 @@ really there rather than being dropped:
 
 | icon treatment | `MenuBarExtra` item | K's `NSStatusItem` |
 |---|---|---|
-| glyph swap | 32pt | 32pt |
-| tint only | 32pt | 32pt |
-| **glyph + time** | **74pt** | 78pt |
-| **time only** | **56pt** | 60pt |
+| glyph swap | 34pt | 32pt |
+| tint only | 34pt | 32pt |
+| **glyph + time** | **77pt** | 78pt |
+| **time only** | **53pt** | 60pt |
 
 **So elapsed-time-in-the-menu-bar is not a reason to leave `MenuBarExtra`.** K is now
 justified by *click-to-stop alone*, which is a much narrower claim than it looked.
 
-The table is also the honest price of the two time treatments: **74pt against 32pt, 2.3×
+The table is also the honest price of the two time treatments: **77pt against 34pt, 2.3×
 wider, held for the whole Recording** on a bar that is already contested. Digits are
 monospaced so the width does not jitter second to second, but it will step once more at
 one hour, when `59:59` becomes `1:00:00`.
@@ -129,6 +132,62 @@ K → L → K the re-installed item's title was frozen at whatever second it was
 the tracking chain bails on `item == nil` without re-arming, and `install()` then
 short-circuits `startObserving()`. Both now verified to survive a round trip.
 
+### 5. Colour does not survive into a menu bar label
+
+Reported as "no difference when I cycle the icon". Two causes, and this is the interesting
+one: **`foregroundStyle(.red)` inside a `MenuBarExtra` label renders black.** SwiftUI hands
+the menu bar a template image and the colour is dropped. It applies to `Text` as well as
+`Image`.
+
+That made **`tint only` literally identical to idle** — its entire design is "keep the
+glyph, change the colour", and the colour never arrived. Not a subtle difference to squint
+at: the same black waveform, before and after.
+
+Seen by **snapshotting the real status bar window from inside the app**
+(`cacheDisplay(in:to:)` on its content view). `screencapture` from a shell without the
+Screen Recording grant silently returns a desktop-picture-only image and cannot see the
+menu bar at all, which is why the first pass never looked. Control run first, because an
+instrument that renders everything black would have produced exactly these results: a
+hand-drawn non-template red disc snapshots **red**, so the black was real.
+
+The same bug bit variant K from the opposite side. K set `isTemplate = false` while
+recording so that `contentTintColor` could "win" — but an SF Symbol is a monochrome glyph,
+so turning off template mode does not give it colour, it just opts out of the one mechanism
+that would have coloured it. `contentTintColor` tints **template** images only. Keeping
+`isTemplate = true` fixes it.
+
+Fix on the SwiftUI side: pre-render the symbol into an explicitly non-template `NSImage`
+and hand *that* to `Image(nsImage:)`. All four treatments now read correctly — red
+`record.circle.fill`, red `waveform`, red glyph + clock, red clock.
+
+### 6. A menu bar label renders exactly one image
+
+Found while making the clock red too. Two `Image`s in the label and **the second is
+silently dropped** — the item measured 34pt where it should have been 77pt, i.e. the glyph
+rendered and the clock vanished. `Image` + `Text` renders both (that is how the 77pt
+measurement in finding 2 happened).
+
+So **a red glyph beside a red clock is not available.** With a glyph, the clock has to stay
+a `Text` and takes the menu bar's own colour; a red clock is only possible when it is
+alone. Which is probably the better end of the trade anyway — a rasterised clock stops
+adapting to the bar's appearance, and has to be re-rendered every second.
+
+### And the other half of "no difference": idle is identical on purpose
+
+Every branch in `IconTreatment` is gated on `recording`, so **all four treatments are
+byte-identical when nothing is being recorded** — correctly, since they exist to convey the
+*active* state. But it means ↑ / ↓ did nothing visible unless a Recording happened to be
+running, and starting one needs an app actually playing audio, which is not always true
+when you sit down to judge this.
+
+Two bits of scaffolding fix that:
+
+- the switcher now shows **all four treatments at once**, drawn as the menu bar would draw
+  them while recording, with the current one boxed — so ↑ / ↓ always moves something, and
+  the comparison is direct instead of from memory (they are clickable too);
+- a **⏺ demo button** starts a Recording against a fake Source, so every variant's
+  recording state and every icon treatment is reachable with nothing playing.
+
 ## The four variants
 
 | | While recording, the panel… | Stop is… | Route to older Recordings |
@@ -164,9 +223,11 @@ Each disagrees with the others about something real:
   a hidden gesture and leaving `MenuBarExtra` behind?
 - **In L, stop and watch the Recording land** in the deck below. That visible landing is
   the whole argument for the variant.
-- **Cycle ↑ / ↓ through the four icon treatments while recording**, ideally with a busy
-  menu bar. `tint only` is the accessibility question (colour as the sole channel);
-  `glyph + time` and `time only` are the width question — see the table above.
+- **Hit ⏺ in the switcher, then cycle ↑ / ↓ through the four icon treatments**, ideally
+  with a busy menu bar. `tint only` is the accessibility question — it is now genuinely
+  red, but colour is its *only* channel, and it is the one treatment that says nothing at
+  all to someone who cannot see it. `glyph + time` and `time only` are the width question:
+  77pt and 53pt against 34pt idle.
 - **Reduce Motion.** All the pulses are `.symbolEffectsRemoved(reduceMotion)`. Check the
   recording state is still obvious with motion off, especially in I where the pulse is
   doing a lot of the work.
