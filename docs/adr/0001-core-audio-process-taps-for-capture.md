@@ -1,5 +1,5 @@
 ---
-status: proposed — pending validation by the Chrome/Safari capture spike
+status: accepted — validated against real Chrome and Safari sessions by issue #12
 ---
 
 # Capture Source audio with Core Audio process taps, not ScreenCaptureKit
@@ -14,11 +14,46 @@ We need to capture the audio of one chosen running application on macOS 27, loca
 
 ## Consequences
 
-Two risks ride along, both real and both cited in the research:
+The spike in issue #12 captured Chrome playing YouTube and Safari playing Bilibili, at full level,
+through a tap. Taps are the right primitive and this ADR stands. Three things it assumed are wrong.
 
-- Process taps are reported to **silently degrade to all-zero PCM buffers**, correlated with output sample-rate renegotiation. The callback keeps firing with valid timestamps; only the samples are dead. The only reported recovery is destroying and recreating *both* the tap and the aggregate device. The app must detect and recover from this rather than trust the callback.
-- A tap has been reported failing silently against Microsoft Teams while ScreenCaptureKit-based tools succeeded. Teams is a WebRTC app, architecturally unlike our named targets, so this is a caution flag rather than a disqualifier.
+**`bundleIDs` cannot aim the tap.** It is an exact match on **app bundles** only: it captures
+`com.google.Chrome.helper`, and an ordinary app by its own bundle ID, but it matches nothing for
+`com.google.Chrome` (no prefix rule) and nothing for `com.apple.WebKit.GPU` — even though that is
+the exact bundle ID the HAL client reports, and a tap aimed at the very same process by object ID
+captures it. WebKit's audio lives in an XPC service, not an app bundle. Since Safari is half the
+reason this decision exists, **the app aims taps by process object ID**, resolving the Source's
+helper processes itself. That removes one of the three reasons recorded above for preferring taps:
+`bundleIDs` is aimed at the easy half of the helper-process problem, not at the hard half.
 
-The exact runtime semantics of `bundleIDs` and `processRestoreEnabled` are undocumented and unreported in the wild — in particular whether a helper process spawned fresh for a newly-opened tab is picked up automatically. This decision is **provisional until a spike proves capture works against real Chrome and Safari sessions**; if it does not, ScreenCaptureKit is the fallback and this ADR gets superseded.
+**`processRestoreEnabled` is the property that matters, and it defaults to on.** A
+`CATapDescription` nobody has touched already reads back `true`, which the header does not say. With
+it enabled, a Source that quits and relaunches as a different process is picked up again within
+about a second, with no re-aiming — and this works for object-ID taps as well as bundle-ID ones, so
+aiming by object ID costs nothing here. Assign the property explicitly rather than only when
+enabling it, or the disabled case silently stays enabled.
 
-Full research, with SDK header line citations: `docs/research/capture-api.md` on branch `research/capture-api`, and issue #2.
+**The all-zero failure is real, but the suspected trigger is not the one that fires it.** Forcing the
+output device from 48 kHz to 44.1 kHz and back mid-capture cost about a dozen dropped buffers and
+then recovered on its own; the tap's own format never moved, staying 48 kHz Float32 stereo while the
+device ran at 44.1 kHz, and the format property listener never fired. What *did* produce
+indefinite all-zero buffers — the callback still firing, the Source still reporting
+`kAudioProcessPropertyIsRunningOutput` — was a Source restarting under a tap with
+`processRestoreEnabled` turned off. Detection therefore cannot rely on the callback stopping, and
+must cross-check the buffers against the Source's `isRunningOutput`; allow a grace period, because a
+restored process reports output a beat before its audio reaches the tap. Destroying and recreating
+both tap and aggregate device remains a clean recovery, verified. The policy for each of these
+events is issue #13's to settle.
+
+The remaining caution stands unchanged: a tap has been reported failing silently against Microsoft
+Teams, a WebRTC app architecturally unlike our named targets.
+
+Two facts for the capture path, measured: the tap delivers **interleaved** Float32 stereo
+(`flags=0x9`), 512 frames per callback at roughly 94 callbacks a second, and its rate is fixed at
+tap creation and cannot change underneath a Recording. And the IOProc is not called at all until
+something on the system is playing, so a Recording started while the Source is silent may receive no
+frames for that stretch.
+
+Full research, with SDK header line citations: `docs/research/capture-api.md` on branch
+`research/capture-api`, and issue #2. Spike evidence: `prototypes/tap-browser-capture/FINDINGS.md`
+on branch `prototype/tap-browser-capture`, and issue #12.
