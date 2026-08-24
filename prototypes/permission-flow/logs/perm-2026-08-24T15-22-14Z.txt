@@ -1,0 +1,20 @@
+  0.003  probe.start bundle=com.samwongml.AppTape.PermProbe pid=74710
+  0.003  probe.note log=/Users/demon/codes/macos-audio-recording/prototypes/permission-flow/logs/perm-2026-08-24T15-22-14Z.txt
+  0.082  tone.start afplay pid=74722   (separate process — the capture genuinely needs the grant)
+  1.166  output.running.before ["#74722"]
+  1.169  tap.create status=0 tapID=127
+  1.169  tap.format READABLE rate=48000 ch=2 flags=0x9   <<< readable without a grant?
+  1.178  aggregate.create status=0 id=128
+ 61.185  ioproc.create status=0
+ 61.185  device.start CALLING …
+ 91.190  device.start RETURNED noErr after 30.005s   <<< blocked — a prompt was almost certainly on screen
+ 92.192  tick 1 callbacks=0 zero=0 nonZero=0 peak=0.0000
+ 93.198  tick 2 callbacks=0 zero=0 nonZero=0 peak=0.0000
+ 94.202  tick 3 callbacks=0 zero=0 nonZero=0 peak=0.0000
+ 95.204  tick 4 callbacks=0 zero=0 nonZero=0 peak=0.0000
+ 96.206  tick 5 callbacks=0 zero=0 nonZero=0 peak=0.0000
+ 97.211  tick 6 callbacks=0 zero=0 nonZero=0 peak=0.0000
+ 97.218  output.running.after []
+ 97.218  VERDICT startStatus=noErr callbacks=0 nonZero=0 peak=0.0
+ 97.218  VERDICT no buffers at all — the device never called us
+181.481  probe.done
