@@ -1,0 +1,11 @@
+  0.002  probe.start mode=oneshot bundle=com.samwongml.AppTape.PermProbe pid=84219
+  0.003  probe.note log=/Users/demon/codes/macos-audio-recording/prototypes/permission-flow/logs/perm-2026-08-24T16-13-07Z.txt
+  0.083  tone.start afplay pid=84229   (separate process — the capture genuinely needs the grant)
+  1.178  output.running.before ["com.google.Chrome.helper#56457", "#84229"]
+  1.180  tap tap.create status=0 tapID=127
+  1.181  tap tap.format READABLE rate=48000 ch=2 flags=0x9   <<< readable without a grant?
+  1.189  tap aggregate.create status=0 id=128
+  2.406  tap ioproc.create status=0
+  2.409  tap device.start CALLING …
+  2.409  tap device.start RETURNED noErr after 0.000s
+  3.414  tick 1 callbacks=93 zero=93 nonZero=0 peak=0.0000

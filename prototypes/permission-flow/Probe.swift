@@ -138,7 +138,7 @@ final class Tone {
 
     /// Written by hand rather than with AVFoundation so the probe's own process never opens
     /// an audio graph at all — anything the tap hears must have come from `afplay`.
-    private func writeWAV(seconds: Double = 60, rate: Double = 44100, frequency: Double = 440) {
+    private func writeWAV(seconds: Double, rate: Double = 44100, frequency: Double = 440) {
         let frames = Int(seconds * rate)
         var data = Data()
         func le32(_ v: UInt32) { withUnsafeBytes(of: v.littleEndian) { data.append(contentsOf: $0) } }
@@ -155,8 +155,8 @@ final class Tone {
         try? data.write(to: URL(fileURLWithPath: file))
     }
 
-    func start() {
-        writeWAV()
+    func start(seconds: Double = 60) {
+        writeWAV(seconds: seconds)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         process.arguments = [file]
@@ -193,122 +193,195 @@ final class Counters: @unchecked Sendable {
     func peak() -> Float { Float(bitPattern: peakBits.load(ordering: .relaxed)) }
 }
 
+// MARK: - One tap, buildable and rebuildable in place
+
+/// Owns a tap, its aggregate device and its IOProc. Separated out from the one-shot probe so
+/// the recovery run can tear one down and build another **in the same process** — which is
+/// exactly the question: does a Settings toggle reach an existing tap, a new tap, or neither?
+final class TapSession {
+    let counters = Counters()
+    private(set) var tapID = AudioObjectID(0)
+    private(set) var aggregateID = AudioObjectID(0)
+    private var ioProc: AudioDeviceIOProcID?
+    private(set) var startStatus: OSStatus = -1
+
+    @discardableResult
+    func build(label: String) -> Bool {
+        let log = Log.shared
+        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+        description.name = "AppTape issue-14 permission probe"
+        description.uuid = UUID()
+        description.muteBehavior = .unmuted
+        description.isPrivate = true
+
+        var status = AudioHardwareCreateProcessTap(description, &tapID)
+        log.event("\(label) tap.create status=\(status) tapID=\(tapID)")
+        guard status == noErr, tapID != 0 else { return false }
+
+        if let asbd = formatValue(of: tapID, kAudioTapPropertyFormat) {
+            log.event("\(label) tap.format READABLE \(describe(asbd))   <<< readable without a grant?")
+        } else {
+            log.event("\(label) tap.format UNREADABLE")
+        }
+
+        guard let uid = stringValue(of: tapID, kAudioTapPropertyUID),
+              let outputUID = stringValue(of: defaultOutputDevice(), kAudioDevicePropertyDeviceUID) else {
+            log.event("\(label) setup.FAILED no UID"); return false
+        }
+
+        let aggregate: [String: Any] = [
+            kAudioAggregateDeviceNameKey: "AppTape issue-14 permission probe",
+            kAudioAggregateDeviceUIDKey: UUID().uuidString,
+            kAudioAggregateDeviceMainSubDeviceKey: outputUID,
+            kAudioAggregateDeviceIsPrivateKey: true,
+            kAudioAggregateDeviceIsStackedKey: false,
+            kAudioAggregateDeviceTapAutoStartKey: true,
+            kAudioAggregateDeviceSubDeviceListKey: [],
+            kAudioAggregateDeviceTapListKey: [[kAudioSubTapDriftCompensationKey: true, kAudioSubTapUIDKey: uid]],
+        ]
+        status = AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &aggregateID)
+        log.event("\(label) aggregate.create status=\(status) id=\(aggregateID)")
+        guard status == noErr, aggregateID != 0 else { return false }
+
+        let counters = self.counters
+        status = AudioDeviceCreateIOProcIDWithBlock(&ioProc, aggregateID, nil) { _, inputData, _, _, _ in
+            let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
+            var peak: Float = 0
+            for buffer in buffers {
+                guard let data = buffer.mData else { continue }
+                let samples = data.assumingMemoryBound(to: Float.self)
+                for index in 0..<(Int(buffer.mDataByteSize) / MemoryLayout<Float>.size) {
+                    peak = max(peak, abs(samples[index]))
+                }
+            }
+            counters.callbacks.wrappingAdd(1, ordering: .relaxed)
+            if peak == 0 {
+                counters.zeroBuffers.wrappingAdd(1, ordering: .relaxed)
+            } else {
+                counters.nonZeroBuffers.wrappingAdd(1, ordering: .relaxed)
+                counters.recordPeak(peak)
+            }
+        }
+        log.event("\(label) ioproc.create status=\(status)")
+        guard status == noErr, let ioProc else { return false }
+
+        log.event("\(label) device.start CALLING …")
+        let began = Date()
+        startStatus = AudioDeviceStart(aggregateID, ioProc)
+        let elapsed = Date().timeIntervalSince(began)
+        let verdict = startStatus == noErr ? "noErr"
+            : (startStatus == kAudioDevicePermissionsError
+               ? "kAudioDevicePermissionsError ('!hog')   <<< DENIAL IS OBSERVABLE" : "status=\(startStatus)")
+        log.event(String(format: "%@ device.start RETURNED %@ after %.3fs%@", label, verdict, elapsed,
+                         elapsed > 1.5 ? "   <<< blocked — a prompt was almost certainly on screen" : ""))
+        return startStatus == noErr
+    }
+
+    func teardown() {
+        if let ioProc {
+            AudioDeviceStop(aggregateID, ioProc)
+            AudioDeviceDestroyIOProcID(aggregateID, ioProc)
+        }
+        if aggregateID != 0 { AudioHardwareDestroyAggregateDevice(aggregateID) }
+        if tapID != 0 { AudioHardwareDestroyProcessTap(tapID) }
+        ioProc = nil; aggregateID = 0; tapID = 0
+    }
+}
+
 // MARK: - The run
+
+
 
 func runProbe() {
     let log = Log.shared
-    log.event("probe.start bundle=\(Bundle.main.bundleIdentifier ?? "?") pid=\(ProcessInfo.processInfo.processIdentifier)")
+    log.event("probe.start mode=oneshot bundle=\(Bundle.main.bundleIdentifier ?? "?") pid=\(ProcessInfo.processInfo.processIdentifier)")
     log.event("probe.note log=\(log.path)")
 
     let tone = Tone()
     tone.start()
-    // Let the engine actually reach the device before anything is measured.
     Thread.sleep(forTimeInterval: 1.0)
     log.event("output.running.before \(processesRunningOutput())")
 
-    let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
-    description.name = "AppTape issue-14 permission probe"
-    description.uuid = UUID()
-    description.muteBehavior = .unmuted
-    description.isPrivate = true
-
-    var tapID = AudioObjectID(0)
-    var status = AudioHardwareCreateProcessTap(description, &tapID)
-    log.event("tap.create status=\(status) tapID=\(tapID)")
-    guard status == noErr, tapID != 0 else { return }
-
-    // #11 found this succeeds ungranted and reads back a plausible format. Logged so the
-    // claim is re-tested on every run rather than trusted.
-    if let asbd = formatValue(of: tapID, kAudioTapPropertyFormat) {
-        log.event("tap.format READABLE \(describe(asbd))   <<< readable without a grant?")
-    } else {
-        log.event("tap.format UNREADABLE")
-    }
-
-    guard let uid = stringValue(of: tapID, kAudioTapPropertyUID),
-          let outputUID = stringValue(of: defaultOutputDevice(), kAudioDevicePropertyDeviceUID) else {
-        log.event("setup.FAILED no UID"); return
-    }
-
-    var aggregateID = AudioObjectID(0)
-    let aggregate: [String: Any] = [
-        kAudioAggregateDeviceNameKey: "AppTape issue-14 permission probe",
-        kAudioAggregateDeviceUIDKey: UUID().uuidString,
-        kAudioAggregateDeviceMainSubDeviceKey: outputUID,
-        kAudioAggregateDeviceIsPrivateKey: true,
-        kAudioAggregateDeviceIsStackedKey: false,
-        kAudioAggregateDeviceTapAutoStartKey: true,
-        kAudioAggregateDeviceSubDeviceListKey: [],
-        kAudioAggregateDeviceTapListKey: [[kAudioSubTapDriftCompensationKey: true, kAudioSubTapUIDKey: uid]],
-    ]
-    status = AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &aggregateID)
-    log.event("aggregate.create status=\(status) id=\(aggregateID)")
-    guard status == noErr, aggregateID != 0 else { return }
-
-    let counters = Counters()
-    var ioProc: AudioDeviceIOProcID?
-    status = AudioDeviceCreateIOProcIDWithBlock(&ioProc, aggregateID, nil) { _, inputData, _, _, _ in
-        let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
-        var peak: Float = 0
-        for buffer in buffers {
-            guard let data = buffer.mData else { continue }
-            let samples = data.assumingMemoryBound(to: Float.self)
-            for index in 0..<(Int(buffer.mDataByteSize) / MemoryLayout<Float>.size) {
-                peak = max(peak, abs(samples[index]))
-            }
-        }
-        counters.callbacks.wrappingAdd(1, ordering: .relaxed)
-        if peak == 0 {
-            counters.zeroBuffers.wrappingAdd(1, ordering: .relaxed)
-        } else {
-            counters.nonZeroBuffers.wrappingAdd(1, ordering: .relaxed)
-            counters.recordPeak(peak)
-        }
-    }
-    log.event("ioproc.create status=\(status)")
-    guard status == noErr, let ioProc else { return }
-
-    // THE measurement. If the prompt appears, this call blocks until it is answered — so
-    // the elapsed time separates "prompted" from "settled" without needing to see a screen.
-    log.event("device.start CALLING …")
-    let began = Date()
-    let startStatus = AudioDeviceStart(aggregateID, ioProc)
-    let elapsed = Date().timeIntervalSince(began)
-    let verdict: String
-    switch startStatus {
-    case noErr: verdict = "noErr"
-    case kAudioDevicePermissionsError: verdict = "kAudioDevicePermissionsError ('!hog')   <<< DENIAL IS OBSERVABLE"
-    default: verdict = "status=\(startStatus)"
-    }
-    log.event(String(format: "device.start RETURNED %@ after %.3fs%@", verdict, elapsed,
-                     elapsed > 1.5 ? "   <<< blocked — a prompt was almost certainly on screen" : ""))
+    let session = TapSession()
+    guard session.build(label: "tap") else { tone.stop(); log.event("probe.done"); return }
 
     for second in 1...6 {
         Thread.sleep(forTimeInterval: 1.0)
-        log.event(String(format: "tick %d callbacks=%d zero=%d nonZero=%d peak=%.4f",
-                         second,
-                         counters.callbacks.load(ordering: .relaxed),
-                         counters.zeroBuffers.load(ordering: .relaxed),
-                         counters.nonZeroBuffers.load(ordering: .relaxed),
-                         counters.peak()))
+        log.event(String(format: "tick %d callbacks=%d zero=%d nonZero=%d peak=%.4f", second,
+                         session.counters.callbacks.load(ordering: .relaxed),
+                         session.counters.zeroBuffers.load(ordering: .relaxed),
+                         session.counters.nonZeroBuffers.load(ordering: .relaxed),
+                         session.counters.peak()))
     }
 
-    let zero = counters.zeroBuffers.load(ordering: .relaxed)
-    let nonZero = counters.nonZeroBuffers.load(ordering: .relaxed)
+    let nonZero = session.counters.nonZeroBuffers.load(ordering: .relaxed)
+    let zero = session.counters.zeroBuffers.load(ordering: .relaxed)
     let running = processesRunningOutput()
     log.event("output.running.after \(running)")
-    log.event("VERDICT startStatus=\(verdict) callbacks=\(counters.callbacks.load(ordering: .relaxed)) nonZero=\(nonZero) peak=\(counters.peak())")
+    log.event("VERDICT callbacks=\(session.counters.callbacks.load(ordering: .relaxed)) nonZero=\(nonZero) peak=\(session.counters.peak())")
     if nonZero == 0 && !running.isEmpty {
         log.event("VERDICT all-zero while \(running.count) process(es) report output   <<< THE SILENT FAILURE")
     }
-    if nonZero == 0 && zero == 0 {
-        log.event("VERDICT no buffers at all — the device never called us")
+    if nonZero == 0 && zero == 0 { log.event("VERDICT no buffers at all — the device never called us") }
+
+    session.teardown()
+    tone.stop()
+    log.event("probe.done")
+}
+
+/// Does flipping the System Settings toggle reach a tap that is already built?
+///
+/// Three answers are possible and the run distinguishes all of them: the **existing** tap
+/// starts delivering audio, only a **rebuilt** tap does, or **neither** does and the app has
+/// to be relaunched. A fourth is possible without the probe doing anything — if macOS kills
+/// the process on the TCC change, the log simply stops, which is its own answer.
+func runRecover() {
+    let log = Log.shared
+    log.event("probe.start mode=recover bundle=\(Bundle.main.bundleIdentifier ?? "?") pid=\(ProcessInfo.processInfo.processIdentifier)")
+    log.event("probe.note log=\(log.path)")
+
+    let tone = Tone()
+    tone.start(seconds: 300)
+    Thread.sleep(forTimeInterval: 1.0)
+
+    var session = TapSession()
+    guard session.build(label: "A") else { tone.stop(); log.event("probe.done"); return }
+
+    var firstNonZeroTick: Int?
+    var rebuiltAtTick: Int?
+    let rebuildAt = 75      // long enough for a human to walk to System Settings and flip it
+    let total = 140
+
+    log.event("PHASE 1 — original tap A is running. Flip the toggle ON in System Settings now.")
+    for tick in 1...total {
+        Thread.sleep(forTimeInterval: 1.0)
+        let nonZero = session.counters.nonZeroBuffers.load(ordering: .relaxed)
+        if firstNonZeroTick == nil && nonZero > 0 {
+            firstNonZeroTick = tick
+            let which = rebuiltAtTick == nil ? "THE ORIGINAL TAP A" : "THE REBUILT TAP B"
+            log.event("<<< RECOVERED at tick \(tick), on \(which) — no relaunch needed")
+        }
+        if tick % 5 == 0 || firstNonZeroTick == tick {
+            log.event(String(format: "tick %d callbacks=%d zero=%d nonZero=%d peak=%.4f running=%@", tick,
+                             session.counters.callbacks.load(ordering: .relaxed),
+                             session.counters.zeroBuffers.load(ordering: .relaxed),
+                             nonZero, session.counters.peak(),
+                             String(describing: processesRunningOutput().count)))
+        }
+        if tick == rebuildAt && firstNonZeroTick == nil {
+            log.event("PHASE 2 — tap A never recovered. Tearing it down and building tap B in the SAME process.")
+            session.teardown()
+            session = TapSession()
+            rebuiltAtTick = tick
+            guard session.build(label: "B") else { break }
+        }
+        if let first = firstNonZeroTick, tick > first + 4 { break }
     }
 
-    AudioDeviceStop(aggregateID, ioProc)
-    AudioDeviceDestroyIOProcID(aggregateID, ioProc)
-    AudioHardwareDestroyAggregateDevice(aggregateID)
-    AudioHardwareDestroyProcessTap(tapID)
+    if firstNonZeroTick == nil {
+        log.event("<<< NEITHER the original tap nor a rebuilt one recovered — a relaunch is required")
+    }
+    session.teardown()
     tone.stop()
     log.event("probe.done")
 }
@@ -318,8 +391,9 @@ enum Main {
     static func main() {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
+        let recover = CommandLine.arguments.contains("recover")
         Thread.detachNewThread {
-            runProbe()
+            recover ? runRecover() : runProbe()
             DispatchQueue.main.async { NSApp.terminate(nil) }
         }
         app.run()

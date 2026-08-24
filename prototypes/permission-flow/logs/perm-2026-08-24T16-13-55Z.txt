@@ -1,0 +1,36 @@
+  0.002  probe.start mode=recover bundle=com.samwongml.AppTape.PermProbe pid=84322
+  0.002  probe.note log=/Users/demon/codes/macos-audio-recording/prototypes/permission-flow/logs/perm-2026-08-24T16-13-55Z.txt
+  0.350  tone.start afplay pid=84327   (separate process — the capture genuinely needs the grant)
+  1.415  A tap.create status=0 tapID=128
+  1.416  A tap.format READABLE rate=48000 ch=2 flags=0x9   <<< readable without a grant?
+  1.424  A aggregate.create status=0 id=129
+  1.427  A ioproc.create status=0
+  1.427  A device.start CALLING …
+  1.427  A device.start RETURNED noErr after 0.000s
+  1.427  PHASE 1 — original tap A is running. Flip the toggle ON in System Settings now.
+  6.457  tick 5 callbacks=469 zero=469 nonZero=0 peak=0.0000 running=2
+ 11.483  tick 10 callbacks=941 zero=941 nonZero=0 peak=0.0000 running=2
+ 16.503  tick 15 callbacks=1412 zero=1412 nonZero=0 peak=0.0000 running=1
+ 21.525  tick 20 callbacks=1882 zero=1882 nonZero=0 peak=0.0000 running=1
+ 26.551  tick 25 callbacks=2354 zero=2354 nonZero=0 peak=0.0000 running=2
+ 31.568  tick 30 callbacks=2824 zero=2824 nonZero=0 peak=0.0000 running=2
+ 36.586  tick 35 callbacks=3294 zero=3294 nonZero=0 peak=0.0000 running=2
+ 41.616  tick 40 callbacks=3766 zero=3766 nonZero=0 peak=0.0000 running=2
+ 46.639  tick 45 callbacks=4237 zero=4237 nonZero=0 peak=0.0000 running=2
+ 51.672  tick 50 callbacks=4708 zero=4708 nonZero=0 peak=0.0000 running=2
+ 56.699  tick 55 callbacks=5179 zero=5179 nonZero=0 peak=0.0000 running=2
+ 61.722  tick 60 callbacks=5651 zero=5651 nonZero=0 peak=0.0000 running=2
+ 66.738  tick 65 callbacks=6121 zero=6121 nonZero=0 peak=0.0000 running=2
+ 71.762  tick 70 callbacks=6592 zero=6592 nonZero=0 peak=0.0000 running=1
+ 76.784  tick 75 callbacks=7063 zero=7063 nonZero=0 peak=0.0000 running=1
+ 76.784  PHASE 2 — tap A never recovered. Tearing it down and building tap B in the SAME process.
+ 76.795  B tap.create status=0 tapID=131
+ 76.795  B tap.format READABLE rate=48000 ch=2 flags=0x9   <<< readable without a grant?
+ 76.807  B aggregate.create status=0 id=132
+ 76.816  B ioproc.create status=0
+ 76.816  B device.start CALLING …
+ 76.816  B device.start RETURNED noErr after 0.000s
+ 77.819  <<< RECOVERED at tick 76, on THE REBUILT TAP B — no relaunch needed
+ 77.825  tick 76 callbacks=92 zero=0 nonZero=92 peak=0.1000 running=1
+ 81.846  tick 80 callbacks=469 zero=0 nonZero=469 peak=0.6876 running=2
+ 82.859  probe.done

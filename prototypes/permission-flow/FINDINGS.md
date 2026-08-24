@@ -98,8 +98,26 @@ user to a page whose heading says Screen Recording.
   state, including denied**, re-confirming
   [#11](https://github.com/SamWongML/macos-audio-recording/issues/11).
 
-## Not established
+## A tap is permission-checked once, at creation, and never again
 
-Whether flipping the toggle in System Settings recovers a **running** tap, or whether the app
-has to rebuild it (or relaunch). That decides what the recovery message tells the user to do
-after they flip the switch, and it is not answered here.
+Run `./recover.sh`: it reaches the denied state, holds a tap open in a live process, and waits
+for the switch to be flipped in System Settings.
+
+```
+       (tccd: toggle observed ON at +37s)
+41.616  tick 40  callbacks=3766  zero=3766  nonZero=0  peak=0.0000
+...
+76.784  tick 75  callbacks=7063  zero=7063  nonZero=0  peak=0.0000
+76.784  PHASE 2 — tap A never recovered. Tearing it down and building tap B in the SAME process.
+77.819  <<< RECOVERED at tick 76, on THE REBUILT TAP B — no relaunch needed
+81.846  tick 80  callbacks=469   zero=0     nonZero=469  peak=0.6876
+```
+
+**The existing tap never recovered** — 38 seconds and ~3300 further callbacks after the grant
+was given, still every sample zero. **A tap built afterwards, in the same process, worked
+immediately.** macOS did not terminate the app, and offered no "Quit & Reopen".
+
+So the grant is evaluated when the tap is created and started, and is never re-evaluated for
+the life of that tap. Recovery costs a **tap rebuild but not a relaunch** — and the app already
+has a tap-rebuild path, since [ADR-0007](https://github.com/SamWongML/macos-audio-recording/blob/main/docs/adr/0007-mid-recording-faults-are-seams-not-stops.md)
+built one for Seams.
