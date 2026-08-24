@@ -1,0 +1,175 @@
+# AppTape tap probe — issue #12
+# started 2026-08-24 21:38:31
+# os Version 27.0 (Build 26A5416b)
+
+[+00:00.082] EVENT  proc.initial obj=109 pid=6424 out=Y bundle=com.google.Chrome.helper name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=92 pid=797 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=120 pid=37358 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=113 pid=24572 out=. bundle=com.anthropic.claudefordesktop name=Claude
+[+00:00.082] EVENT  proc.initial obj=111 pid=25228 out=. bundle=com.anthropic.claudefordesktop.helper name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=112 pid=25229 out=. bundle=com.anthropic.claudefordesktop.helper name=Claude Helper
+[+00:00.082] EVENT  proc.initial obj=102 pid=1153 out=. bundle=com.apple.AccessibilitySettingsWidgetExtension name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=104 pid=1984 out=. bundle=com.apple.AppStore name=App Store
+[+00:00.082] EVENT  proc.initial obj=95 pid=1004 out=. bundle=com.apple.CoreSpeech name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=117 pid=86037 out=. bundle=com.apple.Music name=Music
+[+00:00.082] EVENT  proc.initial obj=99 pid=968 out=. bundle=com.apple.TelephonyUtilities name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=114 pid=51361 out=. bundle=com.apple.WebKit.GPU name=Xcode Graphics and Media
+[+00:00.082] EVENT  proc.initial obj=116 pid=85913 out=. bundle=com.apple.WebKit.GPU name=QQ音乐 Graphics and Media
+[+00:00.082] EVENT  proc.initial obj=118 pid=92638 out=. bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:00.082] EVENT  proc.initial obj=119 pid=30579 out=. bundle=com.apple.accessibility.heard name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=96 pid=1017 out=. bundle=com.apple.assistantd name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=94 pid=818 out=. bundle=com.apple.audiomxd name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=100 pid=1066 out=. bundle=com.apple.avconferenced name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=101 pid=914 out=. bundle=com.apple.cloudpaird name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=98 pid=1024 out=. bundle=com.apple.cmio.ContinuityCaptureAgent name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=103 pid=1298 out=. bundle=com.apple.controlcenter name=Control Center
+[+00:00.082] EVENT  proc.initial obj=93 pid=544 out=. bundle=com.apple.mediaremoted name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=97 pid=917 out=. bundle=com.apple.universalaccessd name=universalaccessd
+[+00:00.082] EVENT  proc.initial obj=105 pid=1976 out=. bundle=com.google.Chrome name=Google Chrome
+[+00:00.082] EVENT  proc.initial obj=110 pid=6425 out=. bundle=com.google.Chrome.helper name=Google Chrome Helper
+[+00:00.082] EVENT  proc.initial obj=106 pid=4701 out=. bundle=com.logi.cp-dev-mgr name=Logi Options+
+[+00:00.082] EVENT  proc.initial obj=108 pid=5245 out=. bundle=com.logi.optionsplus.logivoice name=Logi Voice
+[+00:00.082] EVENT  proc.initial obj=107 pid=4697 out=. bundle=com.logitech.LogiRightSight name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=121 pid=83968 out=. bundle=com.samwongml.AppTape.EditorWindow5 name=Editor Window Prototype
+[+00:00.082] EVENT  proc.initial obj=122 pid=52206 out=. bundle=com.samwongml.AppTape.TapProbe name=AppTape Tap Probe
+[+00:00.082] EVENT  proc.initial obj=115 pid=85908 out=. bundle=com.tencent.QQMusicMac name=QQ音乐
+[+00:00.082] EVENT  probe.ready logFile=/Users/demon/codes/macos-audio-recording/prototypes/tap-browser-capture/logs/probe-2026-08-24-213831.txt
+
+[+00:00.082] MARK   ***  START  bundleIDs, stereoMixdownOfProcesses([]) init  ids=["com.google.Chrome.helper"]  restore=true  ***
+[+00:00.082] EVENT  tap.build strategy=bundleIDsOnMixdownInit bundleIDs=["com.google.Chrome.helper"] processObjects=[109, 110] processRestoreEnabled=true
+[+00:00.082] EVENT  tap.description mono=false exclusive=false mixdown=true private=true restore=true processes=[] bundleIDs=["com.google.Chrome.helper"] deviceUID=nil
+[+00:00.085] EVENT  tap.create ok tapID=123
+[+00:00.086] EVENT  tap.format rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.086] EVENT  output.device id=71 uid=BuiltInSpeakerDevice rate=48000.0
+[+00:00.092] EVENT  aggregate.create ok id=124
+[+00:00.092] EVENT  aggregate.inputFormat rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.095] EVENT  device.start status=0
+[+00:01.105] TICK   peak=0.6586 callbacks=86 frames=44032 nonZeroBuf=86 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:01.105] EVENT  signal.first  <<< THE TAP IS CAPTURING AUDIO
+[+00:02.108] TICK   peak=0.6975 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:03.108] TICK   peak=0.6251 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:04.107] TICK   peak=0.6884 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:05.106] TICK   peak=0.6689 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:06.107] TICK   peak=0.6139 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:07.113] TICK   peak=0.6244 callbacks=95 frames=48640 nonZeroBuf=95 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:08.105] TICK   peak=0.6731 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:09.110] TICK   peak=0.6856 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:10.114] TICK   peak=0.8415 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:11.106] TICK   peak=0.8419 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:12.107] TICK   peak=0.8586 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:13.109] TICK   peak=0.7821 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:14.106] TICK   peak=0.8183 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+
+[+00:15.083] MARK   ***  SET OUTPUT RATE 48000 -> 44100 Hz  ***
+[+00:15.088] EVENT  output.setRate status=0
+[+00:15.148] EVENT  proc.output  stopped obj=109 pid=6424 out=. bundle=com.google.Chrome.helper name=(no NSRunningApplication)
+[+00:15.150] EVENT  output.rate changed 48000 -> 44100   <<< CHANGED
+[+00:15.165] TICK   peak=0.8321 callbacks=100 frames=51200 nonZeroBuf=97 zeroBuf=3 lastList=1x4096B targetOut=no
+[+00:16.106] EVENT  proc.output  started obj=109 pid=6424 out=Y bundle=com.google.Chrome.helper name=(no NSRunningApplication)
+[+00:16.107] TICK   peak=0.8302 callbacks=88 frames=45056 nonZeroBuf=79 zeroBuf=9 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:17.107] TICK   peak=0.7866 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:18.106] TICK   peak=0.8699 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:19.105] TICK   peak=0.9398 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:20.107] TICK   peak=0.7399 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:21.108] TICK   peak=0.6650 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:22.106] TICK   peak=0.6996 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:23.107] TICK   peak=0.7827 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:24.107] TICK   peak=0.7455 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:25.107] TICK   peak=0.7760 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:26.108] TICK   peak=0.7700 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:27.107] TICK   peak=1.0914 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+
+[+00:28.083] MARK   ***  SET OUTPUT RATE 44100 -> 48000 Hz  ***
+[+00:28.083] EVENT  output.setRate status=0
+[+00:28.150] EVENT  output.rate changed 44100 -> 48000   <<< CHANGED
+[+00:28.151] TICK   peak=0.7461 callbacks=98 frames=50176 nonZeroBuf=94 zeroBuf=4 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:29.106] TICK   peak=0.6562 callbacks=90 frames=46080 nonZeroBuf=82 zeroBuf=8 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:30.107] TICK   peak=0.6160 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:31.107] TICK   peak=0.6310 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:32.110] TICK   peak=0.7130 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:33.112] TICK   peak=0.6662 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:34.114] TICK   peak=0.6520 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:35.113] TICK   peak=0.6265 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:36.116] TICK   peak=0.6892 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:37.115] TICK   peak=0.6410 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:38.113] TICK   peak=0.5951 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:39.115] TICK   peak=0.5952 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:40.111] TICK   peak=0.5949 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+
+[+00:41.083] MARK   ***  RECREATE tap + aggregate device  ***
+[+00:41.092] EVENT  tap.stop tapID=123 aggregate=124
+[+00:41.092] EVENT  tap.stop tapID=0 aggregate=0
+
+[+00:41.092] MARK   ***  START  bundleIDs, stereoMixdownOfProcesses([]) init  ids=["com.google.Chrome.helper"]  restore=true  ***
+[+00:41.092] EVENT  tap.build strategy=bundleIDsOnMixdownInit bundleIDs=["com.google.Chrome.helper"] processObjects=[109, 110] processRestoreEnabled=true
+[+00:41.093] EVENT  tap.description mono=false exclusive=false mixdown=true private=true restore=true processes=[] bundleIDs=["com.google.Chrome.helper"] deviceUID=nil
+[+00:41.096] EVENT  tap.create ok tapID=126
+[+00:41.097] EVENT  tap.format rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:41.097] EVENT  output.device id=71 uid=BuiltInSpeakerDevice rate=48000.0
+[+00:41.105] EVENT  aggregate.create ok id=127
+[+00:41.105] EVENT  aggregate.inputFormat rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:41.113] EVENT  device.start status=0
+[+00:42.112] TICK   peak=0.6301 callbacks=92 frames=47104 nonZeroBuf=92 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:42.112] EVENT  signal.first  <<< THE TAP IS CAPTURING AUDIO
+[+00:43.112] TICK   peak=0.7749 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:44.108] TICK   peak=0.7511 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:45.111] TICK   peak=0.6511 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:46.114] TICK   peak=0.5830 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:47.113] TICK   peak=0.6942 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:48.115] TICK   peak=0.7968 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:49.114] TICK   peak=0.6248 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:50.112] TICK   peak=0.6291 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:51.107] TICK   peak=0.6098 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:52.105] TICK   peak=0.6169 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:53.107] TICK   peak=0.6495 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+
+[+00:54.083] MARK   ***  SCRIPT complete  ***
+[+00:54.107] TICK   peak=0.6432 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:55.105] TICK   peak=0.6340 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:56.105] TICK   peak=0.6040 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:57.106] TICK   peak=0.6661 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:58.107] TICK   peak=0.6708 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+00:59.107] TICK   peak=0.6422 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:00.106] TICK   peak=0.7063 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:01.105] TICK   peak=0.6342 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:02.106] TICK   peak=0.6932 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:03.106] TICK   peak=0.6074 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:04.105] TICK   peak=0.7017 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:05.109] TICK   peak=0.6640 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:06.114] TICK   peak=0.6401 callbacks=95 frames=48640 nonZeroBuf=95 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:07.112] TICK   peak=0.6643 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:08.114] TICK   peak=0.6777 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:09.112] TICK   peak=0.6502 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:10.114] TICK   peak=0.6911 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:11.112] TICK   peak=0.6237 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:12.113] TICK   peak=0.6370 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:13.113] TICK   peak=0.6282 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:14.114] TICK   peak=0.5901 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:15.108] TICK   peak=0.6073 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:16.115] TICK   peak=0.7227 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:17.114] TICK   peak=0.6993 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:18.114] TICK   peak=0.6682 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:19.113] TICK   peak=0.7173 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:20.116] TICK   peak=0.5283 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:21.113] TICK   peak=0.5270 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:22.109] TICK   peak=0.4094 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:23.109] TICK   peak=0.3809 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:24.111] TICK   peak=0.2750 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:25.110] TICK   peak=0.3045 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:26.111] TICK   peak=0.2811 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:27.110] TICK   peak=0.2141 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:28.111] TICK   peak=0.1862 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:29.111] TICK   peak=0.1394 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:30.112] TICK   peak=0.1059 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:31.112] EVENT  output.rate changed 48000 -> 44100   <<< CHANGED
+[+01:31.112] TICK   peak=0.0602 callbacks=93 frames=47616 nonZeroBuf=62 zeroBuf=31 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:32.116] TICK   peak=0.0365 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:33.113] TICK   peak=0.0157 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:34.116] TICK   peak=0.0027 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:35.113] TICK   peak=0.0000 callbacks=93 frames=47616 nonZeroBuf=82 zeroBuf=11 lastList=1x4096B targetOut=yes(pid 6424)
+[+01:36.107] EVENT  proc.output  stopped obj=109 pid=6424 out=. bundle=com.google.Chrome.helper name=(no NSRunningApplication)
+[+01:36.108] TICK   peak=0.0000 callbacks=94 frames=48128 nonZeroBuf=0 zeroBuf=94 lastList=1x4096B targetOut=no
+[+01:37.103] EVENT  proc.removed obj=105 pid=1976 out=. bundle=com.google.Chrome name=Google Chrome
+[+01:37.103] EVENT  proc.removed obj=109 pid=6424 out=. bundle=com.google.Chrome.helper name=(no NSRunningApplication)
+[+01:37.103] EVENT  proc.removed obj=110 pid=6425 out=. bundle=com.google.Chrome.helper name=Google Chrome Helper
+[+01:37.103] TICK   peak=0.0000 callbacks=93 frames=47616 nonZeroBuf=0 zeroBuf=93 lastList=1x4096B targetOut=no

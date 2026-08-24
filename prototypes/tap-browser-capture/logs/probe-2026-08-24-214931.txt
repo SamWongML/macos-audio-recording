@@ -1,0 +1,77 @@
+# AppTape tap probe — issue #12
+# started 2026-08-24 21:49:31
+# os Version 27.0 (Build 26A5416b)
+
+[+00:00.089] EVENT  proc.initial obj=119 pid=54700 out=Y bundle=com.samwongml.AppTape.ToneEmitter name=Tone Emitter
+[+00:00.089] EVENT  proc.initial obj=92 pid=797 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=117 pid=37358 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=110 pid=24572 out=. bundle=com.anthropic.claudefordesktop name=Claude
+[+00:00.089] EVENT  proc.initial obj=108 pid=25228 out=. bundle=com.anthropic.claudefordesktop.helper name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=109 pid=25229 out=. bundle=com.anthropic.claudefordesktop.helper name=Claude Helper
+[+00:00.089] EVENT  proc.initial obj=102 pid=1153 out=. bundle=com.apple.AccessibilitySettingsWidgetExtension name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=104 pid=1984 out=. bundle=com.apple.AppStore name=App Store
+[+00:00.089] EVENT  proc.initial obj=95 pid=1004 out=. bundle=com.apple.CoreSpeech name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=114 pid=86037 out=. bundle=com.apple.Music name=Music
+[+00:00.089] EVENT  proc.initial obj=99 pid=968 out=. bundle=com.apple.TelephonyUtilities name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=111 pid=51361 out=. bundle=com.apple.WebKit.GPU name=Xcode Graphics and Media
+[+00:00.089] EVENT  proc.initial obj=113 pid=85913 out=. bundle=com.apple.WebKit.GPU name=QQ音乐 Graphics and Media
+[+00:00.089] EVENT  proc.initial obj=115 pid=92638 out=. bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:00.089] EVENT  proc.initial obj=116 pid=30579 out=. bundle=com.apple.accessibility.heard name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=96 pid=1017 out=. bundle=com.apple.assistantd name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=94 pid=818 out=. bundle=com.apple.audiomxd name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=100 pid=1066 out=. bundle=com.apple.avconferenced name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=101 pid=914 out=. bundle=com.apple.cloudpaird name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=98 pid=1024 out=. bundle=com.apple.cmio.ContinuityCaptureAgent name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=103 pid=1298 out=. bundle=com.apple.controlcenter name=Control Center
+[+00:00.089] EVENT  proc.initial obj=93 pid=544 out=. bundle=com.apple.mediaremoted name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=97 pid=917 out=. bundle=com.apple.universalaccessd name=universalaccessd
+[+00:00.089] EVENT  proc.initial obj=105 pid=4701 out=. bundle=com.logi.cp-dev-mgr name=Logi Options+
+[+00:00.089] EVENT  proc.initial obj=107 pid=5245 out=. bundle=com.logi.optionsplus.logivoice name=Logi Voice
+[+00:00.089] EVENT  proc.initial obj=106 pid=4697 out=. bundle=com.logitech.LogiRightSight name=(no NSRunningApplication)
+[+00:00.089] EVENT  proc.initial obj=118 pid=83968 out=. bundle=com.samwongml.AppTape.EditorWindow5 name=Editor Window Prototype
+[+00:00.089] EVENT  proc.initial obj=120 pid=54711 out=. bundle=com.samwongml.AppTape.TapProbe name=AppTape Tap Probe
+[+00:00.089] EVENT  proc.initial obj=112 pid=85908 out=. bundle=com.tencent.QQMusicMac name=QQ音乐
+[+00:00.089] EVENT  probe.ready logFile=/Users/demon/codes/macos-audio-recording/prototypes/tap-browser-capture/logs/probe-2026-08-24-214931.txt
+
+[+00:00.089] MARK   ***  START  bundleIDs, stereoMixdownOfProcesses([]) init  ids=["com.samwongml.AppTape.ToneEmitter"]  restore=true  ***
+[+00:00.089] EVENT  tap.build strategy=bundleIDsOnMixdownInit bundleIDs=["com.samwongml.AppTape.ToneEmitter"] processObjects=[119] processRestoreEnabled=true
+[+00:00.089] EVENT  tap.description mono=false exclusive=false mixdown=true private=true restore=true processes=[] bundleIDs=["com.samwongml.AppTape.ToneEmitter"] deviceUID=nil
+[+00:00.093] EVENT  tap.create ok tapID=121
+[+00:00.094] EVENT  tap.format rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.094] EVENT  output.device id=71 uid=BuiltInSpeakerDevice rate=48000.0
+[+00:00.101] EVENT  aggregate.create ok id=122
+[+00:00.101] EVENT  aggregate.inputFormat rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.106] EVENT  device.start status=0
+[+00:01.115] TICK   peak=0.2500 callbacks=86 frames=44032 nonZeroBuf=86 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:01.115] EVENT  signal.first  <<< THE TAP IS CAPTURING AUDIO
+[+00:02.113] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:03.113] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:04.113] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:05.115] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:06.114] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:07.113] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:08.115] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:09.117] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:10.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:11.115] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:12.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:13.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:14.115] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:15.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:16.121] TICK   peak=0.2500 callbacks=95 frames=48640 nonZeroBuf=95 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:17.120] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:18.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:19.126] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:20.124] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:21.122] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:22.118] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:23.125] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:24.124] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:25.112] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:26.112] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:27.117] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:28.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:29.117] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:30.115] TICK   peak=0.2500 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:31.117] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)
+[+00:32.116] TICK   peak=0.2500 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 54700)

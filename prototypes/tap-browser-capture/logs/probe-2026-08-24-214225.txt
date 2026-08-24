@@ -1,0 +1,887 @@
+# AppTape tap probe — issue #12
+# started 2026-08-24 21:42:25
+# os Version 27.0 (Build 26A5416b)
+
+[+00:00.080] EVENT  proc.initial obj=121 pid=92638 out=Y bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:00.080] EVENT  proc.initial obj=98 pid=797 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.080] EVENT  proc.initial obj=123 pid=37358 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.080] EVENT  proc.initial obj=116 pid=24572 out=. bundle=com.anthropic.claudefordesktop name=Claude
+[+00:00.080] EVENT  proc.initial obj=114 pid=25228 out=. bundle=com.anthropic.claudefordesktop.helper name=(no NSRunningApplication)
+[+00:00.080] EVENT  proc.initial obj=115 pid=25229 out=. bundle=com.anthropic.claudefordesktop.helper name=Claude Helper
+[+00:00.080] EVENT  proc.initial obj=108 pid=1153 out=. bundle=com.apple.AccessibilitySettingsWidgetExtension name=(no NSRunningApplication)
+[+00:00.080] EVENT  proc.initial obj=110 pid=1984 out=. bundle=com.apple.AppStore name=App Store
+[+00:00.081] EVENT  proc.initial obj=101 pid=1004 out=. bundle=com.apple.CoreSpeech name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=120 pid=86037 out=. bundle=com.apple.Music name=Music
+[+00:00.081] EVENT  proc.initial obj=105 pid=968 out=. bundle=com.apple.TelephonyUtilities name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=117 pid=51361 out=. bundle=com.apple.WebKit.GPU name=Xcode Graphics and Media
+[+00:00.081] EVENT  proc.initial obj=119 pid=85913 out=. bundle=com.apple.WebKit.GPU name=QQ音乐 Graphics and Media
+[+00:00.081] EVENT  proc.initial obj=122 pid=30579 out=. bundle=com.apple.accessibility.heard name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=102 pid=1017 out=. bundle=com.apple.assistantd name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=100 pid=818 out=. bundle=com.apple.audiomxd name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=106 pid=1066 out=. bundle=com.apple.avconferenced name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=107 pid=914 out=. bundle=com.apple.cloudpaird name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=104 pid=1024 out=. bundle=com.apple.cmio.ContinuityCaptureAgent name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=109 pid=1298 out=. bundle=com.apple.controlcenter name=Control Center
+[+00:00.081] EVENT  proc.initial obj=99 pid=544 out=. bundle=com.apple.mediaremoted name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=103 pid=917 out=. bundle=com.apple.universalaccessd name=universalaccessd
+[+00:00.081] EVENT  proc.initial obj=111 pid=4701 out=. bundle=com.logi.cp-dev-mgr name=Logi Options+
+[+00:00.081] EVENT  proc.initial obj=113 pid=5245 out=. bundle=com.logi.optionsplus.logivoice name=Logi Voice
+[+00:00.081] EVENT  proc.initial obj=112 pid=4697 out=. bundle=com.logitech.LogiRightSight name=(no NSRunningApplication)
+[+00:00.081] EVENT  proc.initial obj=124 pid=83968 out=. bundle=com.samwongml.AppTape.EditorWindow5 name=Editor Window Prototype
+[+00:00.081] EVENT  proc.initial obj=125 pid=53403 out=. bundle=com.samwongml.AppTape.TapProbe name=AppTape Tap Probe
+[+00:00.081] EVENT  proc.initial obj=118 pid=85908 out=. bundle=com.tencent.QQMusicMac name=QQ音乐
+[+00:00.081] EVENT  probe.ready logFile=/Users/demon/codes/macos-audio-recording/prototypes/tap-browser-capture/logs/probe-2026-08-24-214225.txt
+
+[+00:00.081] MARK   ***  START  bundleIDs, stereoMixdownOfProcesses([]) init  ids=["com.apple.WebKit.GPU"]  restore=true  ***
+[+00:00.081] EVENT  tap.build strategy=bundleIDsOnMixdownInit bundleIDs=["com.apple.WebKit.GPU"] processObjects=[121, 117, 119] processRestoreEnabled=true
+[+00:00.081] EVENT  tap.description mono=false exclusive=false mixdown=true private=true restore=true processes=[] bundleIDs=["com.apple.WebKit.GPU"] deviceUID=nil
+[+00:00.084] EVENT  tap.create ok tapID=126
+[+00:00.084] EVENT  tap.format rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.084] EVENT  output.device id=92 uid=00-12-6F-52-16-2C:output rate=44100.0
+[+00:00.089] EVENT  aggregate.create ok id=127
+[+00:00.089] EVENT  aggregate.inputFormat rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.094] EVENT  device.start status=0
+[+00:01.097] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:01.097] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:02.098] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:02.098] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:03.107] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:03.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:04.106] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:04.106] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:05.106] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:05.106] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:06.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:06.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:07.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:07.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:08.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:08.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:09.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:09.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:10.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:10.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:11.114] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:11.114] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:12.112] EVENT  output.rate changed 44100 -> 48000   <<< CHANGED
+[+00:12.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:12.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:13.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:13.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:14.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:14.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:15.103] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:15.103] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:16.104] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:16.104] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:17.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:17.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:18.103] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:18.103] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:19.105] EVENT  output.rate changed 48000 -> 44100   <<< CHANGED
+[+00:19.106] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:19.106] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:20.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:20.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:21.103] EVENT  output.rate changed 44100 -> 48000   <<< CHANGED
+[+00:21.104] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:21.104] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:22.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:22.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:23.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:23.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:24.104] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:24.104] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:25.104] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:25.104] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:26.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:26.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:27.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:27.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:28.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=yes(pid 92638)
+[+00:28.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:29.105] EVENT  proc.output  stopped obj=121 pid=92638 out=. bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:29.106] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:29.106] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:30.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:30.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:31.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:31.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:32.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:32.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:33.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:33.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:34.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:34.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:35.107] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:35.107] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:36.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:36.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:37.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:37.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:38.107] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:38.107] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:39.114] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:39.114] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:40.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:40.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:41.114] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:41.114] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:42.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:42.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:43.107] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:43.107] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:44.106] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:44.107] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:45.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:45.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:46.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:46.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:47.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:47.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:48.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:48.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:49.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:49.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:50.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:50.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:51.114] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:51.114] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:52.114] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:52.114] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:53.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:53.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:54.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:54.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:55.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:55.106] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:56.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:56.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:57.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:57.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:58.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:58.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:59.117] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:59.117] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:00.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:00.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:01.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:01.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:02.118] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:02.118] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:03.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:03.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:04.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:04.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:05.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:05.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:06.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:06.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:07.117] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:07.117] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:08.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:08.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:09.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:09.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:10.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:10.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:11.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:11.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:12.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:12.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:13.114] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:13.114] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:14.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:14.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:15.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:15.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:16.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:16.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:17.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:17.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:18.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:18.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:19.117] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:19.117] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:20.117] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:20.117] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:21.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:21.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:22.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:22.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:23.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:23.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:24.210] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:24.210] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:25.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:25.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:26.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:26.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:27.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:27.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:28.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:28.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:29.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:29.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:30.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:30.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:31.210] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:31.211] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:32.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:32.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:33.213] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:33.213] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:34.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:34.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:35.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:35.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:36.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:36.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:37.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:37.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:38.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:38.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:39.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:39.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:40.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:40.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:41.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:41.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:42.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:42.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:43.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:43.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:44.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:44.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:45.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:45.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:46.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:46.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:47.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:47.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:48.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:48.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:49.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:49.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:50.198] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:50.198] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:51.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:51.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:52.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:52.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:53.198] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:53.198] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:54.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:54.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:55.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:55.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:56.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:56.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:57.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:57.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:58.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:58.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+01:59.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+01:59.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:00.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:00.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:01.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:01.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:02.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:02.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:03.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:03.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:04.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:04.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:05.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:05.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:06.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:06.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:07.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:07.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:08.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:08.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:09.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:09.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:10.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:10.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:11.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:11.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:12.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:12.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:13.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:13.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:14.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:14.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:15.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:15.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:16.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:16.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:17.198] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:17.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:18.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:18.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:19.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:19.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:20.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:20.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:21.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:21.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:22.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:22.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:23.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:23.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:24.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:24.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:25.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:25.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:26.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:26.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:27.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:27.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:28.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:28.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:29.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:29.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:30.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:30.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:31.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:31.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:32.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:32.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:33.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:33.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:34.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:34.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:35.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:35.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:36.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:36.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:37.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:37.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:38.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:38.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:39.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:39.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:40.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:40.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:41.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:41.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:42.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:42.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:43.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:43.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:44.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:44.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:45.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:45.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:46.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:46.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:47.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:47.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:48.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:48.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:49.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:49.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:50.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:50.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:51.210] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:51.210] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:52.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:52.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:53.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:53.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:54.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:54.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:55.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:55.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:56.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:56.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:57.211] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:57.212] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:58.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:58.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+02:59.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+02:59.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:00.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:00.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:01.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:01.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:02.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:02.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:03.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:03.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:04.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:04.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:05.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:05.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:06.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:06.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:07.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:07.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:08.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:08.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:09.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:09.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:10.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:10.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:11.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:11.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:12.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:12.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:13.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:13.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:14.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:14.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:15.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:15.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:16.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:16.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:17.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:17.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:18.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:18.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:19.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:19.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:20.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:20.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:21.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:21.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:22.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:22.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:23.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:23.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:24.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:24.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:25.198] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:25.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:26.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:26.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:27.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:27.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:28.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:28.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:29.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:29.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:30.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:30.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:31.198] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:31.198] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:32.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:32.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:33.212] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:33.212] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:34.199] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:34.199] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:35.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:35.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:36.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:36.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:37.210] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:37.211] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:38.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:38.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:39.200] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:39.200] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:40.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:40.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:41.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:41.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:42.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:42.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:43.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:43.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:44.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:44.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:45.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:45.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:46.213] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:46.214] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:47.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:47.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:48.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:48.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:49.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:49.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:50.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:50.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:51.212] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:51.212] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:52.210] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:52.210] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:53.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:53.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:54.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:54.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:55.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:55.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:56.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:56.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:57.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:57.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:58.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:58.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+03:59.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+03:59.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:00.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:00.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:01.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:01.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:02.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:02.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:03.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:03.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:04.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:04.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:05.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:05.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:06.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:06.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:07.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:07.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:08.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:08.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:09.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:09.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:10.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:10.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:11.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:11.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:12.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:12.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:13.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:13.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:14.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:14.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:15.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:15.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:16.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:16.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:17.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:17.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:18.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:18.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:19.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:19.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:20.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:20.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:21.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:21.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:22.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:22.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:23.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:23.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:24.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:24.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:25.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:25.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:26.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:26.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:27.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:27.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:28.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:28.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:29.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:29.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:30.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:30.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:31.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:31.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:32.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:32.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:33.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:33.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:34.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:34.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:35.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:35.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:36.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:36.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:37.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:37.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:38.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:38.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:39.208] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:39.208] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:40.212] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:40.213] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:41.211] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:41.211] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:42.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:42.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:43.215] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:43.215] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:44.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:44.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:45.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:45.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:46.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:46.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:47.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:47.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:48.207] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:48.207] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:49.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:49.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:50.206] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:50.206] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:51.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:51.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:52.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:52.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:53.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:53.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:54.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:54.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:55.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:55.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:56.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:56.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:57.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:57.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:58.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:58.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+04:59.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+04:59.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:00.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:00.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:01.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:01.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:02.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:02.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:03.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:03.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:04.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:04.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:05.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:05.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:06.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:06.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:07.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:07.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:08.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:08.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:09.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:09.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:10.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:10.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:11.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:11.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:12.211] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:12.211] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:13.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:13.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:14.201] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:14.201] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:15.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:15.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:16.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:16.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:17.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:17.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:18.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:18.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:19.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:19.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:20.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:20.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:21.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:21.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:22.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:22.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:23.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:23.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:24.202] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:24.202] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:25.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:25.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:26.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:26.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:27.205] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:27.205] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:28.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:28.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:29.212] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:29.212] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:30.209] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:30.209] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:31.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:31.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:32.204] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:32.204] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:33.203] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:33.203] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:34.310] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:34.310] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:35.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:35.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:36.302] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:36.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:37.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:37.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:38.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:38.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:39.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:39.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:40.300] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:40.300] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:41.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:41.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:42.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:42.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:43.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:43.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:44.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:44.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:45.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:45.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:46.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:46.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:47.301] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:47.301] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:48.302] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:48.302] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:49.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:49.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:50.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:50.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:51.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:51.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:52.311] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:52.311] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:53.302] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:53.302] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:54.308] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:54.308] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:55.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:55.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:56.308] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:56.308] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:57.302] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:57.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:58.310] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:58.310] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+05:59.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+05:59.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:00.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:00.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:01.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:01.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:02.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:02.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:03.306] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:03.306] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:04.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:04.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:05.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:05.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:06.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:06.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:07.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:07.306] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:08.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:08.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:09.306] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:09.306] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:10.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:10.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:11.306] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:11.306] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:12.306] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:12.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:13.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:13.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:14.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:14.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:15.312] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:15.313] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:16.308] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:16.309] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:17.310] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:17.310] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:18.308] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:18.309] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:19.314] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:19.315] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:20.309] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:20.309] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:21.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:21.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:22.310] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:22.311] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:23.309] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:23.309] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:24.315] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:24.315] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:25.371] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:25.372] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:26.135] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:26.135] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:27.309] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:27.309] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:28.290] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:28.290] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:29.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:29.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:30.310] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:30.311] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:31.321] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:31.321] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:32.315] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:32.316] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:33.316] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:33.316] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:34.313] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:34.314] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:35.321] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:35.321] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:36.318] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:36.318] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:37.324] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:37.324] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:38.311] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:38.311] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:39.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:39.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:40.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:40.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:41.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:41.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:42.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:42.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:43.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:43.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:44.308] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:44.309] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:45.315] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:45.316] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:46.307] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:46.307] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:47.312] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:47.313] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:48.306] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:48.306] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:49.316] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:49.316] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:50.320] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:50.321] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:51.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:51.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:52.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:52.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:53.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:53.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:54.305] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:54.305] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:55.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:55.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:56.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:56.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:57.303] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:57.303] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:58.304] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:58.304] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+06:59.306] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+06:59.306] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+07:00.302] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+07:00.302] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED

@@ -1,0 +1,102 @@
+# AppTape tap probe — issue #12
+# started 2026-08-24 21:41:21
+# os Version 27.0 (Build 26A5416b)
+
+[+00:00.082] EVENT  proc.initial obj=92 pid=797 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=117 pid=37358 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=110 pid=24572 out=. bundle=com.anthropic.claudefordesktop name=Claude
+[+00:00.082] EVENT  proc.initial obj=108 pid=25228 out=. bundle=com.anthropic.claudefordesktop.helper name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=109 pid=25229 out=. bundle=com.anthropic.claudefordesktop.helper name=Claude Helper
+[+00:00.082] EVENT  proc.initial obj=102 pid=1153 out=. bundle=com.apple.AccessibilitySettingsWidgetExtension name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=104 pid=1984 out=. bundle=com.apple.AppStore name=App Store
+[+00:00.082] EVENT  proc.initial obj=95 pid=1004 out=. bundle=com.apple.CoreSpeech name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=114 pid=86037 out=. bundle=com.apple.Music name=Music
+[+00:00.082] EVENT  proc.initial obj=99 pid=968 out=. bundle=com.apple.TelephonyUtilities name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=111 pid=51361 out=. bundle=com.apple.WebKit.GPU name=Xcode Graphics and Media
+[+00:00.082] EVENT  proc.initial obj=113 pid=85913 out=. bundle=com.apple.WebKit.GPU name=QQ音乐 Graphics and Media
+[+00:00.082] EVENT  proc.initial obj=115 pid=92638 out=. bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:00.082] EVENT  proc.initial obj=116 pid=30579 out=. bundle=com.apple.accessibility.heard name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=96 pid=1017 out=. bundle=com.apple.assistantd name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=94 pid=818 out=. bundle=com.apple.audiomxd name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=100 pid=1066 out=. bundle=com.apple.avconferenced name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=101 pid=914 out=. bundle=com.apple.cloudpaird name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=98 pid=1024 out=. bundle=com.apple.cmio.ContinuityCaptureAgent name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=103 pid=1298 out=. bundle=com.apple.controlcenter name=Control Center
+[+00:00.082] EVENT  proc.initial obj=93 pid=544 out=. bundle=com.apple.mediaremoted name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=97 pid=917 out=. bundle=com.apple.universalaccessd name=universalaccessd
+[+00:00.082] EVENT  proc.initial obj=105 pid=4701 out=. bundle=com.logi.cp-dev-mgr name=Logi Options+
+[+00:00.082] EVENT  proc.initial obj=107 pid=5245 out=. bundle=com.logi.optionsplus.logivoice name=Logi Voice
+[+00:00.082] EVENT  proc.initial obj=106 pid=4697 out=. bundle=com.logitech.LogiRightSight name=(no NSRunningApplication)
+[+00:00.082] EVENT  proc.initial obj=118 pid=83968 out=. bundle=com.samwongml.AppTape.EditorWindow5 name=Editor Window Prototype
+[+00:00.082] EVENT  proc.initial obj=119 pid=53006 out=. bundle=com.samwongml.AppTape.TapProbe name=AppTape Tap Probe
+[+00:00.082] EVENT  proc.initial obj=112 pid=85908 out=. bundle=com.tencent.QQMusicMac name=QQ音乐
+[+00:00.082] EVENT  probe.ready logFile=/Users/demon/codes/macos-audio-recording/prototypes/tap-browser-capture/logs/probe-2026-08-24-214121.txt
+
+[+00:00.082] MARK   ***  START  Process object IDs (baseline)  ids=["com.apple.WebKit.GPU"]  restore=true  ***
+[+00:00.082] EVENT  tap.build strategy=processObjectIDs bundleIDs=["com.apple.WebKit.GPU"] processObjects=[111, 113, 115] processRestoreEnabled=true
+[+00:00.082] EVENT  tap.description mono=false exclusive=false mixdown=true private=true restore=true processes=[111, 113, 115] bundleIDs=[] deviceUID=nil
+[+00:00.085] EVENT  tap.create ok tapID=120
+[+00:00.085] EVENT  tap.format rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.085] EVENT  output.device id=71 uid=BuiltInSpeakerDevice rate=48000.0
+[+00:00.090] EVENT  aggregate.create ok id=121
+[+00:00.091] EVENT  aggregate.inputFormat rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.094] EVENT  device.start status=0
+[+00:01.106] EVENT  output.rate changed 48000 -> 44100   <<< CHANGED
+[+00:01.107] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:01.107] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:02.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:02.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:03.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:03.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:04.104] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:04.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:05.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:05.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:06.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:06.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:07.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:07.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:08.105] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:08.105] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:09.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:09.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:10.116] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:10.116] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:11.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:11.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:12.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:12.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:13.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:13.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:14.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:14.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:15.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:15.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:16.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:16.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:17.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:17.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:18.108] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:18.108] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:19.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:19.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:20.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:20.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:21.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:21.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:22.115] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:22.115] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:23.111] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:23.111] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:24.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:24.112] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:25.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:25.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:26.113] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:26.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:27.109] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:27.109] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:28.110] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:28.110] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:29.112] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:29.113] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED

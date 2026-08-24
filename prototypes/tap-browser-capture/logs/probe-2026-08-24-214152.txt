@@ -1,0 +1,80 @@
+# AppTape tap probe — issue #12
+# started 2026-08-24 21:41:52
+# os Version 27.0 (Build 26A5416b)
+
+[+00:00.096] EVENT  proc.initial obj=98 pid=797 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=123 pid=37358 out=. bundle=(none) name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=116 pid=24572 out=. bundle=com.anthropic.claudefordesktop name=Claude
+[+00:00.096] EVENT  proc.initial obj=114 pid=25228 out=. bundle=com.anthropic.claudefordesktop.helper name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=115 pid=25229 out=. bundle=com.anthropic.claudefordesktop.helper name=Claude Helper
+[+00:00.096] EVENT  proc.initial obj=108 pid=1153 out=. bundle=com.apple.AccessibilitySettingsWidgetExtension name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=110 pid=1984 out=. bundle=com.apple.AppStore name=App Store
+[+00:00.096] EVENT  proc.initial obj=101 pid=1004 out=. bundle=com.apple.CoreSpeech name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=120 pid=86037 out=. bundle=com.apple.Music name=Music
+[+00:00.096] EVENT  proc.initial obj=105 pid=968 out=. bundle=com.apple.TelephonyUtilities name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=117 pid=51361 out=. bundle=com.apple.WebKit.GPU name=Xcode Graphics and Media
+[+00:00.096] EVENT  proc.initial obj=119 pid=85913 out=. bundle=com.apple.WebKit.GPU name=QQ音乐 Graphics and Media
+[+00:00.096] EVENT  proc.initial obj=121 pid=92638 out=. bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:00.096] EVENT  proc.initial obj=122 pid=30579 out=. bundle=com.apple.accessibility.heard name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=102 pid=1017 out=. bundle=com.apple.assistantd name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=100 pid=818 out=. bundle=com.apple.audiomxd name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=106 pid=1066 out=. bundle=com.apple.avconferenced name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=107 pid=914 out=. bundle=com.apple.cloudpaird name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=104 pid=1024 out=. bundle=com.apple.cmio.ContinuityCaptureAgent name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=109 pid=1298 out=. bundle=com.apple.controlcenter name=Control Center
+[+00:00.096] EVENT  proc.initial obj=99 pid=544 out=. bundle=com.apple.mediaremoted name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=103 pid=917 out=. bundle=com.apple.universalaccessd name=universalaccessd
+[+00:00.096] EVENT  proc.initial obj=111 pid=4701 out=. bundle=com.logi.cp-dev-mgr name=Logi Options+
+[+00:00.096] EVENT  proc.initial obj=113 pid=5245 out=. bundle=com.logi.optionsplus.logivoice name=Logi Voice
+[+00:00.096] EVENT  proc.initial obj=112 pid=4697 out=. bundle=com.logitech.LogiRightSight name=(no NSRunningApplication)
+[+00:00.096] EVENT  proc.initial obj=124 pid=83968 out=. bundle=com.samwongml.AppTape.EditorWindow5 name=Editor Window Prototype
+[+00:00.096] EVENT  proc.initial obj=125 pid=53166 out=. bundle=com.samwongml.AppTape.TapProbe name=AppTape Tap Probe
+[+00:00.096] EVENT  proc.initial obj=118 pid=85908 out=. bundle=com.tencent.QQMusicMac name=QQ音乐
+[+00:00.096] EVENT  probe.ready logFile=/Users/demon/codes/macos-audio-recording/prototypes/tap-browser-capture/logs/probe-2026-08-24-214152.txt
+
+[+00:00.096] MARK   ***  START  Process object IDs (baseline)  ids=["com.apple.WebKit.GPU"]  restore=true  ***
+[+00:00.096] EVENT  tap.build strategy=processObjectIDs bundleIDs=["com.apple.WebKit.GPU"] processObjects=[117, 119, 121] processRestoreEnabled=true
+[+00:00.096] EVENT  tap.description mono=false exclusive=false mixdown=true private=true restore=true processes=[117, 119, 121] bundleIDs=[] deviceUID=nil
+[+00:00.099] EVENT  tap.create ok tapID=126
+[+00:00.099] EVENT  tap.format rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.099] EVENT  output.device id=92 uid=00-12-6F-52-16-2C:output rate=44100.0
+[+00:00.105] EVENT  aggregate.create ok id=127
+[+00:00.105] EVENT  aggregate.inputFormat rate=48000 ch=2 bits=32 fmt=lpcm flags=0x9 bytesPerFrame=8
+[+00:00.109] EVENT  device.start status=0
+[+00:01.122] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:01.122] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:02.118] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:02.119] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:03.128] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:03.128] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:04.122] TICK   peak=0.0000 callbacks=0 frames=0 nonZeroBuf=0 zeroBuf=0 lastList=0x0B targetOut=no
+[+00:04.122] EVENT  ioproc.starved  no callbacks in the last second  <<< DEVICE STOPPED
+[+00:05.122] EVENT  proc.output  started obj=121 pid=92638 out=Y bundle=com.apple.WebKit.GPU name=Safari Graphics and Media
+[+00:05.122] TICK   peak=0.9453 callbacks=79 frames=40448 nonZeroBuf=35 zeroBuf=44 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:05.122] EVENT  signal.first  <<< THE TAP IS CAPTURING AUDIO
+[+00:06.129] TICK   peak=1.0111 callbacks=95 frames=48640 nonZeroBuf=95 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:07.128] TICK   peak=0.9629 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:08.130] TICK   peak=0.9310 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:09.127] TICK   peak=0.8458 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:10.123] TICK   peak=0.8902 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:11.123] TICK   peak=0.9672 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:12.130] TICK   peak=0.9697 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:13.128] TICK   peak=0.9224 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:14.128] TICK   peak=0.8911 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:15.129] TICK   peak=0.8249 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:16.127] TICK   peak=0.8177 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:17.126] TICK   peak=0.8810 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:18.122] TICK   peak=0.9556 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:19.122] TICK   peak=0.9626 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:20.121] TICK   peak=0.8329 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:21.125] TICK   peak=0.9515 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:22.121] TICK   peak=0.9620 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:23.122] TICK   peak=0.8667 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:24.122] TICK   peak=0.9127 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:25.120] TICK   peak=0.8035 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:26.120] TICK   peak=0.8386 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:27.120] TICK   peak=1.0274 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:28.119] TICK   peak=0.9703 callbacks=93 frames=47616 nonZeroBuf=93 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:29.121] TICK   peak=0.7926 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:30.120] TICK   peak=1.0190 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
+[+00:31.121] TICK   peak=0.9080 callbacks=94 frames=48128 nonZeroBuf=94 zeroBuf=0 lastList=1x4096B targetOut=yes(pid 92638)
