@@ -12,6 +12,10 @@ _Avoid_: Target, input, device, channel
 The audio captured in one continuous run from start to stop, saved automatically. An audio file the user places in the Library by hand is treated as a Recording too, since everything the app offers applies to it identically.
 _Avoid_: Take, clip, session, capture
 
+**Seam**:
+A stretch of silence inside a Recording where capture was interrupted and rebuilt. It keeps the Recording's place against the clock, so everything after it still sits where it was heard.
+_Avoid_: Gap, glitch, dropout, discontinuity
+
 **Library**:
 The folder of Recordings the app lists. It is an ordinary visible folder rather than a private store, so the user can rearrange it in Finder and the app follows.
 _Avoid_: Archive, history, gallery
