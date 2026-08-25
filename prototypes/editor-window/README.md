@@ -146,9 +146,10 @@ Full Keyboard Access, and clicking a `Canvas` does not make it first responder. 
 routes now live in one `NSEvent.addLocalMonitorForEvents` (`TimelineKeys`), which works
 regardless of which window is key.
 
-**This is a question for [#21](https://github.com/SamWongML/macos-audio-recording/issues/21),
-not an answer.** An app-level key monitor is fine for a prototype; whether it is an
-acceptable assistive story — VoiceOver cannot see a `Canvas` at all — is that ticket's call.
+**Settled since:** an app-level key monitor is the shipping answer, not a prototype
+shortcut. [#21](https://github.com/SamWongML/macos-audio-recording/issues/21) closed as a
+scope boundary, so there is no assistive story to weigh it against — the editor's `[` / `]`
+and arrow nudge stay exactly as built here.
 
 ### 8. `translation == .zero` is not "the first event" of a drag
 
