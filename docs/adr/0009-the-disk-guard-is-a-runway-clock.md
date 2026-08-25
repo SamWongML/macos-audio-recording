@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# The disk guard is a headroom clock, not a byte count
+# The disk guard is a Runway clock, not a byte count
 
 A Recording is an unattended writer aimed at the boot volume at **~1.4 GB/hour** (ADR-0003), and
 ADR-0007 lists **the disk guard** as one of the six reasons a Recording ends without naming it. The
@@ -22,7 +22,7 @@ resource regardless of available capacity." That guidance is aimed at an app dec
 *begin* saving something it already holds in memory; our case is the inverse — a capture that is
 already streaming and whose failure mode is taking the whole machine to zero bytes. Read for its
 intent rather than its letter, it points the same way we went: do not bet irreplaceable data on the
-larger, softer number. Being ~13 GB pessimistic costs about nine minutes of headroom.
+larger, softer number. Being ~13 GB pessimistic costs about nine minutes of Runway.
 
 **Absolute byte thresholds for the advisory tiers** were the first answer and were wrong. The
 master's byte rate is fixed at creation but is not a constant across Recordings — 1.38 GB/hour at
@@ -44,8 +44,8 @@ row.
 
 ## Consequences
 
-**Headroom is `(free − 2 GB) ÷ rate`, and the tiers are times.** The menu bar item turns **amber at
-3 hours** of headroom; a **user notification** is posted at **30 minutes**; the Recording **ends at
+**Runway is `(free − 2 GB) ÷ rate`, and the tiers are times.** The menu bar item turns **amber at
+3 hours** of Runway; a **user notification** is posted at **30 minutes**; the Recording **ends at
 the floor**. At 48 kHz those are roughly 6.2 GB and 2.7 GB free. Amber is deliberately late enough
 that a healthy disk never shows it — an advisory that is always on is decoration — and 30 minutes is
 enough time to delete something and keep recording, which is the only action the warning asks for.
@@ -56,10 +56,10 @@ syscall and no `URLResourceValues` churn. The cadence is set by *other* processe
 drift about 23 MB per minute, while a competing download can cross a 2 GB floor in seconds. The
 volume measured is the one holding the Library after resolving symlinks, not the boot volume.
 
-**Tiers are a pure function of current headroom, so they recover silently.** Emptying the Trash
+**Tiers are a pure function of current Runway, so they recover silently.** Emptying the Trash
 takes the item from amber back to red with no all-clear notification, and a posted warning is never
 retracted — a notification records a moment that was true, and chasing it with "never mind" trains
-the user to ignore both. A **15-minute hysteresis band** on both the tier and its notification stops
+the user to ignore both. A **15-minute Runway hysteresis band** on both the tier and its notification stops
 a Recording hovering on a boundary from flapping the menu bar every 5 seconds or warning twice.
 
 **ENOSPC is the guard firing late, not a seventh end.** A competing writer can take the last bytes
