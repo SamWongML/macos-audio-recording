@@ -13,10 +13,10 @@ situation.
 That API is the reason this decision needs recording. Its header describes AppTape's case
 verbatim — *"status items which do not use an `NSMenu` but instead position other windows
 ('expanded interface') relative to the item"* — and promises that adopting it *"allows the
-status item to participate in keyboard navigation and menu tracking behaviors"*: the two
-things [ADR-0004](0004-nsstatusitem-not-menubarextra.md) knowingly forfeited, one of which is
-the sharpest open risk that ADR created. A future reader who finds a hand-rolled popover
-sitting next to an unused first-party API will assume it was missed. It was not.
+status item to participate in ... menu tracking behaviors"*: exactly what
+[ADR-0004](0004-nsstatusitem-not-menubarextra.md) knowingly forfeited. A future reader who
+finds a hand-rolled popover sitting next to an unused first-party API will assume it was
+missed. It was not.
 
 ## What it costs
 
@@ -32,7 +32,7 @@ takes the one ADR-0004 spent.
 
 ## What it delivers
 
-Three of the six things that were hoped for.
+Three of the five things that were hoped for.
 
 **Menu tracking is real**: AppKit ends the session on an outside click, consistently ~0.5 s
 *before* the app's own `popoverDidClose`. **Activation is free**: after 20 s inactive, a single
@@ -48,19 +48,18 @@ not paid on this path. And the panel is genuinely key: typing reached a real fie
 - **Escape does not end a session.** Twelve presses across three live sessions in one run, more
   in another, zero endings. Every session-end in either log traces to an outside click or to
   the app's own `cancel()`.
-- **Control+F8 never reached the item**, with the delegate on *or* off, across both runs.
 
-That last one is the decision. The session was worth the left-click only if it opened the
-menu-bar keyboard route that [#21](https://github.com/SamWongML/macos-audio-recording/issues/21)
-needs; it did not. What remains is an API that costs the gesture ADR-0004 exists to protect and
-returns only what the app already does by hand, while **losing two dismissal gestures**.
+That is the decision, and it is a plain ledger. The session costs the gesture ADR-0004 exists
+to protect, returns only what the app already does by hand, and **loses two dismissal
+gestures** on the way. Nothing on the credit side is unavailable to a popover the app opens
+itself.
 
 A state-dependent design was checked and rejected on the same evidence: the delegate can be set
 and cleared at runtime and takes effect on the very next click — cleared mid-session, the
 left-click action fired immediately with the session still live — so "delegate on while idle,
 off while recording" was mechanically available. It would have bought AppKit's tracking in the
-idle state and the keyboard route in neither, at the price of a panel that dismisses differently
-depending on whether a Recording is running.
+idle state only, at the price of a panel that dismisses differently depending on whether a
+Recording is running.
 
 ## Consequences
 
@@ -113,9 +112,10 @@ panel happens to be open and once when it is not.
 requested, which is exactly the boundary ADR-0010 drew: unrequested ends get a notification,
 requested ones get the window.
 
-**Keyboard navigation inside the panel is not solved here.** Arrow keys move focus between rows
-only *after* something inside the panel has been clicked — on the hand-rolled path and the
-session path alike, so it is neither the session's fault nor its fix. That, and the absence of
-any menu-bar keyboard route, belong to #21, which now has evidence in place of a suspicion.
+**Arrow keys move focus between panel rows only *after* something inside the panel has been
+clicked** — on the hand-rolled path and the session path alike, so it is neither the session's
+fault nor its fix. Improving on it is **out of scope**, closed with
+[#21](https://github.com/SamWongML/macos-audio-recording/issues/21) along with any route to the
+status item that is not the mouse. Escape is unaffected and stays the app's own, above.
 
 Settled in issue #22. Probe: branch `prototype/panel-behaviour`.
