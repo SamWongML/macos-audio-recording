@@ -20,7 +20,7 @@ Three alternatives kept the SwiftUI `MenuBarExtra` and paid two clicks to stop �
 
 **The deciding fact is that `MenuBarExtra` cannot intercept its own click.** The macOS 27 SwiftUI interface exposes exactly two initialiser shapes, `init(content:label:)` and `init(isInserted:content:label:)`. There is no action closure, no `isPresented` binding, no click hook: the panel always opens. One-click stop is therefore not reachable from `MenuBarExtra` at any price, and the choice is a straight trade of framework support for a click.
 
-A **global keyboard shortcut** would buy one-gesture stop without leaving `MenuBarExtra`, and is the strongest surviving argument against this decision. It is deliberately not in v1's scope yet; if it lands, this ADR's cost/benefit is worth revisiting.
+A **global start/stop shortcut** would have bought one-gesture stop without leaving `MenuBarExtra`, and was the strongest surviving argument against this decision. It is **out of scope for v1**, ruled out with issue #21, so it is no longer an alternative to weigh: in v1 this status item is the only thing that makes stop one gesture.
 
 ## Consequences
 
@@ -28,9 +28,9 @@ A **global keyboard shortcut** would buy one-gesture stop without leaving `MenuB
 
 **Which implementation owns the menu bar is fixed at launch.** An `App`'s scene body does not re-evaluate when an `@Observable` it reads changes, so `MenuBarExtra(isInserted:)` is read once when the scene is built and never again. Measured three ways — inside the `isInserted` getter, directly in the body, and with the model held in `@State` — all identical. There is no runtime toggle between the two implementations.
 
-**A left-click destroys rather than reveals**, which nothing else in the menu bar does. A misclick during a Recording stops it, and there is no confirmation — deliberately, because a confirmation would put the second click back. This raises the value of pause-and-resume, which is not yet scoped.
+**A left-click destroys rather than reveals**, which nothing else in the menu bar does. A misclick during a Recording stops it, and there is no confirmation — deliberately, because a confirmation would put the second click back. This raises the value of pause-and-resume, which is not yet scoped, and which is now the only mitigation left on the map.
 
-**The panel is reachable during a Recording only by right-click**, a gesture with no visible affordance and no obvious keyboard or assistive equivalent. That gap is real and is tracked separately; it is the sharpest open risk this decision creates.
+**The panel is reachable during a Recording only by right-click**, a gesture with no visible affordance. That gap is real, and it is now an **accepted cost of v1 rather than an open risk**: issue #21 ruled a keyboard and assistive path to the item out of scope, so nothing is coming to close it.
 
 **Colour must be pre-rendered.** `NSStatusBarButton` **ignores `contentTintColor`** and draws template images in the menu bar's own appearance — measured, template or not, the glyph came out black. `foregroundStyle(.red)` in a SwiftUI `MenuBarExtra` label is discarded the same way. Red arrives only as an explicitly non-template `NSImage`, and the clock as an `attributedTitle` carrying `.foregroundColor`.
 
