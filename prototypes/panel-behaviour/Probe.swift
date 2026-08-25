@@ -4,7 +4,7 @@
 //  hand-rolls the popover, its dismissal, and NSApp.activate. macOS 27 shipped
 //  NSStatusItemExpandedInterfaceDelegate, which the header says exists for exactly this
 //  ("status items which do not use an NSMenu but instead position other windows") and
-//  claims buys back "keyboard navigation and menu tracking behaviors".
+//  claims buys back "... menu tracking behaviors".
 //
 //  Two items sit in the bar so the two designs can be compared click for click:
 //
@@ -112,9 +112,8 @@ struct PanelBody: View {
 
             Divider()
 
-            // Four focusable rows: does an arrow key move between them without the app
-            // having been activated? This is what "participate in keyboard navigation"
-            // would have to mean for issue #21 to get anything out of it.
+            // Four focusable rows: does focus move between them without the app having
+            // been activated? Measured here; improving on the answer is out of scope.
             ForEach(0..<4, id: \.self) { i in
                 Button {
                     Log.line("panel: row \(i) clicked — \(focusDescription())")
