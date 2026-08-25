@@ -13,7 +13,7 @@ The audio captured in one continuous run from start to stop, saved automatically
 _Avoid_: Take, clip, session, capture
 
 **Seam**:
-A stretch of silence inside a Recording where capture was interrupted and rebuilt. It keeps the Recording's place against the clock, so everything after it still sits where it was heard.
+A stretch of silence inside a Recording standing in for audio that never reached it — because capture was interrupted and rebuilt, or because a moment's audio was dropped under load. It keeps the Recording's place against the clock, so everything after it still sits where it was heard, and a Recording that has one says so.
 _Avoid_: Gap, glitch, dropout, discontinuity
 
 **Library**:
