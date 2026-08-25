@@ -356,8 +356,9 @@ struct TrimTimeline: View {
 /// Every keyboard route into the timeline lives here rather than on `.onKeyPress`, because
 /// `.onKeyPress` needs the view to hold focus and a plain `.focusable()` custom view on
 /// macOS only enters the Tab loop under Full Keyboard Access. Measured, not assumed: the
-/// first pass put zoom on `.onKeyPress` and no key ever arrived. #21 owns whether an
-/// app-level monitor is an acceptable answer for assistive use, or only a prototype's.
+/// first pass put zoom on `.onKeyPress` and no key ever arrived. This is the shipping
+/// answer, not a prototype's: #21 closed as a scope boundary, so there is no assistive
+/// story to weigh the monitor against.
 @MainActor
 enum TimelineKeys {
     /// Returns true if the event was consumed.
