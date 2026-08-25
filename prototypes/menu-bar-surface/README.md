@@ -236,8 +236,11 @@ Each disagrees with the others about something real:
 
 - **Pause and resume** — still fog on the map, and it would change every variant's
   recording state.
-- **A global keyboard shortcut**, also still fog. It is the other way to make stop one
-  click, and it would weaken K's case considerably. Worth saying out loud before choosing.
+- **A global start/stop shortcut** — the other way to make stop one click, and the one that
+  would have weakened K's case considerably. It was fog on the map when this probe was
+  written; it is now **out of scope**, ruled out with
+  [#21](https://github.com/SamWongML/macos-audio-recording/issues/21) along with every other
+  keyboard route to the item, so K's case no longer has a rival.
 - **What happens when the Source quits mid-Recording** — that is
   [#13](https://github.com/SamWongML/macos-audio-recording/issues/13), and
   [#18](https://github.com/SamWongML/macos-audio-recording/issues/18) owns what a degraded
