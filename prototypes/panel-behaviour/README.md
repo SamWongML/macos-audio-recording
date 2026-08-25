@@ -9,8 +9,7 @@ Reading the macOS 27 SDK first turned up something the ADR did not know about:
 `API_AVAILABLE(macos(27.0))`, in a header dated 2026. Its comment describes our case verbatim
 — *"status items which do not use an `NSMenu` but instead position other windows ('expanded
 interface') relative to the item"* — and promises that adopting it *"allows the status item to
-participate in keyboard navigation and menu tracking behaviors"*: precisely the two things
-ADR-0004 forfeited, and precisely what issue #21 exists to recover.
+participate in ... menu tracking behaviors"*: precisely what ADR-0004 forfeited.
 
 The same paragraph carries the price: *"This method should be used instead of manually
 toggling your interface by target/action handling on the button or item."* Target/action on
@@ -59,8 +58,6 @@ stated activation cost is not paid on this path. And the panel is really key: ty
 - **Escape does not end a session.** Twelve presses across three live sessions in run 1, more in
   run 2, zero endings; every session-end in either log traces to an outside click or to the
   probe's own `cancel()`.
-- **Control+F8 never reached the item**, with the delegate on *or* off, in both runs. The
-  menu-bar keyboard route — the one reason the left-click was worth paying — did not appear.
 
 So `NSStatusItemExpandedInterfaceDelegate` costs the gesture ADR-0004 exists to protect and
 returns only what variant K already does by hand, while *losing* two dismissal gestures.
@@ -87,7 +84,8 @@ reported the same `x`. Any anchor has to check the frame is non-empty *and* insi
 
 **Arrow keys do nothing on a freshly-opened panel.** Focus moves between rows only after
 something inside the panel has been clicked — on *both* paths, so it is not the session's
-fault and not the session's to fix. That belongs to issue #21.
+fault and not the session's to fix. Improving on it is **out of scope**, ruled out with issue
+#21.
 
 **The delegate can be set and cleared at runtime** and takes effect on the very next click;
 cleared mid-session, the left-click action fired immediately with the session still live. A
@@ -102,6 +100,13 @@ opened the panel.
 
 Run 1 shared a single `NSPopover` between S and T, which made "the session ended" ambiguous
 whenever a T click had already closed S's panel by hand; run 2 gives each item its own popover
-and is the one to trust on ordering. Control+F8 is reported here as *not reproduced on this
-machine across two runs* — the system shortcut can be disabled in Settings, which was not
-independently verified.
+and is the one to trust on ordering.
+
+**A negative result this probe reported has since been retracted.** It recorded Control+F8 as
+never reaching the item across both runs, and flagged that the system shortcut might simply be
+disabled. It was not disabled — hotkey ids 7 / 8 / 57 are absent from
+`com.apple.symbolichotkeys.plist`, so they sit at the system default — but
+`com.apple.keyboard.fnState` is unset too, so this machine's F-keys are media keys and the
+chord actually needed was **Fn+Control+F8**. The finding is moot now that issue #21 has ruled
+every keyboard route out of scope, but it should not be cited as evidence that no such route
+exists.
