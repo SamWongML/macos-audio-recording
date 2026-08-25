@@ -1,0 +1,449 @@
+[  0.001] --- probe start ---
+[  0.001] launch: isActive=false activationPolicy=1
+[  1.606] geometry placed: S visible=true button=yes window=[1380,1050 29x30] intersectsAScreen=true
+[  1.607] geometry placed: T visible=true button=yes window=[1313,1050 29x30] intersectsAScreen=true
+[  1.608] geometry placed: D visible=true button=yes window=[1264,1050 49x30] intersectsAScreen=true
+[  1.608] geometry placed: screen 0 frame=1920x1080 visible=976 safeAreaTop=0.0 auxTop=nil/nil
+[  1.608] geometry placed: statusBar thickness=22.0
+[548.058] S: didBeginExpandedInterfaceSession — event=5(type5) mods=65536 clicks=-
+[548.164] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[548.164] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[548.170] panel: SwiftUI focus moved to row 0
+[548.531] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[549.981] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[550.022] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[550.023] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[550.026] panel: SwiftUI focus moved to row 0
+[550.062] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[550.062] popoverDidClose: cancelling live session
+[550.062] S: statusItemDidEndExpandedInterfaceSession animated=false — event=21(type21) mods=0 clicks=-
+[550.389] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[550.546] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[551.752] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[551.752] T: closing (was shown)
+[551.846] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[552.683] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[552.704] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[552.705] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[553.071] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[553.213] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[554.512] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[554.531] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[555.349] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[556.020] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[556.933] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[557.745] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[558.820] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[571.135] S: didBeginExpandedInterfaceSession — event=5(type5) mods=65536 clicks=-
+[571.156] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[571.157] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[571.524] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[574.099] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=live delegate=set
+[574.758] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=live delegate=set
+[580.404] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=live delegate=set
+[586.944] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[586.967] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[586.968] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[586.985] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[586.985] popoverDidClose: cancelling live session
+[586.985] S: statusItemDidEndExpandedInterfaceSession animated=false — event=2(leftMouseUp) mods=0 clicks=1
+[587.332] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[587.479] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[588.096] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[604.168] S: didBeginExpandedInterfaceSession — event=5(type5) mods=65536 clicks=-
+[604.187] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[604.188] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[604.555] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[605.027] panel: SwiftUI focus moved to row none
+[605.959] local keyDown: keyCode=0 chars="a" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[605.988] panel: text field received "a" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[605.989] panel: text field received "a" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[606.856] local keyDown: keyCode=11 chars="b" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[606.869] panel: text field received "ab" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[606.872] panel: text field received "ab" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[606.915] local keyDown: keyCode=1 chars="s" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[606.918] panel: text field received "abs" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[606.920] panel: text field received "abs" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[608.780] local keyDown: keyCode=51 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[608.794] panel: text field received "ab" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[608.797] panel: text field received "ab" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[608.913] local keyDown: keyCode=8 chars="c" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[608.920] panel: text field received "abc" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[608.924] panel: text field received "abc" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[612.932] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[612.945] panel: SwiftUI focus moved to row 0
+[613.517] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[613.534] panel: SwiftUI focus moved to row 1
+[613.877] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[613.892] panel: SwiftUI focus moved to row 2
+[614.042] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[614.054] panel: SwiftUI focus moved to row 3
+[614.296] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[614.304] panel: SwiftUI focus moved to row none
+[614.830] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[614.849] panel: SwiftUI focus moved to row 0
+[615.076] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[615.087] panel: SwiftUI focus moved to row 1
+[621.902] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[621.918] panel: SwiftUI focus moved to row 2
+[622.113] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[622.125] panel: SwiftUI focus moved to row 3
+[624.049] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[624.059] panel: SwiftUI focus moved to row none
+[625.880] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[625.896] panel: SwiftUI focus moved to row 0
+[626.477] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[626.490] panel: SwiftUI focus moved to row 1
+[626.733] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[626.746] panel: SwiftUI focus moved to row 2
+[636.973] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[636.990] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[636.991] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[637.015] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[637.016] popoverDidClose: cancelling live session
+[637.016] S: statusItemDidEndExpandedInterfaceSession animated=false — event=21(type21) mods=0 clicks=-
+[637.356] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[637.513] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[637.824] S: didBeginExpandedInterfaceSession — event=5(type5) mods=0 clicks=-
+[637.852] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[637.852] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[638.218] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[638.357] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[638.358] panel: SwiftUI saw Escape
+[638.396] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[638.397] popoverDidClose: cancelling live session
+[638.404] S: statusItemDidEndExpandedInterfaceSession animated=true — event=10(keyDown) mods=0 clicks=-
+[638.930] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[639.381] S: didBeginExpandedInterfaceSession — event=11(keyUp) mods=0 clicks=-
+[639.401] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[639.402] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[639.768] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[640.025] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[640.027] panel: SwiftUI saw Escape
+[640.680] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[640.682] panel: SwiftUI saw Escape
+[641.584] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[641.585] panel: SwiftUI saw Escape
+[642.147] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[642.154] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[642.154] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[642.174] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[642.174] popoverDidClose: cancelling live session
+[642.174] S: statusItemDidEndExpandedInterfaceSession animated=false — event=21(type21) mods=0 clicks=-
+[642.521] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[642.663] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[642.942] S: didBeginExpandedInterfaceSession — event=5(type5) mods=0 clicks=-
+[642.971] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[642.971] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[643.339] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[643.419] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[643.420] panel: SwiftUI saw Escape
+[643.513] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[643.514] popoverDidClose: cancelling live session
+[643.522] S: statusItemDidEndExpandedInterfaceSession animated=true — event=11(keyUp) mods=0 clicks=-
+[644.046] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[644.567] S: didBeginExpandedInterfaceSession — event=5(type5) mods=0 clicks=-
+[644.589] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[644.589] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[644.871] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[644.874] panel: SwiftUI saw Escape
+[644.956] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[645.330] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[645.331] panel: SwiftUI saw Escape
+[645.513] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[645.514] panel: SwiftUI saw Escape
+[645.680] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[645.681] panel: SwiftUI saw Escape
+[648.423] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[648.423] panel: SwiftUI saw Escape
+[648.763] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[648.765] panel: SwiftUI saw Escape
+[648.913] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[648.915] panel: SwiftUI saw Escape
+[651.013] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[651.515] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[651.536] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[651.536] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[651.903] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[652.046] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[652.236] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[652.780] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[652.781] popoverDidClose: cancelling live session
+[652.792] S: statusItemDidEndExpandedInterfaceSession animated=true — event=5(type5) mods=0 clicks=-
+[653.330] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[664.624] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[670.438] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[670.455] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[670.456] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[670.823] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[670.963] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[670.996] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[671.530] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[671.827] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[671.853] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[671.855] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[672.221] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[672.363] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[672.400] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[672.930] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[673.273] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[673.296] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[673.298] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[673.663] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[673.813] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[678.414] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[678.463] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[679.032] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[679.059] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[679.061] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[679.428] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[679.580] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[680.130] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[680.157] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[680.174] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[680.175] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[680.542] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[680.630] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[680.640] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[681.180] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[681.276] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[681.292] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[681.293] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[681.656] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[681.797] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[681.971] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[682.513] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[682.536] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[682.554] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[682.555] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[682.922] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[683.063] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[683.644] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[684.180] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[685.034] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[685.056] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[685.057] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[685.405] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[685.416] popover settled — active=false key=none main=none firstResponder=none popoverWindow=_NSPopoverWindow key=false canBecomeKey=true level=25
+[685.925] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[685.947] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[686.826] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[686.850] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[686.852] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[687.218] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[687.363] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[687.914] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[702.022] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[702.049] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[702.050] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[702.415] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[702.563] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[705.698] local keyDown: keyCode=100 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[712.598] local keyDown: keyCode=100 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[713.171] local keyDown: keyCode=100 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[713.378] local keyDown: keyCode=100 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[713.755] local keyDown: keyCode=100 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[714.010] local keyDown: keyCode=100 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[735.280] local keyDown: keyCode=36 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[735.287] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[735.831] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[741.121] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[742.254] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[742.274] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[742.275] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[742.640] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[742.781] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[750.045] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[750.070] panel: SwiftUI focus moved to row 3
+[750.249] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[750.271] panel: SwiftUI focus moved to row none
+[750.431] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[750.448] panel: SwiftUI focus moved to row 0
+[750.564] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[750.577] panel: SwiftUI focus moved to row 1
+[750.716] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[750.735] panel: SwiftUI focus moved to row 2
+[751.287] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[751.306] panel: SwiftUI focus moved to row 3
+[751.464] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[751.477] panel: SwiftUI focus moved to row none
+[752.064] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[752.597] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[830.143] S: didBeginExpandedInterfaceSession — event=5(type5) mods=0 clicks=-
+[830.188] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[830.189] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[830.459] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=live delegate=set
+[830.549] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[831.551] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=live delegate=set
+[832.332] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=live delegate=set
+[832.870] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[833.832] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=live delegate=nil
+[834.221] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[834.365] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[834.366] popoverDidClose: cancelling live session
+[834.871] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[834.901] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[834.902] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[835.268] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[835.337] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[835.772] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[835.881] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[836.369] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[836.396] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[836.397] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[836.764] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[836.897] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[836.927] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[837.465] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[837.494] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[837.512] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[837.513] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[837.881] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[838.031] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[838.071] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[838.598] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[843.786] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[854.854] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[855.832] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[855.853] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[855.854] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[856.218] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[856.335] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[856.783] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[856.881] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[857.361] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[857.385] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[857.387] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[857.751] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[857.898] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[858.581] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[867.874] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[867.891] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[867.892] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[868.257] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[868.346] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[868.881] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[869.498] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[869.517] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[869.518] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[869.883] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[870.031] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[870.631] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[871.593] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[872.837] S: didBeginExpandedInterfaceSession — event=5(type5) mods=0 clicks=-
+[872.859] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[872.860] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[873.227] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[887.062] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[887.760] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=live delegate=nil
+[888.282] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[888.283] popoverDidClose: cancelling live session
+[888.369] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[888.413] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[888.414] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[888.781] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[888.854] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[888.862] S: target/action FIRED — event=4(rightMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[889.399] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[892.593] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[892.615] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[892.617] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[892.984] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[893.132] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[893.406] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[893.425] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[893.426] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[893.791] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[893.932] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[893.948] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[894.720] T: target/action fired — event=4(rightMouseUp) mods=0 clicks=1
+[894.720] T: closing (was shown)
+[895.117] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[895.118] T: closing (was shown)
+[895.265] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[895.695] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[895.709] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[895.710] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[896.075] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[896.215] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[896.682] T: target/action fired — event=2(leftMouseUp) mods=0 clicks=1
+[896.682] T: closing (was shown)
+[896.781] popoverDidClose[T] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[897.441] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=nil delegate=nil
+[897.463] popover shown behavior=1 activate=true — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[897.464] popover after NSApp.activate() — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[897.831] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[897.982] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[906.483] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[906.504] panel: SwiftUI focus moved to row 0
+[906.699] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[906.722] panel: SwiftUI focus moved to row 1
+[906.965] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[906.988] panel: SwiftUI focus moved to row 2
+[907.132] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[907.157] panel: SwiftUI focus moved to row 3
+[907.656] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[908.182] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[908.921] S: didBeginExpandedInterfaceSession — event=5(type5) mods=0 clicks=-
+[908.940] popoverDidShow — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[908.940] popover shown behavior=0 activate=false — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[909.308] popover settled — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy popoverWindow=_NSPopoverWindow key=true canBecomeKey=true level=25
+[909.461] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[909.499] panel: SwiftUI focus moved to row none
+[909.656] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[909.670] panel: SwiftUI focus moved to row 0
+[909.848] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[909.861] panel: SwiftUI focus moved to row 1
+[910.015] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[910.038] panel: SwiftUI focus moved to row 2
+[910.182] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[910.203] panel: SwiftUI focus moved to row 3
+[910.843] panel: SwiftUI focus moved to row none
+[911.632] local keyDown: keyCode=48 chars="	" — active=true key=_NSPopoverWindow title="" main=none firstResponder=_SystemTextFieldFieldEditor
+[911.644] panel: SwiftUI focus moved to row 0
+[913.580] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[916.549] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[916.551] panel: SwiftUI saw Escape
+[917.032] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[917.033] panel: SwiftUI saw Escape
+[917.379] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[917.380] panel: SwiftUI saw Escape
+[917.857] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[917.857] panel: SwiftUI saw Escape
+[918.023] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[918.024] panel: SwiftUI saw Escape
+[918.205] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[918.206] panel: SwiftUI saw Escape
+[918.382] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[918.383] panel: SwiftUI saw Escape
+[918.865] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[918.866] panel: SwiftUI saw Escape
+[919.032] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[919.033] panel: SwiftUI saw Escape
+[919.334] D: S.expandedInterfaceDelegate now set — event=2(leftMouseUp) mods=0 clicks=1
+[920.245] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[920.248] panel: SwiftUI saw Escape
+[920.424] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[920.426] panel: SwiftUI saw Escape
+[920.603] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[920.604] panel: SwiftUI saw Escape
+[920.768] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[920.769] panel: SwiftUI saw Escape
+[920.948] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[920.949] panel: SwiftUI saw Escape
+[921.148] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[921.149] panel: SwiftUI saw Escape
+[921.309] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[921.311] panel: SwiftUI saw Escape
+[921.499] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[921.500] panel: SwiftUI saw Escape
+[921.716] D: S.expandedInterfaceDelegate now nil — event=2(leftMouseUp) mods=0 clicks=1
+[922.984] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[922.985] panel: SwiftUI saw Escape
+[923.132] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[923.134] panel: SwiftUI saw Escape
+[923.299] local keyDown: keyCode=53 chars="" — active=true key=_NSPopoverWindow title="" main=none firstResponder=KeyViewProxy
+[923.301] panel: SwiftUI saw Escape
+[924.215] S: target/action FIRED — event=2(leftMouseUp) mods=0 clicks=1 session=live delegate=nil
+[924.749] popoverDidClose[S] reason=NSPopoverCloseReasonStandard — active=false key=none main=none firstResponder=none
+[924.749] popoverDidClose: cancelling live session
