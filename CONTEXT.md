@@ -32,6 +32,10 @@ _Avoid_: Save, render, bounce, share
 A named audio-quality setting offered at Export. The quality it names is what determines how large the exported file will be, so choosing a Quality Preset is how the size is chosen — but that size is only ever estimated, never promised.
 _Avoid_: Profile, format, bitrate setting
 
+**Runway**:
+How much longer a Recording could keep capturing before the disk runs short and the app stops it. Always spoken as a length of time, never as free bytes, because the time is what the user can act on.
+_Avoid_: Headroom (that means dB below the ceiling), free space, disk space, capacity
+
 **Loudness**:
 How loud a Recording sounds over time, measured to a modern standard rather than read off its peaks. Exporting can correct it to a fixed target, so Recordings captured from different Sources play back at the same level.
 _Avoid_: Volume, level, amplitude, loudness units
