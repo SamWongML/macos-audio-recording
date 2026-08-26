@@ -43,3 +43,11 @@ _Avoid_: Volume, level, amplitude, loudness units
 **Gain**:
 A level offset, in decibels, chosen by hand for one Recording. It applies on top of any Loudness correction and, like Trim, never alters the Recording itself.
 _Avoid_: Volume, boost, makeup, adjustment
+
+**Ceiling**:
+The highest true peak an Export lets the audio reach while correcting Loudness. The correction is a fixed gain that clamps here rather than limiting, so touching the Ceiling stops it short of the loudness target instead of reshaping the sound.
+_Avoid_: Limit, clip point, headroom
+
+**Amplification cap**:
+The largest boost a Loudness correction will apply, so a very quiet, noisy Recording is left below the target rather than having its noise floor lifted into audibility. Quietening a loud Recording has no equivalent limit.
+_Avoid_: Gain (that is the manual offset), limit, ceiling
