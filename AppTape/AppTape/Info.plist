@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Launch as a pure menu-bar utility: no Dock icon, no app-switcher entry,
+	     no menu bar at rest (ADR-0017). The app flips to .regular in code while
+	     the editor window is open. -->
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>AppTape records the audio of the app you choose, so you can trim and export it.</string>
 </dict>
