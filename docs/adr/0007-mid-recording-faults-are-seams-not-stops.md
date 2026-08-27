@@ -65,9 +65,12 @@ arriving, all zero. It is handled as the generic no-audio case, and the question
 aggregate's *time source* per `AudioHardware.h:1584` — which makes losing that device a fault to
 recover from. A tap-only aggregate makes output device changes structurally a non-event instead, and
 the spike's own composition hints it already works, since its sub-device list was empty and the named
-master was not a member of it. That hint is not proof; issue #34 verifies it, and the fallback if it
-fails is to listen on `kAudioHardwarePropertyDefaultOutputDevice` and rebuild on change, which this
-ADR's seam machinery already covers.
+master was not a member of it. That hint is not proof, but the decision stands either way — the
+fallback, if the tap-only aggregate does not survive a device change, is to listen on
+`kAudioHardwarePropertyDefaultOutputDevice` and rebuild on change, which this ADR's seam machinery
+already covers. Since nothing on the map turns on which branch ships, the tap-only aggregate is the
+default and is smoke-tested when the capture path is built; issue #34 was closed as build-time
+verification rather than a map decision.
 
 **Detection is not settled here.** This ADR fixes the policy and the complete list of events that
 must be detected; how each is detected, how fast, what the user sees at the moment it happens, and
