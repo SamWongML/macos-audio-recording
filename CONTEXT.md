@@ -9,7 +9,7 @@ The single running application whose audio is captured. Chosen once and remember
 _Avoid_: Target, input, device, channel
 
 **Recording**:
-The audio captured in one continuous run from start to stop, saved automatically. An audio file the user places in the Library by hand is adopted as a Recording too and behaves identically — listed, played, Trimmed, Exported — except that which Quality Presets are available depends on the file's own format, since the app never resamples or downmixes audio it did not capture.
+The audio captured in one continuous run from start to stop, saved automatically. Its content begins at the first sound the Source produces, not at the moment recording was started, so silence before playback is never part of it — and if the Source never makes a sound, no Recording is saved. An audio file the user places in the Library by hand is adopted as a Recording too and behaves identically — listed, played, Trimmed, Exported — except that which Quality Presets are available depends on the file's own format, since the app never resamples or downmixes audio it did not capture.
 _Avoid_: Take, clip, session, capture
 
 **Seam**:
