@@ -13,8 +13,9 @@ import SwiftUI
 /// (ADR-0004), and so must hand-roll each thing `MenuBarExtra` did for free
 /// (ADR-0011): the popover and its lifecycle, `.transient` dismissal, an
 /// app-owned Escape, `NSApp.activate()`, and anchoring that treats the button's
-/// frame as a claim to be checked. The glyph is a static placeholder here; the
-/// live recording transport is designed in issue #8.
+/// frame as a claim to be checked. Intercepting the click is what buys the
+/// one-click stop: while a Recording runs the item itself becomes red `● MM:SS`
+/// and a left-click stops it, with the panel a right-click away (issue #8).
 @MainActor
 final class MenuBarController: NSObject, NSPopoverDelegate {
     private var statusItem: NSStatusItem?
@@ -30,25 +31,114 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// button's frame is unusable. Kept alive only while such a popover is open.
     private var fallbackAnchorWindow: NSWindow?
 
+    /// Whether the observation re-arm loop that keeps the recording clock live is
+    /// running. `withObservationTracking` fires once, so it re-arms itself.
+    private var observingRecorder = false
+
+    /// The red recording dot, rendered once. It never changes, so it is not rebuilt
+    /// on every tick (only the time title is).
+    private lazy var recordingDot: NSImage = Self.makeRecordingDot()
+    private lazy var idleGlyph: NSImage = Self.makeIdleGlyph()
+
+    private var recorder: RecordingController { .shared }
+
     /// Installs the status item. Idempotent.
     func install() {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            let glyph = NSImage(systemSymbolName: "waveform", accessibilityDescription: "AppTape")
-            glyph?.isTemplate = true
-            button.image = glyph
             button.target = self
             button.action = #selector(statusItemClicked)
-            // Both edges so either click opens the panel (ADR-0004); a plain
-            // action fires on left-mouse-up only.
+            // Both edges so either click reaches us (ADR-0004): a left-click while
+            // recording is Stop, and a plain action fires on left-mouse-up only.
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         statusItem = item
+        refreshStatusItem()
+        startObservingRecorder()
     }
 
     @objc private func statusItemClicked() {
+        let isRightClick = NSApp.currentEvent.map {
+            $0.type == .rightMouseUp || $0.modifierFlags.contains(.control)
+        } ?? false
+        // The one-click stop: a left-click while recording finalizes and opens the
+        // editor (issue #8, ADR-0016). The panel is reached with a right-click while
+        // recording, and with either click at rest.
+        if recorder.isRecording && !isRightClick {
+            recorder.stop()
+            return
+        }
         togglePanel()
+    }
+
+    // MARK: - Status item rendering
+
+    /// Draws the item for the current state: red `● MM:SS` while recording — a
+    /// pre-rendered non-template dot plus a monospaced attributed title, because a
+    /// status-bar button ignores `contentTintColor` and repaints template images in the
+    /// bar's own colour, so the red must arrive baked in (issue #8). At rest, a plain
+    /// template waveform the menu bar tints for light/dark itself. The title sits at
+    /// `00:00` until the first sound, since it reads master duration (ADR-0016).
+    private func refreshStatusItem() {
+        guard let button = statusItem?.button else { return }
+        if recorder.isRecording {
+            button.image = recordingDot
+            button.attributedTitle = NSAttributedString(
+                string: " " + recorder.elapsedText,
+                attributes: [
+                    .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
+                    .foregroundColor: NSColor.systemRed,
+                ])
+            button.toolTip = "Recording — click to stop, right-click for the panel"
+        } else {
+            button.image = idleGlyph
+            button.attributedTitle = NSAttributedString(string: "")
+            button.toolTip = "AppTape"
+        }
+    }
+
+    /// `@Observable` reaches AppKit through `withObservationTracking`, whose callback
+    /// fires exactly once — so it re-arms after every change (the pattern issue #8
+    /// settled). Reading `elapsed` keeps the clock ticking while the panel is closed.
+    private func startObservingRecorder() {
+        guard !observingRecorder else { return }
+        observingRecorder = true
+        trackRecorder()
+    }
+
+    private func trackRecorder() {
+        withObservationTracking {
+            _ = recorder.isRecording
+            _ = recorder.elapsed
+        } onChange: { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                guard self.statusItem != nil else { return }
+                self.refreshStatusItem()
+                self.trackRecorder()
+            }
+        }
+    }
+
+    private static func makeRecordingDot() -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
+        guard let base = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Recording")?
+            .withSymbolConfiguration(config) else { return NSImage(size: NSSize(width: 10, height: 10)) }
+        let dot = NSImage(size: base.size, flipped: false) { rect in
+            base.draw(in: rect)
+            NSColor.systemRed.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        dot.isTemplate = false   // template would repaint it in the bar's colour, losing the red
+        return dot
+    }
+
+    private static func makeIdleGlyph() -> NSImage {
+        let glyph = NSImage(systemSymbolName: "waveform", accessibilityDescription: "AppTape")
+        glyph?.isTemplate = true
+        return glyph ?? NSImage(size: NSSize(width: 16, height: 16))
     }
 
     // MARK: - Panel
@@ -100,7 +190,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         // bar — so it would effectively never close (ADR-0011).
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentViewController = NSHostingController(rootView: PanelView())
+        let panel = PanelView(dismiss: { [weak self] in self?.popover?.performClose(nil) })
+        popover.contentViewController = NSHostingController(rootView: panel)
         return popover
     }
 

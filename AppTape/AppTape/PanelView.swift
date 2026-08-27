@@ -3,50 +3,154 @@
 //  AppTape
 //
 
+import Combine
 import SwiftUI
 
-/// Placeholder contents for the hand-rolled panel. The real transport surface —
-/// a list of applications where the row itself is the record control — is
-/// designed in issue #8.
+/// The hand-rolled panel's transport surface: the list *is* the panel and a row *is* the
+/// record control — no button chrome (issue #6, variant H). Pressing a Source aims the tap
+/// at its helper processes and starts a Recording; while one runs, the row shows it, and the
+/// one-click stop lives on the status item itself (issue #8).
 struct PanelView: View {
+    /// Closes the popover — handed in by the `MenuBarController` that owns it.
+    var dismiss: () -> Void
+
     @Environment(\.openWindow) private var openWindow
-    @State private var scratch = ""
+    @State private var model = SourceModel()
+    private var recorder: RecordingController { .shared }
+    private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("AppTape")
-                .font(.headline)
-            Text("The transport surface lands here.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider()
+            sourceList
+            Divider()
+            footer
+        }
+        .frame(width: 280)
+        .onAppear {
+            // Capture the SwiftUI open-window action so a status-item stop-click can open the
+            // editor from AppKit (EditorPresenter).
+            EditorPresenter.shared.bind(openWindow)
+            model.refresh()
+        }
+        .onReceive(tick) { _ in model.refresh() }
+        // An unrelated key handler, exactly the kind a real control adds: it silently takes
+        // the popover's free Escape away (ADR-0011), which is why the app owns Escape in
+        // MenuBarController. Kept to hold that guarantee honest as the panel grows.
+        .onKeyPress(.space) { .ignored }
+    }
 
-            // A live control proves the panel came up active: a text field can
-            // only take keystrokes if `NSApp.activate()` made the popover key.
-            TextField("Scratch", text: $scratch)
-                .textFieldStyle(.roundedBorder)
+    // MARK: - Header
 
-            // The route out to the editor. Opening the suppressed `Window` is
-            // what flips the app to `.regular` (ADR-0017). `openWindow` resolves
-            // here because this is a SwiftUI view, even though the popover hosts
-            // it through an `NSHostingController`.
-            Button("Open Editor") {
-                openWindow(id: AppTapeApp.editorWindowID)
+    @ViewBuilder private var header: some View {
+        if recorder.isRecording {
+            HStack(spacing: 8) {
+                Circle().fill(.red).frame(width: 9, height: 9)
+                Text(recordingName)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                Spacer()
+                Text(recorder.elapsedText)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        } else {
+            Text("Record")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+        }
+    }
 
-            Button("Quit AppTape") {
-                NSApplication.shared.terminate(nil)
+    private var recordingName: String {
+        model.sources.first { $0.bundleID == recorder.recordingSourceID }?.name ?? "Recording"
+    }
+
+    // MARK: - Source list
+
+    private var sourceList: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                if model.sources.isEmpty {
+                    Text("No applications running.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                } else {
+                    ForEach(model.sources) { source in
+                        // A Source with no HAL clients yet cannot be aimed at by object ID, so
+                        // pressing it could do nothing. Show it dimmed and inert rather than
+                        // swallow the press silently.
+                        let capturable = !source.processObjectIDs.isEmpty
+                        SourceRow(source: source, icon: model.icon(for: source))
+                            .opacity(capturable ? 1 : 0.4)
+                            .contentShape(Rectangle())
+                            .onTapGesture { if capturable { pick(source) } }
+                        Divider().padding(.leading, 44)
+                    }
+                }
             }
         }
-        .padding(16)
-        .frame(width: 260)
-        // An unrelated key handler, exactly the kind a future control adds. It
-        // silently takes the popover's free Escape away (ADR-0011) — which is
-        // why Escape is owned by the app's own monitor, and why this is here: to
-        // keep that guarantee honest as the panel grows real controls.
-        .onKeyPress(.space) { .ignored }
+        .frame(maxHeight: 320)
+    }
+
+    /// While recording, the transport is busy: a press cannot start a second Recording (one
+    /// Source at a time), so rows are inert until stop.
+    private func pick(_ source: Source) {
+        guard !recorder.isRecording else { return }
+        recorder.start(source)
+        dismiss()
+    }
+
+    // MARK: - Footer
+
+    private var footer: some View {
+        HStack {
+            Button("Open Editor") { openWindow(id: AppTapeApp.editorWindowID) }
+                .buttonStyle(.link)
+            Spacer()
+            Button("Quit") { NSApplication.shared.terminate(nil) }
+                .buttonStyle(.link)
+        }
+        .font(.callout)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 }
 
-#Preview {
-    PanelView()
+/// One Source in the list: icon, name, and — when it is pushing audio out — a small dot, the
+/// only signal the panel gives that a press will actually catch something (issue #6).
+private struct SourceRow: View {
+    let source: Source
+    let icon: NSImage?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Group {
+                if let icon { Image(nsImage: icon).resizable() }
+                else { Image(systemName: "app.dashed").resizable() }
+            }
+            .frame(width: 22, height: 22)
+
+            Text(source.name)
+                .font(.callout)
+                .lineLimit(1)
+
+            Spacer()
+
+            if source.isPlaying {
+                Image(systemName: "speaker.wave.2.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+    }
 }
