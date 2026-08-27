@@ -35,6 +35,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// running. `withObservationTracking` fires once, so it re-arms itself.
     private var observingRecorder = false
 
+    /// Last-seen recovery flag, so the panel is auto-raised only on the transition into a
+    /// denial — the user pressed record and nothing recorded, so the fix must find them rather
+    /// than wait behind a closed popover (ADR-0008).
+    private var lastPermissionRecovery = false
+
     /// The red recording dot, rendered once. It never changes, so it is not rebuilt
     /// on every tick (only the time title is).
     private lazy var recordingDot: NSImage = Self.makeRecordingDot()
@@ -111,14 +116,25 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         withObservationTracking {
             _ = recorder.isRecording
             _ = recorder.elapsed
+            _ = recorder.permissionRecovery
         } onChange: { [weak self] in
             guard let self else { return }
             Task { @MainActor in
                 guard self.statusItem != nil else { return }
                 self.refreshStatusItem()
+                self.raisePanelOnRecovery()
                 self.trackRecorder()
             }
         }
+    }
+
+    /// Raise the panel the moment a denial is inferred, so its recovery banner reaches the user
+    /// who just pressed record (ADR-0008). Only on the transition into recovery, and only if the
+    /// panel is not already up, so it is not re-shown on every tick while the flag stands.
+    private func raisePanelOnRecovery() {
+        defer { lastPermissionRecovery = recorder.permissionRecovery }
+        guard recorder.permissionRecovery, !lastPermissionRecovery else { return }
+        if popover?.isShown != true { showPanel() }
     }
 
     private static func makeRecordingDot() -> NSImage {

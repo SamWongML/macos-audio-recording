@@ -33,11 +33,22 @@ final class CaptureEngine: @unchecked Sendable {
     private let sourceName: String
     private let startDate: Date
 
+    /// The Source's HAL client objects, kept for the writer thread's
+    /// `kAudioProcessPropertyIsRunningOutput` reads while the denial detector is armed.
+    private let processObjectIDs: [AudioObjectID]
+
     private let tap: ProcessTap
     private var writerThread: Thread?
     private let running = Atomic<Bool>(true)
     private let finished = DispatchSemaphore(value: 0)
     private var activityToken: (any NSObjectProtocol)?
+
+    /// Invoked at most once, from the writer thread, when a denied grant is inferred (ADR-0008).
+    /// Passed in at init so it is set before the writer thread starts (no cross-thread race) and
+    /// never written again. It hops to the main actor and tears the engine down via `discard()`;
+    /// it must not call back synchronously into the engine, which would deadlock the writer thread
+    /// against its own `finished` wait.
+    private let onDenialInferred: (@Sendable () -> Void)?
 
     /// Master frames committed so far, published by the writer thread for the main-thread
     /// timer. Sits at 0 through the armed window, so the timer reads `00:00` until the first
@@ -49,13 +60,18 @@ final class CaptureEngine: @unchecked Sendable {
     // Writer-thread-only state. Reached by the main thread only after `finished` is signalled.
     private var reducer = CaptureReducer()
     private var writer: CAFMasterWriter?
+    private var denial = DenialDetector()
 
     /// Arms capture: holds the idle-sleep token, creates and starts the tap (blocking, may
     /// raise the TCC prompt — call off the main thread), and spins up the writer thread. No
     /// file yet: the master is created lazily at the first sound.
-    init(processObjectIDs: [AudioObjectID], sourceName: String) throws {
+    init(processObjectIDs: [AudioObjectID],
+         sourceName: String,
+         onDenialInferred: (@Sendable () -> Void)? = nil) throws {
         self.sourceName = sourceName
         self.startDate = Date()
+        self.processObjectIDs = processObjectIDs
+        self.onDenialInferred = onDenialInferred
 
         // Hold off the involuntary idle-sleep timer for the whole Recording (ADR-0014). The
         // system may still sleep for lid close, the Apple menu, or low battery — each an
@@ -86,6 +102,26 @@ final class CaptureEngine: @unchecked Sendable {
     /// lands here; the file it returns is already playable.
     @discardableResult
     func stop() -> CaptureResult? {
+        shutdown()
+        guard let writer, writer.framesWritten > 0 else { return nil }
+        return CaptureResult(url: writer.url, frameCount: Int(writer.framesWritten), sampleRate: sampleRate)
+    }
+
+    /// Ends the Recording as an inferred denial (ADR-0008): tears the tap down and **removes**
+    /// any file outright — `removeItem`, not `trashItem`, because a Recording that never held a
+    /// non-zero sample is not a Recording and putting pure silence in the Trash asks the user a
+    /// question about something they never made. Head elision (ADR-0016) means the master is not
+    /// created until the first sound, so a denied Recording has produced no file to remove — this
+    /// is the belt-and-braces that guarantees no all-zero file is ever left behind regardless.
+    func discard() {
+        shutdown()
+        if let writer { try? FileManager.default.removeItem(at: writer.url) }
+        writer = nil
+    }
+
+    /// Stops the tap, lets the writer drain the tail and finalize, and releases the sleep token.
+    /// Idempotent enough for either exit: `stop()` keeps the file, `discard()` removes it.
+    private func shutdown() {
         // Stop the tap first, so no new frames arrive while the writer drains the tail.
         tap.stop()
         running.store(false, ordering: .releasing)
@@ -93,9 +129,6 @@ final class CaptureEngine: @unchecked Sendable {
 
         if let activityToken { ProcessInfo.processInfo.endActivity(activityToken) }
         activityToken = nil
-
-        guard let writer, writer.framesWritten > 0 else { return nil }
-        return CaptureResult(url: writer.url, frameCount: Int(writer.framesWritten), sampleRate: sampleRate)
     }
 
     // MARK: - Writer thread
@@ -106,9 +139,22 @@ final class CaptureEngine: @unchecked Sendable {
         let scratchSamples = 16_384 * channels
         var scratch = [Float](repeating: 0, count: scratchSamples)
 
+        var lastDenialCheck: TimeInterval = 0
         while running.load(ordering: .acquiring) {
             if drainOnce(into: &scratch) == 0 {
                 usleep(5_000)   // 5 ms nap when the ring is empty — this thread may block
+            }
+            // Denial watch, active only through the arming window (before the first sound) and
+            // fired at most once. Throttled off the 5 ms loop so the HAL property read is not
+            // hammered; the 3 s threshold is coarse enough that ~10 Hz sampling is ample.
+            if !reducer.hasBegun && !denial.inferred {
+                let now = ProcessInfo.processInfo.systemUptime
+                if now - lastDenialCheck >= 0.1 {
+                    lastDenialCheck = now
+                    if denial.receive(hasBegun: false, isRunningOutput: anyRunningOutput(), now: now) {
+                        onDenialInferred?()
+                    }
+                }
             }
         }
         // Tap is stopped by now, so the ring only shrinks: drain whatever remains.
@@ -157,6 +203,18 @@ final class CaptureEngine: @unchecked Sendable {
             let slice = UnsafeBufferPointer(rebasing: ptr[start..<sampleCount])
             try? writer?.write(slice)
         }
+    }
+
+    /// Whether any of the Source's HAL clients reports output right now — the discriminator the
+    /// denial inference turns on (ADR-0008). A plain property read, done on this non-realtime
+    /// thread, never in the IOProc.
+    private func anyRunningOutput() -> Bool {
+        for object in processObjectIDs {
+            if (CAProperty.uint32(of: object, kAudioProcessPropertyIsRunningOutput) ?? 0) != 0 {
+                return true
+            }
+        }
+        return false
     }
 
     /// The first frame carrying any non-zero sample, or nil if the chunk is wholly silent.

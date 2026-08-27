@@ -3,6 +3,7 @@
 //  AppTape
 //
 
+import AppKit
 import Combine
 import SwiftUI
 
@@ -23,6 +24,7 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
+            recoveryBanner
             sourceList
             Divider()
             footer
@@ -69,6 +71,34 @@ struct PanelView: View {
 
     private var recordingName: String {
         model.sources.first { $0.bundleID == recorder.recordingSourceID }?.name ?? "Recording"
+    }
+
+    // MARK: - Recovery banner
+
+    /// Shown when a denied System Audio Recording grant was inferred (ADR-0008). It names
+    /// "System Audio Recording Only" — not the pane's own broader heading — and the deep-link
+    /// button lands on the audio-capture pane. Retry is not a button here: it is pressing record
+    /// again, which is where the copy sends the user.
+    @ViewBuilder private var recoveryBanner: some View {
+        if recorder.permissionRecovery {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(PermissionRecovery.title)
+                    .font(.callout.weight(.semibold))
+                Text(PermissionRecovery.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open System Settings") {
+                    if let url = PermissionRecovery.settingsURL { NSWorkspace.shared.open(url) }
+                }
+                .buttonStyle(.link)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color(nsColor: .controlBackgroundColor))
+            Divider()
+        }
     }
 
     // MARK: - Source list
