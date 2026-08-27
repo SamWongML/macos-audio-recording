@@ -117,12 +117,13 @@ final class RecordingController {
         self.engine = nil
         DispatchQueue.global(qos: .userInitiated).async {
             let result = engine.stop()
-            if result != nil {
+            if let result {
                 Task { @MainActor in
                     // The grant is now known good, so a later slow bring-up is a wedge to time
                     // out rather than a human at the prompt (ADR-0010).
                     self.hasCompletedACapture = true
-                    EditorPresenter.shared.open()
+                    // Open the editor on the Recording just finalized (ADR-0016).
+                    EditorPresenter.shared.open(selecting: result.url)
                 }
             }
         }
