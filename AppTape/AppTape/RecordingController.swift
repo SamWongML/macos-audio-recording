@@ -109,11 +109,19 @@ final class RecordingController {
                 self.capturingURL = url
             }
         }
+        // The Recording ended itself — recovery exhausted, a format mismatch, or a >30 s gap: one of
+        // the four unrequested ends (ADR-0010). The engine has already finalized the file; reclaim it
+        // and tell the user why, naming the reason and opening the editor on the notification's click.
+        let onEnded: @Sendable (RecordingEndReason) -> Void = { [weak self] reason in
+            guard let self else { return }
+            Task { @MainActor in self.finalize(reason: reason, generation: gen) }
+        }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let engine = try CaptureEngine(processObjectIDs: ids, sourceName: name,
                                                onDenialInferred: onDenial,
-                                               onMasterCreated: onMasterCreated)
+                                               onMasterCreated: onMasterCreated,
+                                               onEnded: onEnded)
                 Task { @MainActor in self.attach(engine, generation: gen) }
             } catch {
                 Task { @MainActor in self.abandon(generation: gen) }
@@ -121,33 +129,98 @@ final class RecordingController {
         }
     }
 
-    /// Stops and finalizes. The UI returns to idle at once, then the engine is torn down off
-    /// the main thread — `CaptureEngine.stop()` drains the ring and closes the file, which may
-    /// block, and the main thread is the one that must not (ADR-0003). The editor opens on the
-    /// Recording just made, once it is finalized — but only if there was one (arm-then-never-
-    /// play opens nothing, ADR-0016).
+    /// The user pressed stop. The UI returns to idle at once, then the engine is torn down off the
+    /// main thread — one of the two *requested* ends (ADR-0007). The editor opens on the Recording
+    /// just made, once finalized — but only if there was one (arm-then-never-play opens nothing).
     func stop() {
+        finalize(reason: .userStopped, generation: generation)
+    }
+
+    /// System sleep or fast user switching (folded together, ADR-0007): end the Recording **on the
+    /// notification**, while the machine is still awake, so the file is finalized at its last real
+    /// sample and there is no gap to reconcile — no Seam. One of the four unrequested ends, so it
+    /// names its reason.
+    func endForSleep() {
+        finalize(reason: .sleep, generation: generation)
+    }
+
+    /// App quit or logout: finalize and save unwarned, as ADR-0004 accepts for a left-click. A
+    /// requested end — no notification, no window. Unlike the other ends this finalizes
+    /// **synchronously on the main thread**, because the process is about to exit: the writer must
+    /// finish draining, close the CAF, and write the Seams xattr before `applicationWillTerminate`
+    /// returns. The CAF is crash-safe even if the OS kills us first (ADR-0003), but a synchronous
+    /// close also secures the Seam mark and the tail. No main hops happen inside a quit finalize
+    /// (`onEnded` fires only on a self-end), so blocking here cannot deadlock.
+    func endForQuit() {
         guard isRecording else { return }
         returnToIdle()
+        guard let engine else { return }
+        self.engine = nil
+        _ = engine.stop()
+    }
 
-        // Engine may still be building (a second click abandoned the attempt mid-bring-up):
-        // `attach` will orphan-stop it, and the bumped generation makes that certain. Only
-        // finalize one we actually hold.
+    /// The one finalization path every end funnels through (ADR-0007). Returns to idle at once, then
+    /// tears the engine down off the main thread — `stop()` drains the ring and closes the file,
+    /// which may block, and the main thread must not (ADR-0003). If the engine had already ended
+    /// itself on a fault, its own reason wins over the caller's.
+    private func finalize(reason: RecordingEndReason, generation gen: Int) {
+        guard gen == generation, isRecording else { return }
+        returnToIdle()
+
+        // Engine may still be building (a second click abandoned the attempt mid-bring-up): `attach`
+        // will orphan-stop it, and the bumped generation makes that certain. Only finalize one we hold.
         guard let engine else { return }
         self.engine = nil
         DispatchQueue.global(qos: .userInitiated).async {
             let result = engine.stop()
-            if let result {
-                Task { @MainActor in
-                    // The grant is now known good, so a later slow bring-up is a wedge to time
-                    // out rather than a human at the prompt (ADR-0010).
-                    self.hasCompletedACapture = true
-                    // Open the editor on the Recording just finalized (ADR-0016).
-                    EditorPresenter.shared.open(selecting: result.url)
-                }
-            }
+            let effective = engine.endReason ?? reason
+            Task { @MainActor in self.didFinalize(result: result, reason: effective) }
         }
     }
+
+    /// Back on the main actor with the finalized file (or nil for arm-then-never-play). Tells the
+    /// user what happened per the end's kind (ADR-0009/0010).
+    private func didFinalize(result: CaptureResult?, reason: RecordingEndReason) {
+        // A Recording that captured audio — even one a fault ended — means the grant is known good,
+        // so a later slow bring-up is a wedge to time out rather than a human at the prompt (ADR-0010).
+        if result != nil { hasCompletedACapture = true }
+        guard let result else { return }   // arm-then-never-play: nothing saved, nothing to tell.
+
+        switch reason {
+        case .userStopped:
+            // The first *completed* Recording is where notification authorization is requested, so a
+            // later unrequested end has a channel — never stacked onto a failure (ADR-0009).
+            FaultNotifier.requestAuthorizationOnce()
+            EditorPresenter.shared.open(selecting: result.url)
+        case .quit:
+            break   // you asked for it; the app is leaving. No window, no notification.
+        case .diskGuard, .recoveryExhausted, .formatMismatch, .sleep:
+            // Name the reason and open the editor on the click — or directly, if auth is absent.
+            FaultNotifier.recordingEnded(reason: reason, recordingURL: result.url)
+        }
+    }
+
+    /// Registers the lifecycle ends that arrive as notifications: sleep, fast user switching, and
+    /// logout/power-off. Idempotent; called once from the app delegate. Quit itself is caught in
+    /// `applicationWillTerminate`. Uses the block API (like `LibraryStore`) because this is a plain
+    /// `@Observable`, not an `NSObject`, so a selector target would never be dispatched.
+    func installLifecycleObservers() {
+        guard !installedLifecycleObservers else { return }
+        installedLifecycleObservers = true
+        let workspace = NSWorkspace.shared.notificationCenter
+        // Sleep and fast user switching are folded together — both end the Recording as `.sleep`.
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
+            workspace.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.endForSleep() }
+            }
+        }
+        // Logout / power-off is the quit end arriving before `applicationWillTerminate`.
+        workspace.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endForQuit() }
+        }
+    }
+
+    private var installedLifecycleObservers = false
 
     private func attach(_ engine: CaptureEngine, generation gen: Int) {
         // The attempt may have ended during the (usually brief, but on the first run possibly

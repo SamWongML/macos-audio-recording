@@ -56,6 +56,10 @@ struct TrimTimeline: View {
                           bodyStyle: AnyShapeStyle(.tint))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
+            // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
+            // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
+            seamBands(x: x, height: height)
+
             // Trimmed-away audio stays visible but dimmed. Trim never removes anything
             // (ADR-0003), and the picture should say so.
             Rectangle().fill(.background.opacity(0.62))
@@ -117,6 +121,43 @@ struct TrimTimeline: View {
         switch handle {
         case .start: recording.trim.setStart(t)
         case .end: recording.trim.setEnd(t)
+        }
+    }
+
+    // MARK: - Seams
+
+    /// The hatched bands for the lane-visible Seams (rebuild-class; the tiny overrun Seams live in
+    /// the editor summary, not here — ADR-0010). Each carries a ~3 pt floor so it never vanishes.
+    @ViewBuilder
+    private func seamBands(x: @escaping (Double) -> Double, height: Double) -> some View {
+        let rate = recording.sampleRate
+        ForEach(Array(recording.laneSeams.enumerated()), id: \.offset) { _, seam in
+            let x0 = x(seam.startSeconds(sampleRate: rate))
+            let x1 = x(Double(seam.start + seam.frames) / rate)
+            SeamBand()
+                .frame(width: max(3, x1 - x0), height: height)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .offset(x: x0)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Seam bands inside the loupe, at **true width** (no minimum) — the loupe exists to show raw
+    /// detail, so a Seam is drawn exactly as wide as it is against the ±2 s window (ADR-0010).
+    private func loupeSeams(centre: Double, span: Double, boxWidth: Double, boxHeight: Double) -> some View {
+        let rate = recording.sampleRate
+        let lo = centre - span / 2
+        return ForEach(Array(recording.seams.enumerated()), id: \.offset) { _, seam in
+            let s0 = seam.startSeconds(sampleRate: rate)
+            let s1 = Double(seam.start + seam.frames) / rate
+            // Fraction of the box each edge lands on, clamped to the visible window.
+            let f0 = max(0, min(1, (s0 - lo) / span))
+            let f1 = max(0, min(1, (s1 - lo) / span))
+            if f1 > f0 {
+                SeamBand(spacing: 4)
+                    .frame(width: boxWidth * (f1 - f0), height: boxHeight)
+                    .offset(x: boxWidth * f0 - boxWidth / 2 + boxWidth * (f1 - f0) / 2)
+            }
         }
     }
 
@@ -203,6 +244,9 @@ struct TrimTimeline: View {
                         Spacer(minLength: 0).frame(width: boxWidth * (1 - bounds.upperBound) - 1)
                     }
                 }
+
+                // Seams at true width inside the loupe, drawn over the waveform silence they pad.
+                loupeSeams(centre: centre, span: span, boxWidth: boxWidth, boxHeight: 54)
 
                 // The crosshair is the contract made visible: it sits at the box's centre, and
                 // the box's centre is `centre`.
