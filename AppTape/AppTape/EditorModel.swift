@@ -61,6 +61,17 @@ final class EditorModel {
         store.recordings.first { $0.url == url }
     }
 
+    /// Trash a Recording — the escape hatch for a can't-open adopted file (ADR-0015). When it is the
+    /// open Recording, the selection is moved to a neighbour **before** the file leaves the folder, so
+    /// the editor stays open on the next Recording rather than closing itself on the vanish (which is
+    /// reserved for a file disappearing from under us, ADR-0006).
+    func trash(_ recording: Recording) {
+        if selection?.url == recording.url {
+            select(store.recordings.first { $0.url != recording.url })
+        }
+        store.trash(recording)
+    }
+
     /// Keeps the selection honest as the folder changes underneath it:
     /// - a Recording just captured (a pending URL) is selected once it lists;
     /// - the **open** Recording vanishing closes the editor;

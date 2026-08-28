@@ -75,6 +75,80 @@ struct QualityPresetTests {
         #expect(ExportSizeEstimate.sizeText(bytes: 123_000_000) == "123 MB")
     }
 
+    // MARK: - Faithful-or-refuse encodability (ADR-0015)
+
+    @Test func aCapturedStereo48MasterEncodesOnEveryRung() {
+        // The plain path: 48 kHz stereo is the captured master, and every rung takes it.
+        for preset in QualityPreset.allCases {
+            #expect(preset.encodability(for: stereo48) == .available)
+        }
+    }
+
+    @Test func aHiResSourceRefusesTheThreeAACRungsButNotMaster() {
+        let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 24)
+        #expect(QualityPreset.master.encodability(for: hiRes) == .available)   // ALAC takes any rate
+        for preset in [QualityPreset.high, .standard, .compact] {
+            let encodability = preset.encodability(for: hiRes)
+            #expect(!encodability.isAvailable)
+            #expect(encodability.reason?.contains("48 kHz") == true)
+            #expect(encodability.reason?.contains("96 kHz") == true)   // names the source's real rate
+        }
+    }
+
+    @Test func aMonoSourceRefusesOnlyCompact() {
+        // HE-AAC takes even channel counts only, so mono disables Compact — but AAC-LC and ALAC take it.
+        let mono = SourceFormat(sampleRate: 44_100, channelCount: 1, bitsPerChannel: 16)
+        #expect(QualityPreset.master.encodability(for: mono) == .available)
+        #expect(QualityPreset.high.encodability(for: mono) == .available)
+        #expect(QualityPreset.standard.encodability(for: mono) == .available)
+        let compact = QualityPreset.compact.encodability(for: mono)
+        #expect(!compact.isAvailable)
+        #expect(compact.reason?.contains("even") == true)
+    }
+
+    @Test func anOddMultichannelSourceRefusesOnlyCompact() {
+        // 3 channels: odd, so Compact refuses; AAC-LC (≤ 8 ch) and ALAC still take it.
+        let threeCh = SourceFormat(sampleRate: 48_000, channelCount: 3, bitsPerChannel: 24)
+        #expect(QualityPreset.high.encodability(for: threeCh) == .available)
+        #expect(QualityPreset.compact.encodability(for: threeCh).reason?.contains("3 channels") == true)
+
+        // 6 channels (5.1): even and ≤ 8, so every rung takes it.
+        let fiveOne = SourceFormat(sampleRate: 48_000, channelCount: 6, bitsPerChannel: 24)
+        for preset in QualityPreset.allCases {
+            #expect(preset.encodability(for: fiveOne) == .available)
+        }
+    }
+
+    @Test func masterIsTheAlwaysWorksEscapeHatchAcrossExoticRatesAndChannels() {
+        // The escape hatch: any rate, up to 8 channels — Master takes it where the AAC rungs won't.
+        for rate in [44_100.0, 48_000, 88_200, 96_000, 192_000] {
+            for channels in 1...8 {
+                let format = SourceFormat(sampleRate: rate, channelCount: channels, bitsPerChannel: 24)
+                #expect(QualityPreset.master.encodability(for: format) == .available)
+            }
+        }
+        // Beyond 8 channels even Master refuses — the one file with no faithful rung.
+        let nineCh = SourceFormat(sampleRate: 48_000, channelCount: 9, bitsPerChannel: 24)
+        #expect(!QualityPreset.master.encodability(for: nineCh).isAvailable)
+    }
+
+    @Test func aPickUpdatesTheStickyWhenItFitsButIsADisplayOverWhenItDoesnt() {
+        let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 24)
+
+        // The sticky (High) fits a plain stereo-48 source: picking Standard updates the sticky (issue #9).
+        #expect(QualityPreset.PresetPick.resolve(picking: .standard, sticky: .high, format: stereo48)
+                == .setSticky(.standard))
+
+        // The sticky (High) can't encode a 96 kHz source: picking Master is a per-file display-over
+        // that leaves the sticky untouched (ADR-0015).
+        #expect(QualityPreset.PresetPick.resolve(picking: .master, sticky: .high, format: hiRes)
+                == .displayOver(.master))
+
+        // A rung the source itself can't encode is ignored, whatever the sticky is.
+        #expect(QualityPreset.PresetPick.resolve(picking: .high, sticky: .high, format: hiRes)
+                == .ignore)
+    }
+
     @Test func theSubtitleNamesTheCodecRateAndChannels() {
         #expect(QualityPreset.high.subtitle(for: stereo48) == "AAC 256 kbps · 48 kHz stereo")
         #expect(QualityPreset.master.subtitle(for: stereo48) == "24-bit ALAC · 48 kHz stereo")

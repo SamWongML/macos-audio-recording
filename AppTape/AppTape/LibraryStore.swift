@@ -65,6 +65,15 @@ final class LibraryStore {
         if source == nil { beginWatching() }
     }
 
+    /// Move a Recording's file to the Trash and re-list. The Library is an ordinary folder
+    /// (ADR-0006), so this is the same `trashItem` Finder does — best-effort, and the reconcile
+    /// then drops the row. The escape hatch for a can't-open adopted file, whose only action is to
+    /// be deleted (ADR-0015).
+    func trash(_ recording: Recording) {
+        try? FileManager.default.trashItem(at: recording.url, resultingItemURL: nil)
+        refresh()
+    }
+
     // MARK: - Pure core (tested)
 
     /// Every playable-looking file directly in `directory`, newest first. Hidden files and

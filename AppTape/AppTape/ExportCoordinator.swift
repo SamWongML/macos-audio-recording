@@ -77,6 +77,15 @@ final class ExportCoordinator {
             present(.failed(message: "There is nothing in the Trim to export."), for: recording.url)
             return
         }
+        // Faithful-or-refuse (ADR-0015): never let a preset the source's format can't encode reach the
+        // encoder, where AudioConverter would silently resample or downmix. The inspector already
+        // blocks this; this is the belt-and-suspenders gate so no caller can bypass it.
+        let encodability = preset.encodability(for: recording.sourceFormat)
+        guard encodability.isAvailable else {
+            present(.failed(message: encodability.reason ?? "This quality can't encode this file."),
+                    for: recording.url)
+            return
+        }
         let snapshot = Snapshot(
             source: recording.url,
             name: recording.name,

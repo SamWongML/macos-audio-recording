@@ -87,39 +87,64 @@ struct EditorView: View {
     @ViewBuilder
     private var detail: some View {
         if let recording = model.selection {
-            VStack(spacing: 0) {
-                TrimTimeline(recording: recording,
-                             envelope: recording.envelope,
-                             player: model.player,
-                             onTrimCommitted: { recording.persistTrim() },
-                             showsRuler: false)
-                    .padding(.horizontal, 22)
-                    .padding(.top, 20)
-
-                transport(recording)
-
-                if let summary = recording.seamSummary {
-                    // Every Seam is recorded; the small ones that do not draw are told here in one
-                    // line rather than littering the lane (ADR-0010).
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.dashed")
-                        Text(summary)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .navigationTitle(recording.name)
-            .navigationSubtitle(recording.source)
-            .inspector(isPresented: .constant(true)) {
-                ExportInspector(recording: recording)
-                    .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
+            if recording.isOpenable {
+                editorDetail(recording)
+            } else {
+                cantOpenDetail(recording)
             }
         } else {
             ContentUnavailableView("No Recording selected", systemImage: "waveform")
+        }
+    }
+
+    /// A `public.audio`-typed file the decoder can't open (ADR-0015). It is adopted and listed so it
+    /// doesn't silently vanish, but nothing can be done with it except delete it — no waveform, no
+    /// Trim, no Export inspector.
+    private func cantOpenDetail(_ recording: Recording) -> some View {
+        ContentUnavailableView {
+            Label("Can't open this file", systemImage: "waveform.slash")
+        } description: {
+            Text("It's an audio file AppTape can't decode. It stays here until you remove it.")
+        } actions: {
+            Button("Move to Trash", role: .destructive) {
+                model.trash(recording)
+            }
+        }
+        .navigationTitle(recording.name)
+    }
+
+    @ViewBuilder
+    private func editorDetail(_ recording: Recording) -> some View {
+        VStack(spacing: 0) {
+            TrimTimeline(recording: recording,
+                         envelope: recording.envelope,
+                         player: model.player,
+                         onTrimCommitted: { recording.persistTrim() },
+                         showsRuler: false)
+                .padding(.horizontal, 22)
+                .padding(.top, 20)
+
+            transport(recording)
+
+            if let summary = recording.seamSummary {
+                // Every Seam is recorded; the small ones that do not draw are told here in one
+                // line rather than littering the lane (ADR-0010).
+                HStack(spacing: 6) {
+                    Image(systemName: "rectangle.dashed")
+                    Text(summary)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .navigationTitle(recording.name)
+        .navigationSubtitle(recording.source)
+        .inspector(isPresented: .constant(true)) {
+            ExportInspector(recording: recording)
+                .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
         }
     }
 
@@ -170,6 +195,7 @@ private struct LibraryRow: View {
         HStack(spacing: 7) {
             Text(recording.source)
                 .lineLimit(1)
+                .foregroundStyle(recording.isOpenable ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
 
             Text(recording.recordedAt?.formatted(date: .omitted, time: .shortened) ?? "")
                 .font(.caption2)
@@ -179,28 +205,37 @@ private struct LibraryRow: View {
 
             Spacer(minLength: 0)
 
-            if recording.isTrimmed {
-                Image(systemName: "scissors")
+            if !recording.isOpenable {
+                // A `public.audio`-typed file the decoder can't open (ADR-0015): listed so it doesn't
+                // vanish, but marked so the user knows why it won't play — no duration, no silhouette.
+                Text("Can't open")
                     .font(.caption2)
-                    .foregroundStyle(.tint)
-            }
+                    .foregroundStyle(.secondary)
+                    .help("An audio file AppTape can't decode. Select it to remove it.")
+            } else {
+                if recording.isTrimmed {
+                    Image(systemName: "scissors")
+                        .font(.caption2)
+                        .foregroundStyle(.tint)
+                }
 
-            // A subtle trailing glyph on Recordings with surfaced Seams — the Library is where a
-            // user arrives weeks later, when the moment's telling is long gone (ADR-0010). Tertiary,
-            // not tinted: it is *no data here*, not a warning.
-            if recording.isSurfacedForSeams {
-                Image(systemName: "rectangle.dashed")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .help("Contains Seams — silence padded in where audio was interrupted")
-            }
+                // A subtle trailing glyph on Recordings with surfaced Seams — the Library is where a
+                // user arrives weeks later, when the moment's telling is long gone (ADR-0010). Tertiary,
+                // not tinted: it is *no data here*, not a warning.
+                if recording.isSurfacedForSeams {
+                    Image(systemName: "rectangle.dashed")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .help("Contains Seams — silence padded in where audio was interrupted")
+                }
 
-            Text(Format.time(recording.duration))
-                .font(.caption).monospacedDigit()
-                .foregroundStyle(.secondary)
+                Text(Format.time(recording.duration))
+                    .font(.caption).monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(height: 32)
-        .background(alignment: .leading) { silhouette }
+        .background(alignment: .leading) { if recording.isOpenable { silhouette } }
     }
 
     private var silhouette: some View {

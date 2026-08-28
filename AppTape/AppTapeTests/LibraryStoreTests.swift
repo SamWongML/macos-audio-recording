@@ -66,15 +66,58 @@ struct LibraryStoreTests {
         #expect(reconciled.map(\.url) == [b, a])
     }
 
-    @Test func anUnreadableFileIsNotListed() throws {
+    @Test func aNonAudioFileIsNotAdopted() throws {
+        // The adoption gate lists only files whose UTType conforms to public.audio (ADR-0015). A
+        // plain-text file types as text, not audio, so it is never a Recording.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let good = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("good.caf"))
-        let junk = dir.appendingPathComponent("notaudio.caf")
-        try Data("not audio".utf8).write(to: junk)
+        let notes = dir.appendingPathComponent("notes.txt")
+        try Data("not audio".utf8).write(to: notes)
 
-        let reconciled = LibraryStore.reconcile(existing: [], urls: [good, junk])
-        #expect(reconciled.map(\.url) == [good])   // the junk file is simply not a Recording
+        #expect(Recording(url: notes) == nil)   // text is not public.audio
+        let reconciled = LibraryStore.reconcile(existing: [], urls: [good, notes])
+        #expect(reconciled.map(\.url) == [good])
+    }
+
+    @Test func aTypedButUndecodableFileIsAdoptedInACantOpenState() throws {
+        // A `.caf` types as public.audio, so it is adopted and listed — but garbage in it won't
+        // decode, so it lists in a "can't open" state rather than vanishing (ADR-0015), and stays
+        // in the folder to be trashed.
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let good = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("good.caf"))
+        let broken = dir.appendingPathComponent("broken.caf")
+        try Data("not really a CAF".utf8).write(to: broken)
+
+        let cantOpen = try #require(Recording(url: broken))
+        #expect(cantOpen.isOpenable == false)
+        #expect(cantOpen.duration == 0)
+
+        let decodable = try #require(Recording(url: good))
+        #expect(decodable.isOpenable == true)
+
+        // Both are listed, newest-first order preserved — the can't-open row is not dropped.
+        let reconciled = LibraryStore.reconcile(existing: [], urls: [good, broken])
+        #expect(reconciled.map(\.url) == [good, broken])
+        #expect(reconciled.map(\.isOpenable) == [true, false])
+    }
+
+    @Test func aSubMinimumFileAdoptsWithAFixedWholeTrim() throws {
+        // A file shorter than the Trim minimum (0.2 s) is adopted and listed with Trim fixed to the
+        // whole file — neither handle moves — and Exports whole (ADR-0015, issue #7).
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let short = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("blip.caf"), seconds: 0.1)
+
+        let recording = try #require(Recording(url: short))
+        #expect(recording.isOpenable)
+        #expect(recording.trim.isFixed)                 // shorter than the minimum: the Trim cannot move
+        #expect(!recording.isTrimmed)                   // the whole file is the Trim
+        let (start, count) = recording.trimmedFrameRange
+        #expect(start == 0)
+        #expect(count == recording.frameCount)          // Exports whole
+        #expect(count > 0)
     }
 
     @Test func audioFilesSkipsSubdirectoriesAndHiddenFilesNewestFirst() throws {
