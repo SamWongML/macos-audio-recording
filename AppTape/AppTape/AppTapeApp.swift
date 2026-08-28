@@ -21,8 +21,8 @@ struct AppTapeApp: App {
         // app to `.regular` (ADR-0017).
         Window("AppTape", id: Self.editorWindowID) {
             EditorView()
-                .editorActivationPolicy()
         }
+        .defaultSize(width: 1120, height: 640)   // three columns want room: sidebar + waveform + inspector
         .defaultLaunchBehavior(.suppressed)
         .commands {
             // Trim the standard menu set to what applies (ADR-0017): keep the
