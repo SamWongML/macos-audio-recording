@@ -34,6 +34,16 @@ final class RecordingController {
     /// recovery banner. Cleared on the next record press — retry is simply pressing record again.
     private(set) var permissionRecovery = false
 
+    /// The Library file currently being written, once the first sound has created it. The editor
+    /// refuses to export this one: its `.caf` is still growing in place and its Trim end is
+    /// undefined until Stop (ADR-0012). Nil when nothing is capturing, or before the first sound.
+    private(set) var capturingURL: URL?
+
+    /// Whether `recording` is the one being captured right now, and so not exportable (ADR-0012).
+    func isCapturing(_ recording: Recording) -> Bool {
+        isRecording && capturingURL == recording.url
+    }
+
     /// The wedge timeout that applies to bring-up *after* the first successful capture, when the
     /// TCC prompt can no longer appear and a slow start is a hang, not a human reading (ADR-0010).
     static let wedgeTimeout: TimeInterval = 10
@@ -90,10 +100,20 @@ final class RecordingController {
             guard let self else { return }
             Task { @MainActor in self.handleDenial(generation: gen) }
         }
+        // Learn the growing master's path when the first sound creates it, so the editor can refuse
+        // to export the still-capturing Recording (ADR-0012). Guarded by generation like the rest.
+        let onMasterCreated: @Sendable (URL) -> Void = { [weak self] url in
+            guard let self else { return }
+            Task { @MainActor in
+                guard gen == self.generation, self.isRecording else { return }
+                self.capturingURL = url
+            }
+        }
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 let engine = try CaptureEngine(processObjectIDs: ids, sourceName: name,
-                                               onDenialInferred: onDenial)
+                                               onDenialInferred: onDenial,
+                                               onMasterCreated: onMasterCreated)
                 Task { @MainActor in self.attach(engine, generation: gen) }
             } catch {
                 Task { @MainActor in self.abandon(generation: gen) }
@@ -183,6 +203,7 @@ final class RecordingController {
     private func returnToIdle() {
         isRecording = false
         recordingSourceID = nil
+        capturingURL = nil
         timer?.invalidate()
         timer = nil
         buildTimeout?.invalidate()

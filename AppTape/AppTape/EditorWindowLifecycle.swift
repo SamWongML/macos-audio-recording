@@ -86,6 +86,9 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
         @objc private func windowWillClose() {
             guard isOpen else { return }
             isOpen = false
+            // Closing the editor navigates away from any running Export, which cancels it
+            // unwarned (ADR-0012). The destination is untouched, so this costs only redoable work.
+            ExportCoordinator.shared.cancel()
             ActivationPolicyController.shared.editorDidClose()
         }
     }
