@@ -35,14 +35,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// running. `withObservationTracking` fires once, so it re-arms itself.
     private var observingRecorder = false
 
-    /// Last-seen recovery flag, so the panel is auto-raised only on the transition into a
-    /// denial — the user pressed record and nothing recorded, so the fix must find them rather
-    /// than wait behind a closed popover (ADR-0008).
-    private var lastPermissionRecovery = false
+    /// Last-seen blocking-message state, so the panel is auto-raised only on the transition into
+    /// one — the user pressed record and it was refused (a denial, or too little disk), so the fix
+    /// must find them rather than wait behind a closed popover (ADR-0008/0009).
+    private var lastBlocked = false
 
     /// The red recording dot, rendered once. It never changes, so it is not rebuilt
     /// on every tick (only the time title is).
     private lazy var recordingDot: NSImage = Self.makeRecordingDot()
+    /// The amber variant, the whole item at 3 hours of Runway (ADR-0009): dot and clock both amber,
+    /// no `⚠` — red and amber on one item would read as a rendering bug, so colour is the sole signal.
+    /// A conscious accessibility trade, since the 30-minute tier is text and reaches everyone.
+    private lazy var amberDot: NSImage = Self.makeDot(color: .systemOrange)
     private lazy var idleGlyph: NSImage = Self.makeIdleGlyph()
 
     private var recorder: RecordingController { .shared }
@@ -88,13 +92,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func refreshStatusItem() {
         guard let button = statusItem?.button else { return }
         if recorder.isRecording {
-            button.image = recordingDot
+            // Amber at 3 hours of Runway (ADR-0009): the whole item goes amber, dot and clock
+            // together, and reverts silently when the Runway recovers past the hysteresis band.
+            let amber = recorder.runwayTier == .amber
+            button.image = amber ? amberDot : recordingDot
             button.attributedTitle = NSAttributedString(
                 string: " " + recorder.elapsedText,
                 attributes: [
                     .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
-                    .foregroundColor: NSColor.systemRed,
+                    .foregroundColor: amber ? NSColor.systemOrange : NSColor.systemRed,
                 ])
+            // Colour is the sole signal at the amber tier (ADR-0009): the tooltip stays constant, so
+            // hovering does not become a second, text channel the ADR deliberately withholds.
             button.toolTip = "Recording — click to stop, right-click for the panel"
         } else {
             button.image = idleGlyph
@@ -117,37 +126,46 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             _ = recorder.isRecording
             _ = recorder.elapsed
             _ = recorder.permissionRecovery
+            _ = recorder.runwayTier
+            _ = recorder.startRefusal
         } onChange: { [weak self] in
             guard let self else { return }
             Task { @MainActor in
                 guard self.statusItem != nil else { return }
                 self.refreshStatusItem()
-                self.raisePanelOnRecovery()
+                self.raisePanelOnBlockingMessage()
                 self.trackRecorder()
             }
         }
     }
 
-    /// Raise the panel the moment a denial is inferred, so its recovery banner reaches the user
-    /// who just pressed record (ADR-0008). Only on the transition into recovery, and only if the
-    /// panel is not already up, so it is not re-shown on every tick while the flag stands.
-    private func raisePanelOnRecovery() {
-        defer { lastPermissionRecovery = recorder.permissionRecovery }
-        guard recorder.permissionRecovery, !lastPermissionRecovery else { return }
+    /// Raise the panel the moment a record press is blocked — a denial (ADR-0008) or a refusal below
+    /// the floor (ADR-0009) — so its one blocking-message surface reaches the user who just pressed
+    /// record. Only on the transition into a blocked state, and only if the panel is not already up,
+    /// so it is not re-shown on every tick while the message stands.
+    private func raisePanelOnBlockingMessage() {
+        let blocked = recorder.permissionRecovery || recorder.startRefusal != nil
+        defer { lastBlocked = blocked }
+        guard blocked, !lastBlocked else { return }
         if popover?.isShown != true { showPanel() }
     }
 
-    private static func makeRecordingDot() -> NSImage {
+    private static func makeRecordingDot() -> NSImage { makeDot(color: .systemRed) }
+
+    /// A filled dot baked in `color`, non-template so the menu bar cannot repaint it in its own
+    /// colour (a status-bar button ignores `contentTintColor`, ADR-0004) — the red recording dot and
+    /// the amber Runway variant differ only by this colour.
+    private static func makeDot(color: NSColor) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
         guard let base = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Recording")?
             .withSymbolConfiguration(config) else { return NSImage(size: NSSize(width: 10, height: 10)) }
         let dot = NSImage(size: base.size, flipped: false) { rect in
             base.draw(in: rect)
-            NSColor.systemRed.set()
+            color.set()
             rect.fill(using: .sourceAtop)
             return true
         }
-        dot.isTemplate = false   // template would repaint it in the bar's colour, losing the red
+        dot.isTemplate = false   // template would repaint it in the bar's colour, losing the tint
         return dot
     }
 

@@ -34,6 +34,16 @@ final class RecordingController {
     /// recovery banner. Cleared on the next record press — retry is simply pressing record again.
     private(set) var permissionRecovery = false
 
+    /// The menu bar's disk tier (ADR-0009): amber at 3 hours of Runway, whole item, no glyph. Driven
+    /// by the 5 s guard poll while recording; nominal at rest.
+    private(set) var runwayTier: RunwayGuard.Tier = .nominal
+
+    /// Set when a record press is refused below the 2 GB floor (ADR-0009); drives the panel's one
+    /// blocking-message surface, sharing it with `permissionRecovery` — the panel carries at most one
+    /// blocking reason at a time. Cleared on the next successful start, and by a denial taking the
+    /// surface. Its action opens Finder at the Library.
+    private(set) var startRefusal: DiskGuardRefusal?
+
     /// The Library file currently being written, once the first sound has created it. The editor
     /// refuses to export this one: its `.caf` is still growing in place and its Trim end is
     /// undefined until Stop (ADR-0012). Nil when nothing is capturing, or before the first sound.
@@ -52,6 +62,12 @@ final class RecordingController {
     private var timer: Timer?
     /// The post-first-capture wedge timer, armed during bring-up only when `hasCompletedACapture`.
     private var buildTimeout: Timer?
+    /// The disk guard's 5 s `statfs` poll, live only while a Recording is attached (ADR-0009). Off
+    /// the realtime IOProc and the writer thread — one quick syscall on the main actor.
+    private var guardTimer: Timer?
+    /// The Runway tier/warning reducer for the current Recording, reset at each start so hysteresis
+    /// never carries across Recordings.
+    private var runwayGuard = RunwayGuard()
     /// Bumped on every start and stop. Guards a slow, cancelled, or timed-out bring-up from
     /// attaching its engine to a *later* attempt — the blocked Core Audio call cannot be
     /// interrupted, so whatever it eventually returns is matched against the generation that
@@ -72,12 +88,39 @@ final class RecordingController {
     /// creation blocks and can raise the TCC prompt (issue #12).
     func start(_ source: Source) {
         guard !isRecording, !source.processObjectIDs.isEmpty else { return }
+
+        // The start policy against the disk (ADR-0009). The rate is a pre-tap estimate — no tap
+        // exists yet to report its real format — corrected by the first real poll a few seconds
+        // later; an unverifiable volume (nil) is neither refused nor pre-ambered, matching the
+        // running guard, which never ends on a volume it cannot stat.
+        let free = DiskSpace.freeBytesForLibraryVolume()
+        let startDecision = free.map {
+            RunwayGuard.startDecision(freeBytes: $0, ratePerSecond: RunwayGuard.nominalRatePerSecond)
+        }
+
+        // Refuse below the floor: beginning a Recording the guard kills within a minute leaves junk
+        // in the Library and teaches nothing. The refusal raises the panel's one blocking-message
+        // surface, whose action opens Finder at the Library.
+        if startDecision == .refuse, let free {
+            startRefusal = DiskGuardRefusal(freeBytes: free)
+            permissionRecovery = false
+            return
+        }
+
+        startRefusal = nil
         permissionRecovery = false   // retry clears the last denial's banner
         isRecording = true
         recordingSourceID = source.bundleID
         elapsed = 0
         generation += 1
         let gen = generation
+
+        // Begin amber if already inside the 3-hour tier, so a Recording the guard would paint amber
+        // within seconds does not flash green first (ADR-0009). The first real poll re-decides with
+        // the tap's own byte rate, so an off estimate only ever costs a brief wrong colour.
+        let amberStart = startDecision == .allowAmber
+        runwayGuard = RunwayGuard(tier: amberStart ? .amber : .nominal)
+        runwayTier = amberStart ? .amber : .nominal
 
         // The wedge timeout is armed only after the first successful capture. On the first
         // Recording bring-up is cancellable-not-timed, so it can block ~90 s behind the TCC
@@ -242,6 +285,28 @@ final class RecordingController {
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+
+        // The disk guard's 5 s poll (ADR-0009). Run once immediately so amber/end reflect the tap's
+        // real byte rate without waiting a full interval — the pre-seeded amber used a nominal rate.
+        let guardTimer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.evaluateRunwayGuard() }
+        }
+        RunLoop.main.add(guardTimer, forMode: .common)
+        self.guardTimer = guardTimer
+        evaluateRunwayGuard()
+    }
+
+    /// One Runway reading (ADR-0009): fold current free space and the master's byte rate into the
+    /// guard, then act — paint amber, post the 30-minute warning once, or end at the floor. A volume
+    /// that cannot be stat'd is skipped, never treated as empty, so an unverifiable disk never ends a
+    /// Recording.
+    private func evaluateRunwayGuard() {
+        guard isRecording, let engine else { return }
+        guard let free = DiskSpace.freeBytesForLibraryVolume() else { return }
+        let decision = runwayGuard.receive(freeBytes: free, ratePerSecond: engine.bytesPerSecond)
+        runwayTier = decision.tier
+        if decision.shouldWarn { FaultNotifier.runwayLow() }
+        if decision.shouldEnd { finalize(reason: .diskGuard, generation: generation) }
     }
 
     /// A denied grant was inferred (ADR-0008): end the Recording, discard the engine (which
@@ -260,6 +325,7 @@ final class RecordingController {
             self.engine = nil
             DispatchQueue.global(qos: .userInitiated).async { engine.discard() }
         }
+        startRefusal = nil   // the panel carries at most one blocking reason (ADR-0009)
         permissionRecovery = true
     }
 
@@ -281,6 +347,9 @@ final class RecordingController {
         timer = nil
         buildTimeout?.invalidate()
         buildTimeout = nil
+        guardTimer?.invalidate()
+        guardTimer = nil
+        runwayTier = .nominal
         elapsed = 0
         generation += 1
     }

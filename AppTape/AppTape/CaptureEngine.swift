@@ -70,10 +70,11 @@ final class CaptureEngine: @unchecked Sendable {
     private let onMasterCreated: (@Sendable (URL) -> Void)?
 
     /// Invoked at most once, from the writer thread after the file is finalized, when the Recording
-    /// **ended itself** — recovery exhausted, a format mismatch, or a >30 s gap (the sleep end by
-    /// another route). One of the four unrequested ends (ADR-0010). Best-effort; it hops to the main
-    /// actor, which then reclaims the finalized file via `stop()` and notifies. It must not call back
-    /// synchronously into the engine.
+    /// **ended itself** — recovery exhausted, a format mismatch, a >30 s gap (the sleep end by
+    /// another route), or a write failing with the disk full (ENOSPC, the guard firing late between
+    /// polls, ADR-0009). One of the four unrequested ends (ADR-0010). Best-effort; it hops to the
+    /// main actor, which then reclaims the finalized file via `stop()` and notifies. It must not call
+    /// back synchronously into the engine.
     private let onEnded: (@Sendable (RecordingEndReason) -> Void)?
 
     /// Master frames committed so far, published by the writer thread for the main-thread
@@ -82,6 +83,12 @@ final class CaptureEngine: @unchecked Sendable {
     private let publishedFrames = Atomic<Int>(0)
     var masterFrameCount: Int { publishedFrames.load(ordering: .acquiring) }
     var elapsed: TimeInterval { sampleRate > 0 ? Double(masterFrameCount) / sampleRate : 0 }
+
+    /// The master's on-disk byte rate, the divisor in the Runway guard's `(free − 2 GB) ÷ rate`
+    /// (ADR-0009). The master is interleaved Float32 (`CAFMasterWriter`), so the rate is
+    /// `channels × 4 bytes × sampleRate` — fixed at creation but not a constant across Recordings,
+    /// which is exactly why the guard takes it as an input rather than assuming 48 kHz stereo.
+    var bytesPerSecond: Double { Double(channels * MemoryLayout<Float>.size) * sampleRate }
 
     // Writer-thread-only state. Reached by the main thread only after `finished` is signalled.
     private var reducer = CaptureReducer()
@@ -403,24 +410,39 @@ final class CaptureEngine: @unchecked Sendable {
         let start = skipFrames * channels
         guard start < sampleCount else { return }
         scratch.withUnsafeBufferPointer { ptr in
-            let slice = UnsafeBufferPointer(rebasing: ptr[start..<sampleCount])
-            try? writer?.write(slice)
+            attemptWrite(UnsafeBufferPointer(rebasing: ptr[start..<sampleCount]))
         }
     }
 
     /// Pad `frames` of silence into the master — a Seam. Written in blocks so a 30 s gap does not
     /// need a 30 s buffer. Seams are rare, so the per-Seam allocation is not a hot path.
     private func writeSilence(frames: Int) {
-        guard frames > 0, let writer else { return }
+        guard frames > 0, writer != nil else { return }
         let blockFrames = 16_384
-        var zeros = [Float](repeating: 0, count: blockFrames * channels)
+        let zeros = [Float](repeating: 0, count: blockFrames * channels)
         var remaining = frames
-        while remaining > 0 {
+        while remaining > 0, selfEndReason == nil {
             let n = min(remaining, blockFrames)
             zeros.withUnsafeBufferPointer { ptr in
-                try? writer.write(UnsafeBufferPointer(rebasing: ptr[0..<(n * channels)]))
+                attemptWrite(UnsafeBufferPointer(rebasing: ptr[0..<(n * channels)]))
             }
             remaining -= n
+        }
+    }
+
+    /// Append one slice to the master, ending the Recording as `.diskGuard` if the write fails.
+    /// After the format checks the CAF has already passed, a mid-stream write failure is the disk
+    /// full — the guard's 5 s poll firing late between polls (ADR-0009). `AudioFile.h` has no named
+    /// disk-full status (its enum stops at `kAudioFileFileNotFoundError`), so ENOSPC arrives as a raw
+    /// pass-through status that cannot be matched cleanly; the handling is identical to the poll's, so
+    /// treating any write failure here as the floor keeps ADR-0007's six ends six. Idempotent: once
+    /// the end is latched, later writes are skipped rather than re-firing it.
+    private func attemptWrite(_ slice: UnsafeBufferPointer<Float>) {
+        guard selfEndReason == nil, let writer else { return }
+        do {
+            try writer.write(slice)
+        } catch {
+            endSelf(.diskGuard)
         }
     }
 
