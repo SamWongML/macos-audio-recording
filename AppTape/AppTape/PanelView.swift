@@ -24,7 +24,7 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
-            recoveryBanner
+            blockingBanner
             sourceList
             Divider()
             footer
@@ -73,32 +73,60 @@ struct PanelView: View {
         model.sources.first { $0.bundleID == recorder.recordingSourceID }?.name ?? "Recording"
     }
 
-    // MARK: - Recovery banner
+    // MARK: - Blocking banner
+
+    /// The panel's one blocking-message surface (ADR-0009). **At most one reason is ever set**: a
+    /// refusal below the floor and a denial each clear the other, and a successful start clears both,
+    /// so the two never compete here. What should happen *if* two blocking reasons ever did compete is
+    /// ADR-0009's deferral to issue #22, not decided by this ordering — which only picks a branch when,
+    /// by construction, just one arm can be taken.
+    @ViewBuilder private var blockingBanner: some View {
+        if let refusal = recorder.startRefusal {
+            diskRefusalBanner(refusal)
+        } else if recorder.permissionRecovery {
+            recoveryBanner
+        }
+    }
+
+    /// Shown when a start is refused below the 2 GB floor (ADR-0009). It names the free space and the
+    /// floor, and its action opens Finder at the Library rather than a Settings pane — there being
+    /// none to send the user to. Retry, as with the denial banner, is simply pressing record again.
+    @ViewBuilder private func diskRefusalBanner(_ refusal: DiskGuardRefusal) -> some View {
+        banner(title: refusal.title, message: refusal.message, action: "Show in Finder") {
+            FaultNotifier.revealLibrary()
+        }
+    }
 
     /// Shown when a denied System Audio Recording grant was inferred (ADR-0008). It names
     /// "System Audio Recording Only" — not the pane's own broader heading — and the deep-link
     /// button lands on the audio-capture pane. Retry is not a button here: it is pressing record
     /// again, which is where the copy sends the user.
     @ViewBuilder private var recoveryBanner: some View {
-        if recorder.permissionRecovery {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(PermissionRecovery.title)
-                    .font(.callout.weight(.semibold))
-                Text(PermissionRecovery.message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Open System Settings") {
-                    if let url = PermissionRecovery.settingsURL { NSWorkspace.shared.open(url) }
-                }
-                .buttonStyle(.link)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color(nsColor: .controlBackgroundColor))
-            Divider()
+        banner(title: PermissionRecovery.title, message: PermissionRecovery.message,
+               action: "Open System Settings") {
+            if let url = PermissionRecovery.settingsURL { NSWorkspace.shared.open(url) }
         }
+    }
+
+    /// The shared banner chrome for both blocking reasons: a bold title, secondary body, and one link
+    /// action, over the panel's control-background fill.
+    @ViewBuilder private func banner(title: String, message: String, action: String,
+                                     perform: @escaping () -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.callout.weight(.semibold))
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action, action: perform)
+                .buttonStyle(.link)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(nsColor: .controlBackgroundColor))
+        Divider()
     }
 
     // MARK: - Source list
@@ -135,7 +163,9 @@ struct PanelView: View {
     private func pick(_ source: Source) {
         guard !recorder.isRecording else { return }
         recorder.start(source)
-        dismiss()
+        // A start refused below the floor (ADR-0009) leaves the panel open so its refusal banner is
+        // seen; only a start that actually began dismisses.
+        if recorder.isRecording { dismiss() }
     }
 
     // MARK: - Footer

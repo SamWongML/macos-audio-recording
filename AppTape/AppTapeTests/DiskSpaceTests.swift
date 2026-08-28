@@ -45,4 +45,16 @@ struct DiskSpaceTests {
         let notYetCreated = dir.appendingPathComponent("export-\(UUID().uuidString).m4a")
         #expect(DiskSpace.freeBytes(forVolumeContaining: notYetCreated) != nil)
     }
+
+    @Test func theLibraryVolumeReadClimbsToAnExistingAncestor() throws {
+        // The Runway guard's read (ADR-0009): a deeply-nested path that does not exist yet — as the
+        // Library folder does before the first sound — still stats its volume by climbing to the
+        // nearest existing ancestor rather than returning nil.
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let notYetCreated = dir.appendingPathComponent("AppTape/does/not/exist/yet", isDirectory: true)
+        let free = DiskSpace.freeBytes(forVolumeHolding: notYetCreated)
+        #expect(free != nil)
+        #expect((free ?? 0) > 0)
+    }
 }
