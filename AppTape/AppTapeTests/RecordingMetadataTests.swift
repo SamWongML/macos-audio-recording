@@ -71,6 +71,7 @@ struct RecordingMetadataTests {
         first.trim.setEnd(9)
         first.persistTrim()
         first.gain = 4.5
+        first.persistGain()
 
         // Reopen: a fresh Recording over the same file sees them.
         let reopened = try #require(Recording(url: url))

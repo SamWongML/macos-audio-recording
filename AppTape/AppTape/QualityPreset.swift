@@ -138,3 +138,17 @@ enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         }
     }
 }
+
+extension AudioStreamBasicDescription {
+    /// Interleaved, packed Float32 at a given rate and channel count — the client format the whole
+    /// Export path speaks (ADR-0012): the encode reads and writes it, and the Loudness measurement
+    /// reads it, always at the source's own rate and channels so nothing is resampled or downmixed.
+    static func interleavedFloat(rate: Double, channels: Int) -> AudioStreamBasicDescription {
+        let bytesPerFrame = UInt32(channels * MemoryLayout<Float>.size)
+        return AudioStreamBasicDescription(
+            mSampleRate: rate, mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: bytesPerFrame, mFramesPerPacket: 1, mBytesPerFrame: bytesPerFrame,
+            mChannelsPerFrame: UInt32(channels), mBitsPerChannel: 32, mReserved: 0)
+    }
+}

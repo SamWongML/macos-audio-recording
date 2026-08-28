@@ -36,4 +36,19 @@ struct ExportPreferenceTests {
         defaults.set("nonsense", forKey: "com.apptape.exportPreset")
         #expect(ExportPreference(defaults: defaults).preset == .high)
     }
+
+    // MARK: - Normalize toggle (ADR-0013): sticky app-wide, off on first use.
+
+    @Test func normalizationIsOffOnFirstUse() {
+        #expect(ExportPreference(defaults: scratchDefaults()).normalizeLoudness == false)
+    }
+
+    @Test func theNormalizeChoiceSurvivesANewInstance() {
+        let defaults = scratchDefaults()
+        let first = ExportPreference(defaults: defaults)
+        first.normalizeLoudness = true
+
+        let second = ExportPreference(defaults: defaults)
+        #expect(second.normalizeLoudness == true)
+    }
 }

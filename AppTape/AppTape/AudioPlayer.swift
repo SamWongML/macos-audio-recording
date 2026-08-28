@@ -20,6 +20,11 @@ final class AudioPlayer {
 
     @ObservationIgnored private let engine = AVAudioEngine()
     @ObservationIgnored private let node = AVAudioPlayerNode()
+    /// A bandless `AVAudioUnitEQ` used only for its `globalGain` — the **one scalar** that makes Play
+    /// match Export (ADR-0013): the Loudness correction plus the manual Gain are set here in dB, so
+    /// playback previews exactly what the written file will sound like rather than approximating it in
+    /// a second code path. Bandless because no equalisation is wanted, only the master gain it exposes.
+    @ObservationIgnored private let gainUnit = AVAudioUnitEQ(numberOfBands: 0)
     @ObservationIgnored private var file: AVAudioFile?
     @ObservationIgnored private var segmentStart: Double = 0
     @ObservationIgnored private var ticker: Timer?
@@ -27,6 +32,7 @@ final class AudioPlayer {
 
     init() {
         engine.attach(node)
+        engine.attach(gainUnit)
     }
 
     func load(_ recording: Recording) {
@@ -37,13 +43,24 @@ final class AudioPlayer {
         position = recording.trim.lowerBound
         if let file {
             engine.disconnectNodeOutput(node)
+            engine.disconnectNodeOutput(gainUnit)
             // macOS 27 deprecated every non-throwing connect/play on AVAudioEngine and
             // AVAudioPlayerNode in favour of error-returning twins — and renamed them in Swift,
             // so `try engine.connect(...)` does not exist. It is `connectNode` / `playAudio`.
             // Best-effort: a failed connect just leaves the graph unable to play, which the next
             // `play()` reports by staying stopped — nothing here is worth trapping the editor over.
-            try? engine.connectNode(node, to: engine.mainMixerNode, format: file.processingFormat)
+            // The signal runs node → gainUnit → mixer so the combined gain rides on every sample.
+            try? engine.connectNode(node, to: gainUnit, format: file.processingFormat)
+            try? engine.connectNode(gainUnit, to: engine.mainMixerNode, format: file.processingFormat)
         }
+    }
+
+    /// Sets the combined gain — the Loudness correction plus the manual Gain (ADR-0013) — applied to
+    /// playback, in dB. Live: the Gain slider and a resolving correction both call through here, and
+    /// `AVAudioUnitEQ` retunes `globalGain` without a reschedule, so the change is heard mid-loop.
+    /// Clamped to the node's range.
+    func setGlobalGainDB(_ decibels: Double) {
+        gainUnit.globalGain = Float(min(max(decibels, -96), 24))
     }
 
     func toggle() { isPlaying ? pause() : play() }

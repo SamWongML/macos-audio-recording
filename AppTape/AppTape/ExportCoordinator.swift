@@ -59,6 +59,11 @@ final class ExportCoordinator {
         let frameCount: Int64
         let preset: QualityPreset
         let estimatedBytes: Double
+        /// The Loudness and Gain settings, snapshotted at click like every other parameter
+        /// (ADR-0012/-0013): the app-wide normalize toggle and this Recording's manual Gain. A later
+        /// toggle flip or Gain nudge never reaches the running measure-then-encode.
+        let normalize: Bool
+        let gainDB: Double
     }
 
     /// Starts an Export of `recording`'s Trim at `preset`. One at a time: a call while another
@@ -67,7 +72,7 @@ final class ExportCoordinator {
     func export(recording: Recording, preset: QualityPreset) {
         guard case .idle = phase else { return }
 
-        let (startFrame, frameCount) = frameRange(for: recording)
+        let (startFrame, frameCount) = recording.trimmedFrameRange
         guard frameCount > 0 else {
             present(.failed(message: "There is nothing in the Trim to export."), for: recording.url)
             return
@@ -79,7 +84,9 @@ final class ExportCoordinator {
             frameCount: frameCount,
             preset: preset,
             estimatedBytes: ExportSizeEstimate.bytes(preset: preset, format: recording.sourceFormat,
-                                                     duration: recording.trimmedDuration))
+                                                     duration: recording.trimmedDuration),
+            normalize: ExportPreference.shared.normalizeLoudness,
+            gainDB: recording.gain)
 
         presentSavePanel(defaultName: snapshot.name) { [weak self] destination in
             guard let self, let destination else { return }
@@ -116,7 +123,8 @@ final class ExportCoordinator {
             .appendingPathComponent(".apptape-export-\(UUID().uuidString).m4a")
         let request = ExportRequest(source: snapshot.source, destination: temp,
                                     startFrame: snapshot.startFrame, frameCount: snapshot.frameCount,
-                                    preset: snapshot.preset)
+                                    preset: snapshot.preset,
+                                    normalize: snapshot.normalize, gainDB: snapshot.gainDB)
         let name = snapshot.name
 
         let encoder = ExportEncoder()
@@ -194,16 +202,6 @@ final class ExportCoordinator {
     }
 
     // MARK: - Helpers
-
-    private func frameRange(for recording: Recording) -> (start: Int64, count: Int64) {
-        let rate = recording.sampleRate
-        guard rate > 0 else { return (0, 0) }
-        let start = Int64((recording.trim.lowerBound * rate).rounded())
-        let end = Int64((recording.trim.upperBound * rate).rounded())
-        let clampedStart = max(0, min(start, recording.frameCount))
-        let clampedEnd = max(clampedStart, min(end, recording.frameCount))
-        return (clampedStart, clampedEnd - clampedStart)
-    }
 
     private func presentSavePanel(defaultName: String, completion: @escaping (URL?) -> Void) {
         let panel = NSSavePanel()
