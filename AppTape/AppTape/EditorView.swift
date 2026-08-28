@@ -101,7 +101,7 @@ struct EditorView: View {
             .navigationTitle(recording.name)
             .navigationSubtitle(recording.source)
             .inspector(isPresented: .constant(true)) {
-                ExportInspectorPlaceholder(recording: recording)
+                ExportInspector(recording: recording)
                     .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
             }
         } else {

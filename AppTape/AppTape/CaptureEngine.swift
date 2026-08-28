@@ -50,6 +50,12 @@ final class CaptureEngine: @unchecked Sendable {
     /// against its own `finished` wait.
     private let onDenialInferred: (@Sendable () -> Void)?
 
+    /// Invoked at most once, from the writer thread, when the master file is created at the first
+    /// sound — so the shell can learn which Library file is currently growing and refuse to export
+    /// it (ADR-0012: the capturing Recording is not itself exportable). Best-effort like the denial
+    /// hook; it hops to the main actor and must not call back synchronously into the engine.
+    private let onMasterCreated: (@Sendable (URL) -> Void)?
+
     /// Master frames committed so far, published by the writer thread for the main-thread
     /// timer. Sits at 0 through the armed window, so the timer reads `00:00` until the first
     /// sound (ADR-0016).
@@ -67,11 +73,13 @@ final class CaptureEngine: @unchecked Sendable {
     /// file yet: the master is created lazily at the first sound.
     init(processObjectIDs: [AudioObjectID],
          sourceName: String,
-         onDenialInferred: (@Sendable () -> Void)? = nil) throws {
+         onDenialInferred: (@Sendable () -> Void)? = nil,
+         onMasterCreated: (@Sendable (URL) -> Void)? = nil) throws {
         self.sourceName = sourceName
         self.startDate = Date()
         self.processObjectIDs = processObjectIDs
         self.onDenialInferred = onDenialInferred
+        self.onMasterCreated = onMasterCreated
 
         // Hold off the involuntary idle-sleep timer for the whole Recording (ADR-0014). The
         // system may still sleep for lid close, the Apple menu, or low battery — each an
@@ -194,6 +202,7 @@ final class CaptureEngine: @unchecked Sendable {
         }
         let url = LibraryLocation.directory.appendingPathComponent(name)
         writer = try? CAFMasterWriter(url: url, asbd: format, sourceName: sourceName)
+        if writer != nil { onMasterCreated?(url) }
     }
 
     private func writeChunk(_ scratch: inout [Float], sampleCount: Int, skipFrames: Int) {

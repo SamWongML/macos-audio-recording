@@ -21,6 +21,17 @@ final class Recording: Identifiable {
     let frameCount: AVAudioFramePosition
     let sampleRate: Double
 
+    /// The source's channel count and sample bit depth, read at open. Export carries both through
+    /// untouched — no downmix, no resample (ADR-0005, ADR-0012) — and the size estimate reads the
+    /// bit depth to scale the Master-quality (ALAC) rung from the source's own footprint.
+    let channelCount: Int
+    let sourceBitsPerChannel: Int
+
+    /// The source format the Export inspector estimates and encodes from.
+    var sourceFormat: SourceFormat {
+        SourceFormat(sampleRate: sampleRate, channelCount: channelCount, bitsPerChannel: sourceBitsPerChannel)
+    }
+
     /// The file's `dev`+`inode`, captured at open (while the file certainly exists) and stable
     /// across a rename or move — so the store can recognise a renamed file as the *same*
     /// Recording. Captured once rather than re-stat'd, because after a rename this object still
@@ -73,6 +84,11 @@ final class Recording: Identifiable {
         self.fileIdentity = FileIdentity(url: url)
         self.frameCount = file.length
         self.sampleRate = file.fileFormat.sampleRate
+        self.channelCount = max(1, Int(file.fileFormat.channelCount))
+        // A compressed adopted file may report 0 bits/channel; fall back to the master's 32 so the
+        // ALAC estimate stays sane (which presets an adopted file even offers is issue #30's call).
+        let bits = Int(file.fileFormat.streamDescription.pointee.mBitsPerChannel)
+        self.sourceBitsPerChannel = bits > 0 ? bits : 32
         let duration = self.sampleRate > 0 ? Double(file.length) / self.sampleRate : 0
         self.trim = RecordingMetadata.readTrim(from: url, duration: duration) ?? Trim(duration: duration)
         self.gain = RecordingMetadata.readGain(from: url)

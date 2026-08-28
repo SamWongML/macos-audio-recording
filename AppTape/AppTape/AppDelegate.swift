@@ -21,4 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
+
+    /// Quitting navigates away from any running Export, which cancels it unwarned (ADR-0012).
+    /// The destination is untouched until the atomic swap, so a quit mid-encode loses only
+    /// redoable work and never a partial file.
+    func applicationWillTerminate(_ notification: Notification) {
+        ExportCoordinator.shared.cancel()
+    }
 }

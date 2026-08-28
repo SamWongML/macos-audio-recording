@@ -43,6 +43,10 @@ final class EditorModel {
     }
 
     func select(_ recording: Recording?) {
+        // Selecting a different Recording navigates away from any running Export, which cancels it
+        // unwarned (ADR-0012). Guarded on a real change so a folder refresh re-selecting the same
+        // Recording does not clear a just-finished success telling.
+        if selection?.url != recording?.url { ExportCoordinator.shared.cancel() }
         selection = recording
         guard let recording else { return }
         didInitialSelect = true
@@ -66,6 +70,7 @@ final class EditorModel {
         }
         if let selection {
             if !store.recordings.contains(where: { $0.url == selection.url }) {
+                ExportCoordinator.shared.cancel()   // the open Recording vanished — navigate away
                 self.selection = nil
                 player.stop()
                 vanishedTick += 1
