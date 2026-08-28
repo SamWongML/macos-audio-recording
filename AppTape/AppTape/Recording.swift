@@ -43,11 +43,10 @@ final class Recording: Identifiable {
     /// moves it live, and `persistTrim()` writes the xattr once, at gesture-end (issue #7).
     var trim: Trim
 
-    /// Gain in dB. Issue #24/#25 own what this means at Export; the editor persists it so it
-    /// survives a reopen. Persisted through `persistGain()`.
-    var gain: Double {
-        didSet { guard gain != oldValue else { return }; persistGain() }
-    }
+    /// Gain in dB (ADR-0013): the manual Level offset applied on top of any Loudness correction at
+    /// Export and in playback. Like Trim it is **not** persisted on every mutation — the slider moves
+    /// it live so playback tracks it, and `persistGain()` writes the xattr once, at gesture-end.
+    var gain: Double
 
     /// The peak envelope lives on the Recording, not in a side table (see `EnvelopeLoader`).
     var envelope: Envelope
@@ -102,6 +101,18 @@ final class Recording: Identifiable {
     var trimmedDuration: Double { trim.length }
     var isTrimmed: Bool { !trim.isWholeRecording }
 
+    /// The Trim as a `(startFrame, frameCount)` pair, clamped into the file. The one place the
+    /// seconds→frames rounding lives, so Export and the Loudness measurement read exactly the same
+    /// frames (ADR-0012/-0013).
+    var trimmedFrameRange: (start: Int64, count: Int64) {
+        guard sampleRate > 0 else { return (0, 0) }
+        let start = Int64((trim.lowerBound * sampleRate).rounded())
+        let end = Int64((trim.upperBound * sampleRate).rounded())
+        let clampedStart = max(0, min(start, frameCount))
+        let clampedEnd = max(clampedStart, min(end, frameCount))
+        return (clampedStart, clampedEnd - clampedStart)
+    }
+
     /// The Trim range as `"0:02 – 0:08"`. One place, because the waveform ruler, the transport
     /// and the inspector all show it.
     var trimRangeText: String {
@@ -122,7 +133,9 @@ final class Recording: Identifiable {
         try? RecordingMetadata.writeTrim(trim, to: url)
     }
 
-    private func persistGain() {
+    /// Writes the Gain xattr once. Called at slider-drag end and on reset — never per drag frame,
+    /// like `persistTrim()`. Best-effort: a lost write degrades gracefully (ADR-0006).
+    func persistGain() {
         try? RecordingMetadata.writeGain(gain, to: url)
     }
 }

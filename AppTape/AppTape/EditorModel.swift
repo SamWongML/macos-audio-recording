@@ -18,6 +18,9 @@ final class EditorModel {
 
     let store = LibraryStore()
     let player = AudioPlayer()
+    /// The Loudness correction preview for the selected Recording's Trim (ADR-0013). Owned here, not
+    /// in the inspector view, so a resolved measurement outlives a redraw and drives playback too.
+    let correction = LoudnessCorrectionModel()
 
     private(set) var selection: Recording?
 
