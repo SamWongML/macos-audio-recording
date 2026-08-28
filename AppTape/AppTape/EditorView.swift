@@ -97,6 +97,20 @@ struct EditorView: View {
                     .padding(.top, 20)
 
                 transport(recording)
+
+                if let summary = recording.seamSummary {
+                    // Every Seam is recorded; the small ones that do not draw are told here in one
+                    // line rather than littering the lane (ADR-0010).
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.dashed")
+                        Text(summary)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .navigationTitle(recording.name)
             .navigationSubtitle(recording.source)
@@ -169,6 +183,16 @@ private struct LibraryRow: View {
                 Image(systemName: "scissors")
                     .font(.caption2)
                     .foregroundStyle(.tint)
+            }
+
+            // A subtle trailing glyph on Recordings with surfaced Seams — the Library is where a
+            // user arrives weeks later, when the moment's telling is long gone (ADR-0010). Tertiary,
+            // not tinted: it is *no data here*, not a warning.
+            if recording.isSurfacedForSeams {
+                Image(systemName: "rectangle.dashed")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .help("Contains Seams — silence padded in where audio was interrupted")
             }
 
             Text(Format.time(recording.duration))

@@ -21,9 +21,10 @@
 /// **interior** silence, once the master has begun, is kept as real zero-frames
 /// so Trim points stored against the master never shift.
 struct CaptureReducer {
-    /// Frames committed to the master so far. The menu-bar timer reads its
-    /// duration off this, which is why it sits at `00:00` through the armed
-    /// window and only advances at the first sound (ADR-0016).
+    /// Audio frames committed to the master so far. Sits at `00:00` through the armed window and
+    /// only advances at the first sound (ADR-0016). Once faults can pad silence, the menu-bar timer
+    /// reads the engine's `SeamReconciler.masterFrames` instead — that count includes padding Seams,
+    /// so the displayed duration stays wall-clock true; this one counts only the audio (ADR-0010).
     private(set) var masterFrames: Int = 0
 
     /// Whether the first sound has been heard and the master has begun. Also the

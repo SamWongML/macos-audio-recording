@@ -48,6 +48,38 @@ final class Recording: Identifiable {
     /// it live so playback tracks it, and `persistGain()` writes the xattr once, at gesture-end.
     var gain: Double
 
+    /// The Seams padded into this Recording's master (ADR-0010), read once at open. The mark
+    /// describes the **master, not the Trim** — ADR-0003 makes the master immutable and the Trim a
+    /// view over it, so a badge that vanished when a handle moved would read as a repair. An absent
+    /// or unreadable attribute reads as **none**, so a hand-adopted file the app never captured is
+    /// correctly unmarked. Immutable like `frameCount`: capture writes it at Stop, the editor reads it.
+    let seams: [Seam]
+
+    /// Whether the Recording carries the Seam mark — a single Seam ≥ 250 ms or a total ≥ 250 ms.
+    var isSurfacedForSeams: Bool { SeamSurfacing.isSurfaced(seams, sampleRate: sampleRate) }
+
+    /// The Seams big enough to draw as hatched bands in the waveform lane (ADR-0010).
+    var laneSeams: [Seam] { SeamSurfacing.laneVisible(seams, sampleRate: sampleRate) }
+
+    /// The one-line editor summary of Seams too small to draw, or nil when there are none. Every
+    /// Seam is recorded even when it is not surfaced, and this is where the small ones are told.
+    var seamSummary: String? {
+        guard !seams.isEmpty, sampleRate > 0 else { return nil }
+        let subThreshold = SeamSurfacing.subThreshold(seams, sampleRate: sampleRate)
+        let total = SeamSurfacing.totalSeconds(seams, sampleRate: sampleRate)
+        if isSurfacedForSeams {
+            return "^[\(seams.count) Seam](inflect: true) · \(Self.paddedDurationText(total)) of silence padded in"
+        }
+        guard !subThreshold.isEmpty else { return nil }
+        let subTotal = SeamSurfacing.totalSeconds(subThreshold, sampleRate: sampleRate)
+        return "^[\(subThreshold.count) brief Seam](inflect: true) · \(Self.paddedDurationText(subTotal)) padded, too short to hear"
+    }
+
+    /// Padded silence read as milliseconds under a second, seconds above — the scale the user can act on.
+    private static func paddedDurationText(_ seconds: Double) -> String {
+        seconds < 1 ? "\(Int((seconds * 1000).rounded())) ms" : String(format: "%.1f s", seconds)
+    }
+
     /// The peak envelope lives on the Recording, not in a side table (see `EnvelopeLoader`).
     var envelope: Envelope
     var envelopeState: EnvelopeState = .idle
@@ -91,6 +123,7 @@ final class Recording: Identifiable {
         let duration = self.sampleRate > 0 ? Double(file.length) / self.sampleRate : 0
         self.trim = RecordingMetadata.readTrim(from: url, duration: duration) ?? Trim(duration: duration)
         self.gain = RecordingMetadata.readGain(from: url)
+        self.seams = RecordingMetadata.readSeams(from: url)
         self.envelope = Envelope(sampleRate: file.fileFormat.sampleRate)
     }
 

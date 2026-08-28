@@ -23,6 +23,9 @@ final class ProcessTap {
     let format: AudioStreamBasicDescription
     /// The realtime→writer seam. The writer thread drains this.
     let ring: AudioRingBuffer
+    /// The parallel host-time channel: one mark per delivered buffer, so the writer can reconcile
+    /// wall-clock gaps into Seams (ADR-0010).
+    let timestampRing = TimestampRing()
 
     private var tapID: AudioObjectID = 0
     private var aggregateID: AudioObjectID = 0
@@ -104,14 +107,33 @@ final class ProcessTap {
             throw TapError.createAggregate(madeAggregate)
         }
 
-        let madeProc = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, inputData, _, _, _ in
+        // Host time (`mHostTime`) arrives in mach absolute-time units; this scale turns it into
+        // seconds once, so the realtime block only multiplies.
+        var timebase = mach_timebase_info()
+        mach_timebase_info(&timebase)
+        let hostClockScale = Double(timebase.numer) / Double(timebase.denom) / 1_000_000_000.0
+        let marks = timestampRing
+
+        let madeProc = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, inputData, inInputTime, _, _ in
             // Realtime context: copy in and return. The ring drops-with-a-count on overrun,
             // so a stalled writer costs a counted seam, never a blocked audio thread.
+            let firstFrame = ringBuffer.writtenSamples / channels
+            var wroteAny = false
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
             for buffer in buffers {
                 guard let data = buffer.mData else { continue }
                 let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
-                ringBuffer.write(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
+                if ringBuffer.write(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count)) {
+                    wroteAny = true
+                }
+            }
+            // One mark per callback, stamping this buffer's first frame with its host time — but
+            // only when the write landed, so a dropped buffer leaves the host-time jump the writer
+            // reads as an overrun Seam (ADR-0010).
+            if wroteAny {
+                let ts = inInputTime.pointee
+                let valid = ts.mFlags.contains(.hostTimeValid)
+                marks.push(ringFrame: firstFrame, hostSeconds: Double(ts.mHostTime) * hostClockScale, valid: valid)
             }
         }
         guard madeProc == noErr, let proc else { throw TapError.createIOProc(madeProc) }
@@ -142,6 +164,25 @@ final class ProcessTap {
         if tapID != 0 { AudioHardwareDestroyProcessTap(tapID) }
         aggregateID = 0
         tapID = 0
+    }
+
+    /// The bundle IDs the given HAL client object IDs belong to, read at capture start. A rebuild
+    /// holds these rather than the object IDs, which are dead if the Source relaunched (ADR-0007).
+    static func bundleIDs(of objectIDs: [AudioObjectID]) -> Set<String> {
+        Set(objectIDs.compactMap { CAProperty.string(of: $0, kAudioProcessPropertyBundleID) }
+            .filter { !$0.isEmpty })
+    }
+
+    /// Re-resolve the Source's live HAL clients by bundle ID — the re-resolution a rebuild performs,
+    /// so a Source that quit and relaunched is picked up again at its new object IDs (ADR-0007).
+    /// Pure Core Audio, no workspace: it re-scans the process table and keeps the clients whose
+    /// bundle ID the Recording started from, which covers a relaunched helper (same bundle, new ID)
+    /// and WebKit's GPU process (always `com.apple.WebKit.GPU`).
+    static func resolveObjectIDs(matchingBundleIDs bundleIDs: Set<String>) -> [AudioObjectID] {
+        guard !bundleIDs.isEmpty else { return [] }
+        return CAProperty.objectIDs(of: AudioObjectID(kAudioObjectSystemObject),
+                                    kAudioHardwarePropertyProcessObjectList)
+            .filter { bundleIDs.contains(CAProperty.string(of: $0, kAudioProcessPropertyBundleID) ?? "") }
     }
 
     deinit { stop() }

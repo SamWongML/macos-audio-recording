@@ -48,6 +48,11 @@ final class AudioRingBuffer: @unchecked Sendable {
     var droppedSamples: Int { dropped.load(ordering: .relaxed) }
     func droppedFrames(channels: Int) -> Int { channels > 0 ? droppedSamples / channels : 0 }
 
+    /// Total samples ever written. Read by the **producer** (the IOProc) to stamp each host-time
+    /// mark with the ring-frame position its buffer lands at — the producer owns this counter, so
+    /// its own read is exact, not a race.
+    var writtenSamples: Int { written.load(ordering: .relaxed) }
+
     /// Producer side, realtime-safe: copy a whole block in, or drop it whole. Returns
     /// `false` when the block did not fit (and was dropped). No allocation, no locks.
     @discardableResult
