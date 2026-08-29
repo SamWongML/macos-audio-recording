@@ -6,6 +6,7 @@
 import AVFoundation
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 /// One Recording, as ADR-0006 defines it: a file in `~/Music/AppTape/` whose **name is its
 /// name**. Nothing here indexes the folder; the file is the truth, and Trim and Gain ride in
@@ -26,6 +27,13 @@ final class Recording: Identifiable {
     /// bit depth to scale the Master-quality (ALAC) rung from the source's own footprint.
     let channelCount: Int
     let sourceBitsPerChannel: Int
+
+    /// Whether the file actually opened. The adoption gate lists any file whose UTType conforms to
+    /// `public.audio`, but that is necessary, not sufficient — WMA, RealAudio, MIDI, DRM and a
+    /// corrupt header all type as audio yet won't decode (ADR-0015). Such a file is still **adopted
+    /// and listed**, but shown in a "can't open" state: it cannot play, Trim or Export, only be
+    /// deleted. Everything else here reads as an empty zero-length Recording, so no call site traps.
+    let isOpenable: Bool
 
     /// The source format the Export inspector estimates and encodes from.
     var sourceFormat: SourceFormat {
@@ -107,24 +115,50 @@ final class Recording: Identifiable {
         try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
     }
 
-    /// Any playable file in the folder is adopted (ADR-0006); an unreadable one is simply not a
-    /// Recording, so this fails rather than inventing a broken row.
+    /// The adoption gate (ADR-0015). A file is a Recording iff its UTType conforms to `public.audio`
+    /// — the necessary listing test; anything else (a stray `.txt`, an image) is simply not adopted,
+    /// so this fails. A typed file is then **opened to confirm**: it decodes into a normal Recording,
+    /// or, if AVAudioFile refuses it, is still adopted in a "can't open" state (`isOpenable == false`)
+    /// rather than vanishing, so the user sees why their file didn't play and can delete it.
     init?(url: URL) {
-        guard let file = try? AVAudioFile(forReading: url) else { return nil }
+        guard Self.conformsToAudio(url) else { return nil }
         self.url = url
         self.fileIdentity = FileIdentity(url: url)
-        self.frameCount = file.length
-        self.sampleRate = file.fileFormat.sampleRate
-        self.channelCount = max(1, Int(file.fileFormat.channelCount))
-        // A compressed adopted file may report 0 bits/channel; fall back to the master's 32 so the
-        // ALAC estimate stays sane (which presets an adopted file even offers is issue #30's call).
-        let bits = Int(file.fileFormat.streamDescription.pointee.mBitsPerChannel)
-        self.sourceBitsPerChannel = bits > 0 ? bits : 32
-        let duration = self.sampleRate > 0 ? Double(file.length) / self.sampleRate : 0
-        self.trim = RecordingMetadata.readTrim(from: url, duration: duration) ?? Trim(duration: duration)
-        self.gain = RecordingMetadata.readGain(from: url)
-        self.seams = RecordingMetadata.readSeams(from: url)
-        self.envelope = Envelope(sampleRate: file.fileFormat.sampleRate)
+
+        if let file = try? AVAudioFile(forReading: url) {
+            self.isOpenable = true
+            self.frameCount = file.length
+            self.sampleRate = file.fileFormat.sampleRate
+            self.channelCount = max(1, Int(file.fileFormat.channelCount))
+            // A compressed adopted file may report 0 bits/channel; fall back to the master's 32 so the
+            // ALAC estimate stays sane (which presets an adopted file even offers is ADR-0015's call).
+            let bits = Int(file.fileFormat.streamDescription.pointee.mBitsPerChannel)
+            self.sourceBitsPerChannel = bits > 0 ? bits : 32
+            let duration = self.sampleRate > 0 ? Double(file.length) / self.sampleRate : 0
+            self.trim = RecordingMetadata.readTrim(from: url, duration: duration) ?? Trim(duration: duration)
+            self.gain = RecordingMetadata.readGain(from: url)
+            self.seams = RecordingMetadata.readSeams(from: url)
+            self.envelope = Envelope(sampleRate: file.fileFormat.sampleRate)
+        } else {
+            // Typed as audio but undecodable: an empty, zero-length can't-open Recording.
+            self.isOpenable = false
+            self.frameCount = 0
+            self.sampleRate = 0
+            self.channelCount = 1
+            self.sourceBitsPerChannel = 32
+            self.trim = Trim(duration: 0)
+            self.gain = 0
+            self.seams = []
+            self.envelope = Envelope(sampleRate: 0)
+        }
+    }
+
+    /// Whether the file's UTType conforms to `public.audio` — the cheap listing half of the
+    /// adoption gate (ADR-0015). Read from the file's own content type, so it follows the real type
+    /// rather than trusting the extension alone; a file with no resolvable audio type is not adopted.
+    private static func conformsToAudio(_ url: URL) -> Bool {
+        guard let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType else { return false }
+        return type.conforms(to: .audio)
     }
 
     /// Follow a rename/move: the same file at a new path (ADR-0006). Only the path changes — the

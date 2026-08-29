@@ -118,6 +118,98 @@ enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         return asbd
     }
 
+    // MARK: - Faithful-or-refuse (ADR-0015)
+
+    /// Whether this preset can encode `format` **faithfully** — with no resample and no downmix
+    /// (ADR-0015). `.available` means the codec accepts the source's exact channel count and rate;
+    /// `.unavailable` carries a plain, source-specific reason, which the inspector shows in place of
+    /// the subtitle while blocking Export until a working rung is chosen. Adopted files (ADR-0006)
+    /// can carry rates and channel counts the encoders refuse; a captured master is always 48 kHz
+    /// stereo, for which every rung is `.available`, so the plain path is untouched.
+    enum Encodability: Equatable {
+        case available
+        case unavailable(reason: String)
+
+        var isAvailable: Bool { self == .available }
+        var reason: String? { if case .unavailable(let reason) = self { return reason } else { return nil } }
+    }
+
+    /// AAC-LC and HE-AAC both cap at 48 kHz; ALAC takes any rate. Above this the three AAC rungs
+    /// refuse rather than let the framework silently resample (ADR-0015).
+    static let aacMaxSampleRate: Double = 48_000
+    /// AAC-LC and ALAC both encode up to 8 channels (mono through 7.1). Beyond that even Master
+    /// refuses — the one exotic case with no faithful rung.
+    static let maxChannels = 8
+
+    func encodability(for format: SourceFormat) -> Encodability {
+        // Each rung's refusal is the first of its codec's limits the source trips; nil is a clean pass.
+        let reason: String?
+        switch self {
+        case .master:
+            reason = Self.channelCeilingReason(format, codec: "ALAC")
+        case .high, .standard:
+            reason = Self.aacRateReason(format, codec: "AAC")
+                ?? Self.channelCeilingReason(format, codec: "AAC")
+        case .compact:
+            reason = Self.aacRateReason(format, codec: "HE-AAC")
+                ?? Self.channelCeilingReason(format, codec: "HE-AAC")
+                ?? Self.evenChannelReason(format)
+        }
+        return reason.map { .unavailable(reason: $0) } ?? .available
+    }
+
+    /// The AAC family caps at 48 kHz; ALAC is unbounded, so only the AAC rungs ask this (ADR-0015).
+    private static func aacRateReason(_ format: SourceFormat, codec: String) -> String? {
+        format.sampleRate > aacMaxSampleRate
+            ? "\(codec) can't encode above 48 kHz — this file is \(rateText(format.sampleRate))."
+            : nil
+    }
+
+    /// AAC-LC, HE-AAC and ALAC all encode up to 8 channels; beyond that there is no faithful rung.
+    private static func channelCeilingReason(_ format: SourceFormat, codec: String) -> String? {
+        format.channelCount > maxChannels
+            ? "\(codec) supports up to \(maxChannels) channels — this file has \(format.channelCount)."
+            : nil
+    }
+
+    /// HE-AAC ("Compact") encodes even channel counts only, so mono and odd multichannel refuse it.
+    private static func evenChannelReason(_ format: SourceFormat) -> String? {
+        format.channelCount % 2 != 0
+            ? "HE-AAC needs an even number of channels — this file \(channelPhrase(format.channelCount))."
+            : nil
+    }
+
+    /// `is mono` / `is stereo` / `has 3 channels` — the tail of a refusal reason, so it reads as a
+    /// sentence rather than a bare number.
+    private static func channelPhrase(_ channels: Int) -> String {
+        switch channels {
+        case 1: return "is mono"
+        case 2: return "is stereo"
+        default: return "has \(channels) channels"
+        }
+    }
+
+    /// The outcome of choosing a rung in the Export picker for an adopted file (ADR-0015). The
+    /// app-wide sticky preset owns the picker while it can encode the file (issue #9); when it can't,
+    /// the pick is a **per-file display-over** that leaves the sticky untouched, and a rung the codec
+    /// can't encode is ignored. Pure and disk-free so these display-over rules are unit-tested rather
+    /// than living untested inside the inspector's binding.
+    enum PresetPick: Equatable {
+        /// Store `preset` as the new app-wide sticky preference, and drop any display-over.
+        case setSticky(QualityPreset)
+        /// Hold `preset` as this file's display-over; leave the sticky preference unchanged.
+        case displayOver(QualityPreset)
+        /// The chosen rung can't encode this file: do nothing.
+        case ignore
+
+        static func resolve(picking preset: QualityPreset, sticky: QualityPreset,
+                            format: SourceFormat) -> PresetPick {
+            guard preset.encodability(for: format).isAvailable else { return .ignore }
+            return sticky.encodability(for: format).isAvailable ? .setSticky(preset)
+                                                                : .displayOver(preset)
+        }
+    }
+
     // MARK: - Subtitle helpers
 
     /// `48 kHz`, `44.1 kHz` — trailing `.0` dropped so whole-kHz rates read cleanly.

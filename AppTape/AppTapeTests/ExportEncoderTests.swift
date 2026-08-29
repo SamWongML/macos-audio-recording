@@ -109,6 +109,54 @@ struct ExportEncoderTests {
         }
     }
 
+    /// A mono CAF master, to prove Export preserves a source channel count the encoders accept
+    /// rather than upmixing it to stereo (ADR-0015: no invented up- or downmix).
+    private func writeMono(at url: URL, seconds: Double, sampleRate: Double = 44_100) throws {
+        let asbd = AudioStreamBasicDescription(
+            mSampleRate: sampleRate, mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: 4, mFramesPerPacket: 1, mBytesPerFrame: 4,
+            mChannelsPerFrame: 1, mBitsPerChannel: 32, mReserved: 0)
+        let writer = try CAFMasterWriter(url: url, asbd: asbd, sourceName: "Mono")
+        let frames = Int(seconds * sampleRate)
+        var samples = [Float](repeating: 0, count: frames)
+        for f in 0..<frames { samples[f] = Float(sin(2 * .pi * 440 * Double(f) / sampleRate)) * 0.5 }
+        try samples.withUnsafeBufferPointer { try writer.write($0) }
+        writer.close()
+    }
+
+    @Test func aMonoSourceExportsMonoAtItsOwnRateWithNoUpmix() throws {
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appendingPathComponent("mono.caf")
+        try writeMono(at: source, seconds: 1.0)
+        let dest = dir.appendingPathComponent("out.m4a")
+
+        // Master/ALAC preserves the mono source exactly (ADR-0015).
+        try ExportEncoder().run(ExportRequest(source: source, destination: dest,
+                                              startFrame: 0, frameCount: 44_100, preset: .master)) { _ in }
+        let out = try AVAudioFile(forReading: dest)
+        #expect(out.fileFormat.channelCount == 1)                 // no upmix to stereo
+        #expect(abs(out.fileFormat.sampleRate - 44_100) < 1)      // no resample
+    }
+
+    @Test func aSubMinimumFileExportsWhole() throws {
+        // A file shorter than the 0.2 s Trim minimum Exports its whole length (ADR-0015).
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appendingPathComponent("blip.caf")
+        try AudioFixtures.writeCAF(at: source, seconds: 0.1)   // 4800 frames at 48 kHz
+        let dest = dir.appendingPathComponent("out.m4a")
+
+        let recording = try #require(Recording(url: source))
+        let (start, count) = recording.trimmedFrameRange
+        try ExportEncoder().run(ExportRequest(source: source, destination: dest,
+                                              startFrame: start, frameCount: count, preset: .high)) { _ in }
+        let out = try AVAudioFile(forReading: dest)
+        #expect(out.length > 0)
+        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 0.1) < 0.05)   // ~whole 0.1 s
+    }
+
     @Test func anEmptyRangeIsRefused() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

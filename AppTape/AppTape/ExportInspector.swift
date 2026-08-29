@@ -20,6 +20,36 @@ struct ExportInspector: View {
 
     private var format: SourceFormat { recording.sourceFormat }
 
+    /// The sticky Quality Preset can't always encode an adopted file (ADR-0015). When it can't, the
+    /// user's pick is a **display-over for this file only** — held here, never written to the
+    /// app-wide sticky preference — and reset when the selection changes. Nil means "use the sticky".
+    @State private var perFilePreset: QualityPreset?
+
+    /// The preset actually shown selected and exported: the per-file display-over if one was chosen,
+    /// otherwise the sticky preference.
+    private var effectivePreset: QualityPreset { perFilePreset ?? preference.preset }
+
+    /// Whether the effective preset can encode this file faithfully. Unavailable blocks Export and
+    /// shows a plain reason in place of the subtitle (ADR-0015).
+    private var effectiveEncodability: QualityPreset.Encodability { effectivePreset.encodability(for: format) }
+
+    /// The picker's selection. Reading gives the effective preset; writing a rung the sticky preset
+    /// can encode updates the app-wide preference (issue #9), but writing one it can't (an adopted
+    /// file the sticky doesn't fit) is a per-file display-over that leaves the sticky untouched
+    /// (ADR-0015). A rung the codec can't encode is never accepted here.
+    private var qualityBinding: Binding<QualityPreset> {
+        Binding(
+            get: { effectivePreset },
+            set: { newValue in
+                switch QualityPreset.PresetPick.resolve(picking: newValue, sticky: preference.preset,
+                                                        format: format) {
+                case .setSticky(let preset): preference.preset = preset; perFilePreset = nil
+                case .displayOver(let preset): perFilePreset = preset
+                case .ignore: break
+                }
+            })
+    }
+
     /// Re-measure whenever the Recording, its Trim, or the toggle changes (ADR-0013). The model
     /// dedupes an unchanged key, so binding this to observed state is cheap.
     private var correctionKey: String {
@@ -53,23 +83,26 @@ struct ExportInspector: View {
             }
 
             Section("Export") {
-                Picker("Quality", selection: $preference.preset) {
+                Picker("Quality", selection: qualityBinding) {
                     ForEach(QualityPreset.allCases) { preset in
-                        Text(preset.displayName).tag(preset)
+                        // A rung the source's format can't encode faithfully is disabled, with its
+                        // own plain reason on hover, so every unusable rung says why — not just the
+                        // effective one (ADR-0015).
+                        Text(preset.displayName)
+                            .tag(preset)
+                            .disabled(!preset.encodability(for: format).isAvailable)
+                            .help(preset.encodability(for: format).reason ?? "")
                     }
                 }
 
-                // The chosen preset's codec, bitrate, rate and channels — visible, never editable.
-                Text(preference.preset.subtitle(for: format))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                presetSubtitleOrReason
 
                 // Loudness and Gain sit between the Quality Preset and the estimate (issue #55): they
                 // never move the estimate (ADR-0012), so they read below the preset, unaffected.
                 loudnessAndGainControls
 
                 LabeledContent("Estimated size") {
-                    Text(ExportSizeEstimate.text(preset: preference.preset, format: format,
+                    Text(ExportSizeEstimate.text(preset: effectivePreset, format: format,
                                                  duration: recording.trimmedDuration))
                         .monospacedDigit()
                 }
@@ -82,11 +115,34 @@ struct ExportInspector: View {
         .animation(.default, value: coordinator.phase)
         .animation(.default, value: preference.normalizeLoudness)
         .animation(.default, value: editor.correction.state)
+        // A new selection drops any per-file display-over, so the sticky preset shows through again
+        // on the next Recording (ADR-0015).
+        .onChange(of: recording.url) { perFilePreset = nil }
         .onChange(of: correctionKey, initial: true) {
             editor.correction.update(recording: recording, normalize: preference.normalizeLoudness)
         }
         .onChange(of: playbackGainDB, initial: true) {
             editor.player.setGlobalGainDB(playbackGainDB)
+        }
+    }
+
+    /// The chosen preset's codec, bitrate, rate and channels — visible, never editable (issue #9);
+    /// or, when the effective preset can't encode this file, the plain refusal reason in its place,
+    /// which reads together with the disabled Export button as "pick a rung that fits" (ADR-0015).
+    @ViewBuilder
+    private var presetSubtitleOrReason: some View {
+        if let reason = effectiveEncodability.reason {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(reason, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text("Choose a quality that fits this file.")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+        } else {
+            Text(effectivePreset.subtitle(for: format))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -168,11 +224,14 @@ struct ExportInspector: View {
 
     private var exportButton: some View {
         Button("Export…") {
-            coordinator.export(recording: recording, preset: preference.preset)
+            coordinator.export(recording: recording, preset: effectivePreset)
         }
         .buttonStyle(.borderedProminent)
         .frame(maxWidth: .infinity)
-        .disabled(recording.trimmedDuration <= 0 || coordinator.isExporting)
+        // Blocked while the effective preset can't encode this file, until a working rung is chosen
+        // (ADR-0015).
+        .disabled(recording.trimmedDuration <= 0 || coordinator.isExporting
+                  || !effectiveEncodability.isAvailable)
     }
 
     private func runningControl(_ fraction: Double) -> some View {
@@ -212,7 +271,7 @@ struct ExportInspector: View {
                 .foregroundStyle(.orange)
             Button("Try Again…") {
                 coordinator.cancel()   // clear the failure, then re-present the save panel
-                coordinator.export(recording: recording, preset: preference.preset)
+                coordinator.export(recording: recording, preset: effectivePreset)
             }
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
