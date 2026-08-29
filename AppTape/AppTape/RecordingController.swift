@@ -23,6 +23,27 @@ final class RecordingController {
     /// at 0 (menu bar `00:00`) until the first sound (ADR-0016).
     private(set) var elapsed: TimeInterval = 0
 
+    /// The active Recording's live meter fill (0...1), sampled off the engine's published peak at
+    /// ~20 Hz through `LevelMeter` (issue #59). A dead tap reads exactly 0, so a soft-faulted
+    /// Recording shows a flat meter. 0 at rest.
+    private(set) var currentLevel: Double = 0
+    /// A short rolling window of recent meter fills, oldest first, that the recording row draws as
+    /// a live waveform. All zeros at rest and reset at each start, so a new Recording never inherits
+    /// the last one's tail.
+    private(set) var meterColumns: [Double] = Array(repeating: 0, count: RecordingController.meterColumnCount)
+    static let meterColumnCount = 48
+
+    /// Monotonic uptime of the current record press, for the row's ~500 ms in-flight grace
+    /// (`RowRecordGlyph`). Nil at rest.
+    private var pressedAtUptime: TimeInterval?
+    /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
+    var sincePress: TimeInterval? {
+        pressedAtUptime.map { ProcessInfo.processInfo.systemUptime - $0 }
+    }
+    /// Whether the current Recording has heard its first sound. The master is created at the first
+    /// sound (ADR-0016), which is exactly when `capturingURL` is set — so this reuses that signal.
+    var hasFirstSound: Bool { capturingURL != nil }
+
     /// True once a Recording has actually captured audio this launch. It gates the wedge
     /// timeout: the first bring-up is cancellable-not-timed so a ~90 s TCC prompt cannot abort
     /// it, and only after a success does a slow bring-up become a wedge worth timing out
@@ -60,6 +81,9 @@ final class RecordingController {
 
     private var engine: CaptureEngine?
     private var timer: Timer?
+    /// The ~20 Hz meter sampler, live only while a Recording is attached (issue #59). Off the
+    /// realtime IOProc and the writer thread — it just reads the engine's published peak.
+    private var meterTimer: Timer?
     /// The post-first-capture wedge timer, armed during bring-up only when `hasCompletedACapture`.
     private var buildTimeout: Timer?
     /// The disk guard's 5 s `statfs` poll, live only while a Recording is attached (ADR-0009). Off
@@ -112,6 +136,8 @@ final class RecordingController {
         isRecording = true
         recordingSourceID = source.bundleID
         elapsed = 0
+        pressedAtUptime = ProcessInfo.processInfo.systemUptime
+        resetMeter()
         generation += 1
         let gen = generation
 
@@ -294,6 +320,34 @@ final class RecordingController {
         RunLoop.main.add(guardTimer, forMode: .common)
         self.guardTimer = guardTimer
         evaluateRunwayGuard()
+
+        // The per-row live meter (issue #59). ~20 Hz is standard meter cadence and, unlike the
+        // recording clock, this is not observed by the menu bar — only the open panel reads it — so
+        // it drives no status-item churn while it ticks.
+        let meterTimer = Timer(timeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.sampleLevel() }
+        }
+        RunLoop.main.add(meterTimer, forMode: .common)
+        self.meterTimer = meterTimer
+    }
+
+    /// One meter sample: fold the engine's published peak through `LevelMeter` and roll it into the
+    /// window. A dead tap reads exactly 0 (LevelMeter), so a soft-faulted Recording flattens the
+    /// meter rather than freezing it at its last live value.
+    private func sampleLevel() {
+        guard let engine else { return }
+        let fill = LevelMeter.fill(forLinearPeak: engine.currentLevel)
+        currentLevel = fill
+        var columns = meterColumns
+        columns.removeFirst()
+        columns.append(fill)
+        meterColumns = columns
+    }
+
+    /// Flatten the meter — at each start (so no tail carries over) and at every return to idle.
+    private func resetMeter() {
+        currentLevel = 0
+        meterColumns = Array(repeating: 0, count: Self.meterColumnCount)
     }
 
     /// One Runway reading (ADR-0009): fold current free space and the master's byte rate into the
@@ -343,14 +397,18 @@ final class RecordingController {
         isRecording = false
         recordingSourceID = nil
         capturingURL = nil
+        pressedAtUptime = nil
         timer?.invalidate()
         timer = nil
+        meterTimer?.invalidate()
+        meterTimer = nil
         buildTimeout?.invalidate()
         buildTimeout = nil
         guardTimer?.invalidate()
         guardTimer = nil
         runwayTier = .nominal
         elapsed = 0
+        resetMeter()
         generation += 1
     }
 }

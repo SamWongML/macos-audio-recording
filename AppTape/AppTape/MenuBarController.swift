@@ -224,8 +224,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         // bar — so it would effectively never close (ADR-0011).
         popover.behavior = .transient
         popover.delegate = self
-        let panel = PanelView(dismiss: { [weak self] in self?.popover?.performClose(nil) })
-        popover.contentViewController = NSHostingController(rootView: panel)
+        popover.contentViewController = NSHostingController(rootView: PanelView())
         return popover
     }
 

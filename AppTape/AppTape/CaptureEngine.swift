@@ -84,6 +84,14 @@ final class CaptureEngine: @unchecked Sendable {
     var masterFrameCount: Int { publishedFrames.load(ordering: .acquiring) }
     var elapsed: TimeInterval { sampleRate > 0 ? Double(masterFrameCount) / sampleRate : 0 }
 
+    /// The most recent drained chunk's peak absolute sample (linear), published by the writer
+    /// thread for the panel's per-row live meter (issue #59). A dead tap publishes **exactly 0** —
+    /// a soft-fault all-zero chunk carries a zero peak, and a famine (no callbacks) publishes 0 for
+    /// the empty drain — so the meter reads zero rather than a stale ghost. Stored as Float bits in
+    /// an atomic; written here, read on the main actor.
+    private let publishedLevelBits = Atomic<UInt32>(0)
+    var currentLevel: Float { Float(bitPattern: publishedLevelBits.load(ordering: .acquiring)) }
+
     /// The master's on-disk byte rate, the divisor in the Runway guard's `(free − 2 GB) ÷ rate`
     /// (ADR-0009). The master is interleaved Float32 (`CAFMasterWriter`), so the rate is
     /// `channels × 4 bytes × sampleRate` — fixed at creation but not a constant across Recordings,
@@ -273,6 +281,10 @@ final class CaptureEngine: @unchecked Sendable {
     /// samples drained.
     private func drainOnce(into scratch: inout [Float]) -> Int {
         let produced = scratch.withUnsafeMutableBufferPointer { tap.ring.read(into: $0) }
+        // Publish the chunk's peak for the live meter — 0 for an empty drain (a famine) or an
+        // all-zero chunk (a soft-fault dead tap), so the meter reads exactly zero (issue #59).
+        let peak = produced > 0 ? Self.peakMagnitude(in: scratch, sampleCount: produced) : 0
+        publishedLevelBits.store(peak.bitPattern, ordering: .releasing)
         guard produced > 0 else { return 0 }
         let frames = produced / channels
         let firstNonSilent = Self.firstNonSilentFrame(in: scratch, sampleCount: produced, channels: channels)
@@ -466,6 +478,19 @@ final class CaptureEngine: @unchecked Sendable {
             }
         }
         return false
+    }
+
+    /// The largest absolute sample in the chunk — the live meter's peak, computed here on the
+    /// non-realtime thread, never in the IOProc. Exactly 0 for a wholly-silent (dead-tap) chunk.
+    private static func peakMagnitude(in buffer: [Float], sampleCount: Int) -> Float {
+        var peak: Float = 0
+        var i = 0
+        while i < sampleCount {
+            let m = abs(buffer[i])
+            if m > peak { peak = m }
+            i += 1
+        }
+        return peak
     }
 
     /// The first frame carrying any non-zero sample, or nil if the chunk is wholly silent.
