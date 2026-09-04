@@ -8,12 +8,18 @@ import Combine
 import SwiftUI
 
 /// The hand-rolled panel's transport surface: the list *is* the panel and a row *is* the
-/// record control — no button chrome (issue #6, variant H). Pressing a Source aims the tap at
-/// its helper processes and starts a Recording; the pressed row then *is* the running Recording
-/// — a pulsing `record.circle.fill` in a reserved trailing lane, over a live level meter — while
-/// the one-click stop lives on the status item itself (issue #8, ADR-0004). The panel stays open
-/// through a start so that transition is seen; it dismisses the ordinary transient way (outside
-/// click, Escape, a right-click on the status item).
+/// record control — no button chrome (issue #6, variant H). The list shows the apps currently
+/// playing audio, each painted behind by its own live waveform; pressing a row aims the tap at
+/// that Source's helper processes and starts a Recording. The pressed row then *is* the running
+/// Recording — a pulsing `record.circle.fill` in a reserved trailing lane, over a red row tint —
+/// while the one-click stop and the `● MM:SS` clock live on the status item itself (issue #8,
+/// ADR-0004). The panel stays open through a start so that transition is seen; it dismisses the
+/// ordinary transient way (outside click, Escape, a right-click on the status item).
+///
+/// The per-row waveforms come from `SourceLevelMonitor`, which opens a Core Audio probe per
+/// playing app — so the System Audio Recording prompt can appear when the panel is opened over
+/// playing audio, before record is pressed. That is the prototype's chosen behaviour (issue #6),
+/// deliberately traded against spec story #14. The monitor runs only while the panel is on screen.
 ///
 /// It honours **Reduce Transparency** — an opaque background instead of the popover's vibrant
 /// material — and **Reduce Motion**, which stills the record glyph's pulse (issue #59).
@@ -22,6 +28,9 @@ struct PanelView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = SourceModel()
+    /// The live per-Source amplitude for the row waveforms. Owned here so it runs only while the
+    /// panel is on screen and holds no taps at rest.
+    @State private var monitor = SourceLevelMonitor()
     private var recorder: RecordingController { .shared }
     /// Rescans the world for the list's live ordering (playing first). Slow enough not to churn.
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -30,6 +39,14 @@ struct PanelView: View {
     /// Only bumps while recording, so it never re-renders the idle panel.
     private let recTick = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     @State private var recNudge = 0
+
+    /// The Sources the list shows: those currently playing audio (issue #6, variant H). A Source
+    /// that is running but silent is not listed — the header says so when none are playing.
+    private var playing: [Source] { model.sources.filter(\.isPlaying) }
+
+    /// The bundle ID being recorded, if any — excluded from the monitor (its level comes from the
+    /// recording tap) and painted with the recording tint.
+    private var recordingBundleID: String? { recorder.isRecording ? recorder.recordingSourceID : nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -40,7 +57,7 @@ struct PanelView: View {
             Divider()
             footer
         }
-        .frame(width: 280)
+        .frame(width: 320)
         // Reduce Transparency (issue #59): swap the popover's vibrant material for an opaque
         // window background. At rest the fill is clear so the material shows through as before.
         .background(reduceTransparency ? Color(nsColor: .windowBackgroundColor) : Color.clear)
@@ -49,8 +66,13 @@ struct PanelView: View {
             // editor from AppKit (EditorPresenter).
             EditorPresenter.shared.bind(openWindow)
             model.refresh()
+            monitor.sync(with: model.sources, excluding: recordingBundleID)
         }
-        .onReceive(tick) { _ in model.refresh() }
+        .onDisappear { monitor.stopAll() }
+        .onReceive(tick) { _ in
+            model.refresh()
+            monitor.sync(with: model.sources, excluding: recordingBundleID)
+        }
         .onReceive(recTick) { _ in if recorder.isRecording { recNudge &+= 1 } }
         // An unrelated key handler, exactly the kind a real control adds: it silently takes
         // the popover's free Escape away (ADR-0011), which is why the app owns Escape in
@@ -60,32 +82,25 @@ struct PanelView: View {
 
     // MARK: - Header
 
+    /// The list's title, swapping to "Recording" while a Recording runs (issue #6, variant H) —
+    /// the running clock and the stop live on the status item (ADR-0004), not here. The lock
+    /// appears when the probes are running but every sample is zero, the only signal that the
+    /// System Audio Recording grant is missing (issue #3).
     @ViewBuilder private var header: some View {
-        if recorder.isRecording {
-            HStack(spacing: 8) {
-                Circle().fill(.red).frame(width: 9, height: 9)
-                Text(recordingName)
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
-                Spacer()
-                Text(recorder.elapsedText)
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
+        HStack {
+            Text(recorder.isRecording ? "Recording" : "Playing Audio")
+                .font(.headline)
+            Spacer()
+            if monitor.looksUnpermitted {
+                Image(systemName: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .help("Probes are running but every sample is zero — System Audio Recording is "
+                          + "probably not granted. There is no API to check.")
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-        } else {
-            Text("Record")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
         }
-    }
-
-    private var recordingName: String {
-        model.sources.first { $0.bundleID == recorder.recordingSourceID }?.name ?? "Recording"
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 
     // MARK: - Blocking banner
@@ -148,40 +163,34 @@ struct PanelView: View {
 
     private var sourceList: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
-                if model.sources.isEmpty {
-                    Text("No applications running.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
+            LazyVStack(spacing: 2) {
+                if playing.isEmpty {
+                    NothingPlaying()
                 } else {
-                    ForEach(model.sources) { source in
-                        // A Source with no HAL clients yet cannot be aimed at by object ID, so
-                        // pressing it could do nothing. Show it dimmed and inert rather than
-                        // swallow the press silently.
-                        let capturable = !source.processObjectIDs.isEmpty
+                    ForEach(playing) { source in
                         let isTarget = recorder.isRecording && recorder.recordingSourceID == source.bundleID
                         let glyph = RowRecordGlyph.state(
                             isRecordingTarget: isTarget,
                             sincePress: isTarget ? recorder.sincePress : nil,
                             hasFirstSound: recorder.hasFirstSound)
+                        // The recording row's waveform comes from the recording tap's own meter, so no
+                        // second tap is opened on it; every other playing row comes from the monitor.
+                        let samples: [Float] = isTarget
+                            ? recorder.meterColumns.map(Float.init)
+                            : (monitor.waveforms[source.bundleID] ?? [])
                         SourceRow(source: source,
                                   icon: model.icon(for: source),
                                   glyph: glyph,
-                                  // Only the recording row carries live meter data; every other row's
-                                  // meter is dead and reads zero (issue #59).
-                                  meterColumns: isTarget ? recorder.meterColumns : [],
-                                  reduceMotion: reduceMotion)
-                            .opacity(capturable ? 1 : 0.4)
-                            .contentShape(Rectangle())
-                            .onTapGesture { if capturable { pick(source) } }
-                        Divider().padding(.leading, 44)
+                                  samples: samples,
+                                  isRecording: isTarget,
+                                  reduceMotion: reduceMotion,
+                                  onPick: { pick(source) })
                     }
                 }
             }
+            .padding(6)
         }
-        .frame(maxHeight: 320)
+        .frame(height: 296)
     }
 
     /// While recording, the transport is busy: a press cannot start a second Recording (one
@@ -190,6 +199,9 @@ struct PanelView: View {
     /// a start refused below the floor (ADR-0009) also stays open, for its banner.
     private func pick(_ source: Source) {
         guard !recorder.isRecording else { return }
+        // Hand the recording tap sole ownership of this Source's audio: drop the monitor's probe on
+        // it so two taps never contend, then start.
+        monitor.sync(with: model.sources, excluding: source.bundleID)
         recorder.start(source)
     }
 
@@ -209,95 +221,156 @@ struct PanelView: View {
     }
 }
 
-/// One Source in the list. The row *is* the record control (issue #6, ADR-0011): icon, name,
-/// then a fixed lane holding the live level meter and — in a reserved trailing sub-lane the
-/// meter insets around, so it stays legible over the waveform — the record glyph. `circle` at
-/// rest; a pulsing `record.circle.fill` once this row is the one recording (issue #59).
+/// One Source in the list. The row *is* the record control (issue #6, ADR-0011): icon, name, then
+/// a fixed trailing lane holding the record glyph — `circle` at rest, a pulsing `record.circle.fill`
+/// once this row is the one recording (issue #59). Behind the whole row runs its live amplitude
+/// waveform, inset out of the glyph lane so the glyph stays legible over the moving signal.
 private struct SourceRow: View {
     let source: Source
     let icon: NSImage?
     let glyph: RowRecordGlyph.State
-    /// Recent meter fills (0...1), oldest first — non-empty only for the recording row.
-    let meterColumns: [Double]
+    /// Live amplitude samples (0...1), oldest first — the monitor's trace, or the recording tap's
+    /// meter for the row being recorded. Empty reads as a flat (silent) row.
+    let samples: [Float]
+    let isRecording: Bool
     let reduceMotion: Bool
+    let onPick: () -> Void
 
-    /// The reserved trailing sub-lane the meter insets around, holding the record glyph.
-    private let glyphLane: CGFloat = 26
-    /// The whole meter-plus-glyph lane, so name width — and thus truncation — is consistent.
-    private let laneWidth: CGFloat = 120
+    @State private var hovered = false
+
+    /// The trailing lane the waveform is inset around, so the record affordance sits in clear space
+    /// rather than on top of moving pixels (issue #6, variant H).
+    private let laneWidth: CGFloat = 34
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Group {
                 if let icon { Image(nsImage: icon).resizable() }
-                else { Image(systemName: "app.dashed").resizable() }
+                else { Image(systemName: "app.dashed").resizable().foregroundStyle(.secondary) }
             }
-            .frame(width: 22, height: 22)
+            .frame(width: 28, height: 28)
 
             Text(source.name)
-                .font(.callout)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Spacer(minLength: 8)
 
-            ZStack(alignment: .trailing) {
-                meter
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.trailing, glyphLane)   // the waveform insets around the glyph lane
+            ZStack {
+                if hovered { Circle().fill(.primary.opacity(0.12)) }
                 recordGlyph
-                    .frame(width: glyphLane)
             }
-            .frame(width: laneWidth, height: 22)
+            .frame(width: 26, height: 26)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-    }
-
-    /// The live level meter. Empty (a dead or absent tap) draws nothing, which reads as exactly
-    /// zero (issue #59) — so a non-recording row is flat and the recording row flattens the moment
-    /// its tap goes silent.
-    @ViewBuilder private var meter: some View {
-        if meterColumns.contains(where: { $0 > 0 }) {
-            LevelMeterShape(fills: meterColumns)
-                .fill(Color.red.opacity(0.85))
-        } else {
-            Color.clear
+        .padding(.leading, 11)
+        .padding(.trailing, (laneWidth - 26) / 2)
+        .frame(height: 46)
+        .background {
+            ZStack {
+                if isRecording { Color.red.opacity(0.10) }
+                WaveformBackground(samples: samples, isSelected: isRecording, trailingInset: laneWidth)
+            }
         }
+        .clipShape(.rect(cornerRadius: 9))
+        .contentShape(.rect)
+        .onHover { hovered = $0 }
+        .onTapGesture(perform: onPick)
     }
 
     private var recordGlyph: some View {
         let filled = RowRecordGlyph.symbolName(glyph) != "circle"
         return Image(systemName: RowRecordGlyph.symbolName(glyph))
-            .font(.system(size: 15))
-            .foregroundStyle(filled ? Color.red : Color.secondary)
+            .font(.system(size: 17))
+            .foregroundStyle(filled ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+            .contentTransition(.symbolEffect(.replace))
             // The in-flight/recording pulse (issue #59), stilled under Reduce Motion.
-            .symbolEffect(.pulse, options: .repeating, isActive: RowRecordGlyph.pulses(glyph) && !reduceMotion)
+            .symbolEffect(.pulse, options: .repeating,
+                          isActive: RowRecordGlyph.pulses(glyph) && !reduceMotion)
     }
 }
 
-/// The row's live level meter, drawn as a compact scroll of vertical bars — one per recent meter
-/// fill, oldest at the leading edge — mirrored around the centre line (issue #59). Deliberately
-/// its own `Shape` rather than the audio-envelope `WaveformPath`: the input is a single 0...1 fill
-/// per column, already dB-scaled by `LevelMeter`, not a reduced min/max/rms envelope, so nothing is
-/// faked into an `Envelope.Column`. A `Shape`, not a `Canvas`, because a `Canvas` draws nothing
-/// inside a lazy list row on macOS 27 (issue #7, see `WaveformView`).
-private struct LevelMeterShape: Shape {
-    /// Meter fills 0...1, oldest first.
-    var fills: [Double]
+/// A real amplitude waveform, mirrored around the row's centre line, drawn behind the row's content.
+/// Low-opacity and masked to fade out under the icon and name on the leading edge, leaving the
+/// trailing stretch — where there is no text — carrying the signal.
+///
+/// A `Shape`, not a `Canvas`: a `Canvas` draws nothing inside a lazy list row on macOS 27
+/// (issue #7, see `WaveformView`), and the fill gradient a `Shape` takes is all this needs.
+private struct WaveformBackground: View {
+    var samples: [Float]
+    var isSelected: Bool
+    /// Width at the trailing edge the waveform must not draw into, so the record affordance sits in
+    /// clear space rather than on top of moving pixels.
+    var trailingInset: CGFloat = 0
+
+    var body: some View {
+        RowWaveformShape(samples: samples)
+            .fill(LinearGradient(
+                gradient: Gradient(colors: [.accentColor.opacity(0.05), .accentColor.opacity(0.55)]),
+                startPoint: .leading, endPoint: .trailing))
+            .opacity(isSelected ? 0.9 : 0.6)
+            .mask(LinearGradient(stops: [
+                .init(color: .clear, location: 0.0),
+                .init(color: .black.opacity(0.35), location: 0.28),
+                .init(color: .black, location: 0.55),
+                .init(color: .black, location: 1.0),
+            ], startPoint: .leading, endPoint: .trailing))
+            .padding(.trailing, trailingInset)
+    }
+}
+
+/// The mirrored, filled waveform outline. Quadratic segments through the sample midpoints — a
+/// straight polyline at this density reads jagged; the curve is what makes it a waveform rather
+/// than a chart.
+private struct RowWaveformShape: Shape {
+    var samples: [Float]
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        guard !fills.isEmpty else { return path }
-        let slot = rect.width / CGFloat(fills.count)
-        let barWidth = Swift.max(1, slot * 0.6)
-        let mid = rect.midY
-        let maxHalf = rect.height / 2
-        for (i, fill) in fills.enumerated() {
-            let half = Swift.max(0.5, CGFloat(min(1, max(0, fill))) * maxHalf)
-            let x = rect.minX + slot * CGFloat(i) + (slot - barWidth) / 2
-            let bar = CGRect(x: x, y: mid - half, width: barWidth, height: half * 2)
-            path.addRoundedRect(in: bar, cornerSize: CGSize(width: barWidth / 2, height: barWidth / 2))
+        guard samples.count > 1 else { return path }
+
+        let midY = rect.midY
+        let step = rect.width / CGFloat(samples.count - 1)
+
+        func point(_ index: Int, mirrored: Bool) -> CGPoint {
+            let amplitude = CGFloat(samples[index]) * (rect.height / 2) * 0.92
+            return CGPoint(x: rect.minX + CGFloat(index) * step,
+                           y: mirrored ? midY + amplitude : midY - amplitude)
         }
+
+        func trace(_ path: inout Path, mirrored: Bool, reversed: Bool) {
+            let indices = reversed ? Array(samples.indices.reversed()) : Array(samples.indices)
+            guard let first = indices.first else { return }
+            path.addLine(to: point(first, mirrored: mirrored))
+            for offset in 1..<indices.count {
+                let previous = point(indices[offset - 1], mirrored: mirrored)
+                let current = point(indices[offset], mirrored: mirrored)
+                let midpoint = CGPoint(x: (previous.x + current.x) / 2, y: (previous.y + current.y) / 2)
+                path.addQuadCurve(to: midpoint, control: previous)
+            }
+            path.addLine(to: point(indices[indices.count - 1], mirrored: mirrored))
+        }
+
+        path.move(to: CGPoint(x: rect.minX, y: midY))
+        trace(&path, mirrored: false, reversed: false)
+        trace(&path, mirrored: true, reversed: true)
+        path.closeSubpath()
         return path
+    }
+}
+
+/// The empty state: when nothing is playing, say so rather than show a blank list under a header
+/// that claims "Playing Audio" (issue #6, variant H).
+private struct NothingPlaying: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "speaker.slash")
+                .font(.system(size: 22))
+                .foregroundStyle(.tertiary)
+            Text("No app is playing audio")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 34)
     }
 }

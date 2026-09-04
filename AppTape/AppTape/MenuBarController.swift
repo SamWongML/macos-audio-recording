@@ -102,9 +102,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
                     .foregroundColor: amber ? NSColor.systemOrange : NSColor.systemRed,
                 ])
-            // Colour is the sole signal at the amber tier (ADR-0009): the tooltip stays constant, so
-            // hovering does not become a second, text channel the ADR deliberately withholds.
-            button.toolTip = "Recording — click to stop, right-click for the panel"
+            // The Source name is stable for the whole Recording, so naming it does not turn the
+            // tooltip into a second channel for the amber Runway tier — which colour remains the
+            // sole signal of, unnamed here, per ADR-0009 (issue #8, variant K).
+            let named = recorder.recordingSourceName.map { "Recording \($0)" } ?? "Recording"
+            button.toolTip = "\(named) — click to stop, right-click for the panel"
         } else {
             button.image = idleGlyph
             button.attributedTitle = NSAttributedString(string: "")

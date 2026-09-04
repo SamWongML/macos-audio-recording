@@ -19,6 +19,8 @@ final class RecordingController {
     private(set) var isRecording = false
     /// The Source being captured, for the status item's tooltip and the panel's row state.
     private(set) var recordingSourceID: String?
+    /// The captured Source's display name, for the status item's tooltip (issue #8, variant K).
+    private(set) var recordingSourceName: String?
     /// Master duration in seconds, read off the engine's frame count on a timer — so it sits
     /// at 0 (menu bar `00:00`) until the first sound (ADR-0016).
     private(set) var elapsed: TimeInterval = 0
@@ -135,6 +137,7 @@ final class RecordingController {
         permissionRecovery = false   // retry clears the last denial's banner
         isRecording = true
         recordingSourceID = source.bundleID
+        recordingSourceName = source.name
         elapsed = 0
         pressedAtUptime = ProcessInfo.processInfo.systemUptime
         resetMeter()
@@ -396,6 +399,7 @@ final class RecordingController {
     private func returnToIdle() {
         isRecording = false
         recordingSourceID = nil
+        recordingSourceName = nil
         capturingURL = nil
         pressedAtUptime = nil
         timer?.invalidate()

@@ -71,42 +71,31 @@ struct ExportInspector: View {
 
     var body: some View {
         Form {
-            Section("Selection") {
-                LabeledContent("Length") {
-                    Text(Format.time(recording.trimmedDuration)).monospacedDigit()
-                }
-                LabeledContent("Trim") {
-                    Text(recording.isTrimmed ? recording.trimRangeText : "Whole Recording")
-                        .monospacedDigit()
-                        .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                }
+            // The four Quality Presets, all four rungs and all four size estimates visible at once
+            // (issue #7's variant O/Q): the selected rung tinted, an unusable rung dimmed with its
+            // plain reason on hover (ADR-0015).
+            Section("Quality Preset") {
+                qualityPresetList
             }
 
-            Section("Export") {
-                Picker("Quality", selection: qualityBinding) {
-                    ForEach(QualityPreset.allCases) { preset in
-                        // A rung the source's format can't encode faithfully is disabled, with its
-                        // own plain reason on hover, so every unusable rung says why — not just the
-                        // effective one (ADR-0015).
-                        Text(preset.displayName)
-                            .tag(preset)
-                            .disabled(!preset.encodability(for: format).isAvailable)
-                            .help(preset.encodability(for: format).reason ?? "")
-                    }
-                }
-
-                presetSubtitleOrReason
-
-                // Loudness and Gain sit between the Quality Preset and the estimate (issue #55): they
-                // never move the estimate (ADR-0012), so they read below the preset, unaffected.
+            // Loudness and Gain (issue #55). They never move the size estimate (ADR-0012), so they
+            // sit in their own section below the preset, above the summary.
+            Section("Level") {
                 loudnessAndGainControls
+            }
 
+            // The trailing summary: the effective preset's estimate and the Trim's length, directly
+            // above the Export control that acts on them.
+            Section {
                 LabeledContent("Estimated size") {
                     Text(ExportSizeEstimate.text(preset: effectivePreset, format: format,
                                                  duration: recording.trimmedDuration))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
                 }
-
+                LabeledContent("Length") {
+                    Text(Format.time(recording.trimmedDuration)).monospacedDigit()
+                }
                 exportControl
             }
         }
@@ -126,11 +115,21 @@ struct ExportInspector: View {
         }
     }
 
-    /// The chosen preset's codec, bitrate, rate and channels — visible, never editable (issue #9);
-    /// or, when the effective preset can't encode this file, the plain refusal reason in its place,
-    /// which reads together with the disabled Export button as "pick a rung that fits" (ADR-0015).
+    /// All four Quality Preset rungs stacked, each with its codec/rate subtitle and its **own** live
+    /// size estimate, so dragging a Trim handle moves all four figures at once (issue #7's variant O/Q,
+    /// issue #41). The selected rung is tinted; a rung the source's format can't encode faithfully is
+    /// dimmed and disabled, with its plain reason on hover, and when the *effective* rung is the one
+    /// that can't encode, that reason is spelled out beneath the list so Export's refusal has a stated
+    /// cause (ADR-0015).
     @ViewBuilder
-    private var presetSubtitleOrReason: some View {
+    private var qualityPresetList: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(QualityPreset.allCases) { preset in
+                presetRow(preset)
+            }
+        }
+        .listRowInsets(EdgeInsets())
+
         if let reason = effectiveEncodability.reason {
             VStack(alignment: .leading, spacing: 3) {
                 Label(reason, systemImage: "exclamationmark.triangle.fill")
@@ -139,11 +138,37 @@ struct ExportInspector: View {
                     .foregroundStyle(.secondary)
             }
             .font(.caption)
-        } else {
-            Text(effectivePreset.subtitle(for: format))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
+    }
+
+    private func presetRow(_ preset: QualityPreset) -> some View {
+        let encodability = preset.encodability(for: format)
+        let selected = effectivePreset == preset
+        return Button {
+            qualityBinding.wrappedValue = preset
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(preset.displayName)
+                    Text(preset.subtitle(for: format))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(ExportSizeEstimate.text(preset: preset, format: format,
+                                             duration: recording.trimmedDuration))
+                    .font(.caption).monospacedDigit()
+                    .contentTransition(.numericText())
+                    .foregroundStyle(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            }
+            .padding(.vertical, 4).padding(.horizontal, 8)
+            .background(selected ? AnyShapeStyle(.tint.opacity(0.14)) : AnyShapeStyle(.clear),
+                        in: RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+            .opacity(encodability.isAvailable ? 1 : 0.4)
+        }
+        .buttonStyle(.plain)
+        .disabled(!encodability.isAvailable)
+        .help(encodability.reason ?? "")
     }
 
     // MARK: - Loudness & Gain (normalize toggle, correction read-out, Gain slider)
@@ -226,8 +251,9 @@ struct ExportInspector: View {
         Button("Export…") {
             coordinator.export(recording: recording, preset: effectivePreset)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.glassProminent)
         .frame(maxWidth: .infinity)
+        .keyboardShortcut("e")
         // Blocked while the effective preset can't encode this file, until a working rung is chosen
         // (ADR-0015).
         .disabled(recording.trimmedDuration <= 0 || coordinator.isExporting
@@ -273,7 +299,7 @@ struct ExportInspector: View {
                 coordinator.cancel()   // clear the failure, then re-present the save panel
                 coordinator.export(recording: recording, preset: effectivePreset)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .frame(maxWidth: .infinity)
         }
     }
