@@ -61,10 +61,16 @@ worth keeping.
   directory writes, which a file merely growing does not produce, leaving app activation as the only
   trigger. If that ever becomes a real cost, the fix is an incremental envelope, not a return to
   keeping a reading past its truth.
-- **A Recording with no frames is drawn as having none.** A Trim over zero frames puts both handles at
-  zero, which drew the trimmed-away dimmer across the whole lane as a solid slab. The lane now says
-  `Still capturing` or `No audio yet` instead, Play is disabled with it, and the transport stops
-  claiming a length it has not read.
+- **A Recording whose audio is still arriving is drawn as such, not drawn wrongly.** The lane always
+  fits the Recording to the width, so a reading of a file still being written gets stretched across
+  it as though it were the whole thing — which is how a fraction of a second read as a solid slab.
+  The condition is `RecordingController.isStillArriving`: no frames, **or** this is the Recording
+  being captured right now. Both halves are needed, and driving the real app is what proved it — a
+  master is adopted moments after the first sound creates it, so it has a *tiny* frame count rather
+  than none (51 frames, ~409 bytes, measured), and a zero-frames test missed it entirely. The lane
+  says `Still capturing` or `No audio yet`, Play is disabled with it, and the transport stops
+  claiming a length it has not read. A live growing waveform is a real thing to want, but it needs
+  an incremental envelope and a live length; it is not this.
 
 ## Considered and rejected
 

@@ -22,9 +22,9 @@ struct TrimTimeline: View {
     var onTrimCommitted: () -> Void
     var showsRuler = true
 
-    /// The Recording being captured right now, if any — the one case in which a Recording the
-    /// editor can select genuinely has no audio yet (ADR-0021). Read here, as `ExportInspector`
-    /// already does, so the empty lane can say *why* it is empty rather than just being blank.
+    /// The Recording being captured right now, if any. Read here, as `ExportInspector` already
+    /// does, both to decide whether the lane has anything dependable to draw (ADR-0021) and so the
+    /// empty lane can say *why* it is empty rather than just being blank.
     @State private var recorder = RecordingController.shared
 
     @State private var draggingHandle: Handle?
@@ -35,11 +35,14 @@ struct TrimTimeline: View {
 
     private var visible: ClosedRange<Double> { 0...max(recording.duration, 0.001) }
 
-    /// What an empty lane says. A Recording with no frames is one whose file is still being
-    /// written — a master mid-capture, or a file still arriving in the Library — so the lane says
-    /// that instead of drawing a picture of nothing (ADR-0021). Before this, a zero-length
-    /// Recording drew its whole-width trimmed-away dimmer as a solid slab (issue #80).
-    private var emptyTelling: String {
+    /// Whether the lane has anything dependable to draw. The Recording always fits the width, so a
+    /// reading of a file still being written is drawn as though it were the whole Recording — which
+    /// is how a fraction of a second became a solid slab across the lane (issue #80, ADR-0021).
+    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+
+    /// What the lane says in place of that picture. A capture in progress is named as such; a file
+    /// merely arriving in the Library has no better word than that it holds no audio yet.
+    private var arrivingTelling: String {
         recorder.isCapturing(recording) ? "Still capturing" : "No audio yet"
     }
 
@@ -64,11 +67,11 @@ struct TrimTimeline: View {
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.35))
 
-            if recording.isEmpty {
-                // Nothing to draw over: no waveform, no Trim, no playhead — a Trim over zero frames
-                // has both handles at zero, which drew the trimmed-away dimmer across the whole lane
-                // and read as a solid slab (issue #80).
-                Text(emptyTelling)
+            if isStillArriving {
+                // Nothing dependable to draw over: no waveform, no Trim, no playhead. A Trim over
+                // near-zero frames puts both handles at zero and stretches a fraction of a second
+                // across the full width, which is what read as a solid slab (issue #80).
+                Text(arrivingTelling)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(width: width, height: height)
@@ -100,9 +103,9 @@ struct TrimTimeline: View {
         }
         .contentShape(Rectangle())
         .gesture(scrub(time: time))
-        // There is nothing to scrub or Trim on a Recording with no frames, and a drag would move
-        // handles that have nowhere to go.
-        .disabled(recording.isEmpty)
+        // There is nothing to scrub or Trim while the audio is still arriving, and a drag would set
+        // a Trim against a length that is about to change.
+        .disabled(isStillArriving)
     }
 
     /// One decision per drag, taken from `startLocation`. Keying off `translation == .zero` was

@@ -15,6 +15,9 @@ import SwiftUI
 /// toolbar background so the waveform reads to the window's edge.
 struct EditorView: View {
     @State private var model = EditorModel.shared
+    /// Whether the selected Recording is the one capturing right now — the transport asks, as the
+    /// lane and the inspector already do (ADR-0021).
+    @State private var recorder = RecordingController.shared
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openWindow) private var openWindow
@@ -163,7 +166,10 @@ struct EditorView: View {
     }
 
     private func transport(_ recording: Recording) -> some View {
-        HStack(spacing: 14) {
+        // A Recording whose audio is still arriving has no dependable length and nothing to play
+        // (ADR-0021): the lane says so, and the transport must not contradict it.
+        let isStillArriving = recorder.isStillArriving(recording)
+        return HStack(spacing: 14) {
             Button {
                 model.player.toggle()
             } label: {
@@ -173,20 +179,19 @@ struct EditorView: View {
             .buttonStyle(.glass)
             .keyboardShortcut(.space, modifiers: [])
             .help("Plays the Trim, looping")
-            // A Recording with no frames has nothing to play, and the space shortcut goes inert
-            // with the button (ADR-0021).
-            .disabled(recording.isEmpty)
+            // The space shortcut goes inert with the button (ADR-0021).
+            .disabled(isStillArriving)
 
             Text(Format.time(model.player.position, precise: true))
                 .font(.system(.title3, design: .monospaced)).monospacedDigit()
-                .foregroundStyle(recording.isEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
 
             Spacer()
 
             // Nothing is said about the length of a Recording whose file is still being written:
-            // the lane already says why it is empty, and `Whole Recording · 0:00` was a confident
-            // statement of a length that was simply not read yet (issue #80).
-            if !recording.isEmpty {
+            // the lane already says why, and `Whole Recording · 0:00` was a confident statement of
+            // a length that had simply not been read yet (issue #80).
+            if !isStillArriving {
                 Text(recording.isTrimmed
                      ? "Trim \(recording.trimRangeText)"
                      : "Whole Recording · \(Format.time(recording.duration))")
