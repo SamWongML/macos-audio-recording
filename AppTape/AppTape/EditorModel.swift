@@ -3,6 +3,7 @@
 //  AppTape
 //
 
+import AppKit
 import Foundation
 import Observation
 
@@ -28,6 +29,11 @@ final class EditorModel {
     /// rather than hold a stale one (ADR-0006). A plain signal, not the selection itself, because
     /// "selection went nil" also happens on an empty Library and must not close anything.
     private(set) var vanishedTick = 0
+
+    /// The Recording whose name is being edited inline in the sidebar, or nil. Editor-wide rather
+    /// than row-local state for two reasons: only one row may be editing at a time, and the File
+    /// menu's Rename has to be able to open the field on a row it does not own (ADR-0020).
+    var renamingURL: URL?
 
     @ObservationIgnored private var pendingSelectionURL: URL?
     @ObservationIgnored private var didInitialSelect = false
@@ -70,6 +76,24 @@ final class EditorModel {
             select(store.recordings.first { $0.url != recording.url })
         }
         store.trash(recording)
+    }
+
+    func beginRename(_ recording: Recording) { renamingURL = recording.url }
+
+    func endRename() { renamingURL = nil }
+
+    /// Rename a Recording, returning what the Library made of the name so the row can tell a
+    /// refusal (ADR-0020). The open Recording survives its own rename — same object, same
+    /// envelope, same Trim — so nothing here has to touch the selection or the player.
+    @discardableResult
+    func rename(_ recording: Recording, to proposed: String) -> LibraryLocation.RenameOutcome {
+        store.rename(recording, to: proposed)
+    }
+
+    /// Show the Recording's file in Finder. The Library is an ordinary folder (ADR-0006), so this
+    /// is not an escape hatch — it is the second UI the app already expects the user to use.
+    func reveal(_ recording: Recording) {
+        NSWorkspace.shared.activateFileViewerSelecting([recording.url])
     }
 
     /// Keeps the selection honest as the folder changes underneath it:

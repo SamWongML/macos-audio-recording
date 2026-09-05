@@ -74,6 +74,32 @@ final class LibraryStore {
         refresh()
     }
 
+    /// Rename a Recording from inside the app. ADR-0006 already made Finder a legitimate second
+    /// UI and a rename something the store follows silently; this is that same file rename,
+    /// initiated here (ADR-0020). The rules live in `LibraryLocation.rename`, which is pure; this
+    /// does only the impure half and hands the outcome back so the row can tell a refusal.
+    ///
+    /// The object is relocated **before** the re-list so the selection, which is keyed on the url,
+    /// follows in the same turn. `reconcile` would reach the same place a refresh later by
+    /// device+inode, which is what makes the open Recording survive its own rename: same object,
+    /// same envelope, same live Trim, no "vanished" close.
+    @discardableResult
+    func rename(_ recording: Recording, to proposed: String) -> LibraryLocation.RenameOutcome {
+        let outcome = LibraryLocation.rename(recording.url.lastPathComponent,
+                                             to: proposed,
+                                             existingFileNames: recordings.map { $0.url.lastPathComponent })
+        guard case .rename(let fileName) = outcome else { return outcome }
+        let destination = recording.url.deletingLastPathComponent().appendingPathComponent(fileName)
+        do {
+            try FileManager.default.moveItem(at: recording.url, to: destination)
+        } catch {
+            return .refused(.diskRefused)
+        }
+        recording.relocate(to: destination)
+        refresh()
+        return outcome
+    }
+
     // MARK: - Pure core (tested)
 
     /// Every playable-looking file directly in `directory`, newest first. Hidden files and
