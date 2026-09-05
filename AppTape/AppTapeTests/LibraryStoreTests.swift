@@ -56,6 +56,51 @@ struct LibraryStoreTests {
         #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)   // its live Trim survived
     }
 
+    @Test func renamingFromInsideTheAppKeepsTheOpenRecording() throws {
+        // The other half of ADR-0006's rename story: the app doing what Finder does. The object
+        // must survive — same envelope, same live Trim — or the editor closes on its own rename.
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try AudioFixtures.writeCAF(
+            at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"), seconds: 5)
+
+        let store = LibraryStore(directory: dir)
+        store.refresh()
+        let recording = try #require(store.recordings.first)
+        recording.trim.setStart(1.0)
+        // While the filename is the one capture generated, the Library shows the Source — which
+        // rides in the xattr the fixture writes, not in the filename.
+        #expect(recording.displayName == "Test Source")
+
+        let outcome = store.rename(recording, to: "Interview")
+
+        #expect(outcome == .rename(to: "Interview.caf"))
+        #expect(store.recordings.count == 1)
+        #expect(store.recordings[0] === recording)             // same object, not a drop-and-re-add
+        #expect(recording.name == "Interview")
+        #expect(abs(recording.trim.start - 1.0) < 1e-9)        // its live Trim survived
+        #expect(recording.displayName == "Interview")          // and the row now shows the new name
+        #expect(recording.source == "Test Source")             // the Source xattr is never rewritten
+        #expect(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("Interview.caf").path))
+    }
+
+    @Test func aRefusedRenameLeavesTheFileExactlyWhereItWas() throws {
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("A.caf"))
+        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("B.caf"))
+
+        let store = LibraryStore(directory: dir)
+        store.refresh()
+        let a = try #require(store.recordings.first { $0.name == "A" })
+
+        #expect(store.rename(a, to: "B") == .refused(.alreadyTaken("B.caf")))
+        #expect(a.name == "A")
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("A.caf").path))
+        #expect(store.recordings.count == 2)
+    }
+
     @Test func reconcileOrderFollowsTheProvidedURLs() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

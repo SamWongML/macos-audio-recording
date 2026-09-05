@@ -32,11 +32,14 @@ struct AppTapeApp: App {
             // added (issue #7 found they left the app with zero windows).
             CommandGroup(replacing: .newItem) { }
             // Emptying the whole `.saveItem` group also removes the default
-            // "Close", collapsing the File menu entirely; the spec keeps File with
-            // exactly Close ⌘W, so put it back explicitly rather than leave the
-            // group empty. `performClose` targets the focused editor — the only
-            // window shown while the menu bar exists.
+            // "Close", collapsing the File menu entirely, so it is put back
+            // explicitly. `performClose` targets the focused editor — the only
+            // window shown while the menu bar exists. File also carries the
+            // Library's three row actions (ADR-0020): a context menu alone is
+            // undiscoverable and unreachable from the keyboard.
             CommandGroup(replacing: .saveItem) {
+                LibraryRowCommands()
+                Divider()
                 Button("Close") {
                     NSApp.keyWindow?.performClose(nil)
                 }
@@ -51,5 +54,37 @@ struct AppTapeApp: App {
             // cannot reintroduce a View menu through toolbar commands.
             CommandGroup(replacing: .toolbar) { }
         }
+    }
+}
+
+/// The File-menu half of the Library's row actions (ADR-0020). The context menu is where they are
+/// found; these are how they are reached from the keyboard. Finder's own set is the model: Rename
+/// carries no key equivalent, because Return does it in the list; Move to Trash is ⌘⌫; and ⇧⌘R is
+/// the "Reveal in Finder" that Music, Photos and the rest already taught.
+private struct LibraryRowCommands: View {
+    /// Non-nil only while the Library sidebar has focus — the gate on the destructive item.
+    @FocusedValue(\.librarySidebarRecording) private var focusedRecording: URL?
+
+    private var model: EditorModel { .shared }
+
+    var body: some View {
+        Button("Rename") {
+            if let recording = model.selection { model.beginRename(recording) }
+        }
+        .disabled(model.selection == nil || model.renamingURL != nil)
+
+        Button("Reveal in Finder") {
+            if let recording = model.selection { model.reveal(recording) }
+        }
+        .keyboardShortcut("r", modifiers: [.command, .shift])
+        .disabled(model.selection == nil)
+
+        // Gated on sidebar focus, unlike the two above: ⌘⌫ out of a search field the user is
+        // typing into would move a file to the Trash they never pointed at.
+        Button("Move to Trash", role: .destructive) {
+            if let recording = model.selection { model.trash(recording) }
+        }
+        .keyboardShortcut(.delete, modifiers: .command)
+        .disabled(focusedRecording == nil)
     }
 }
