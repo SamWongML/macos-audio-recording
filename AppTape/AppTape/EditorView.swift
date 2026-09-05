@@ -173,20 +173,29 @@ struct EditorView: View {
             .buttonStyle(.glass)
             .keyboardShortcut(.space, modifiers: [])
             .help("Plays the Trim, looping")
+            // A Recording with no frames has nothing to play, and the space shortcut goes inert
+            // with the button (ADR-0021).
+            .disabled(recording.isEmpty)
 
             Text(Format.time(model.player.position, precise: true))
                 .font(.system(.title3, design: .monospaced)).monospacedDigit()
+                .foregroundStyle(recording.isEmpty ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
 
             Spacer()
 
-            Text(recording.isTrimmed
-                 ? "Trim \(recording.trimRangeText)"
-                 : "Whole Recording · \(Format.time(recording.duration))")
-                .font(.callout).monospacedDigit()
-                .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            // Nothing is said about the length of a Recording whose file is still being written:
+            // the lane already says why it is empty, and `Whole Recording · 0:00` was a confident
+            // statement of a length that was simply not read yet (issue #80).
+            if !recording.isEmpty {
+                Text(recording.isTrimmed
+                     ? "Trim \(recording.trimRangeText)"
+                     : "Whole Recording · \(Format.time(recording.duration))")
+                    .font(.callout).monospacedDigit()
+                    .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
 
-            if recording.isTrimmed {
-                Button("Reset") { recording.resetTrim() }.buttonStyle(.link)
+                if recording.isTrimmed {
+                    Button("Reset") { recording.resetTrim() }.buttonStyle(.link)
+                }
             }
         }
         .padding(.horizontal, 22)

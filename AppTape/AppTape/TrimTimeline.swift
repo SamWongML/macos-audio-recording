@@ -22,6 +22,11 @@ struct TrimTimeline: View {
     var onTrimCommitted: () -> Void
     var showsRuler = true
 
+    /// The Recording being captured right now, if any — the one case in which a Recording the
+    /// editor can select genuinely has no audio yet (ADR-0021). Read here, as `ExportInspector`
+    /// already does, so the empty lane can say *why* it is empty rather than just being blank.
+    @State private var recorder = RecordingController.shared
+
     @State private var draggingHandle: Handle?
     @State private var loupeCentre: Double = 0
     @State private var gestureActive = false
@@ -29,6 +34,14 @@ struct TrimTimeline: View {
     enum Handle { case start, end }
 
     private var visible: ClosedRange<Double> { 0...max(recording.duration, 0.001) }
+
+    /// What an empty lane says. A Recording with no frames is one whose file is still being
+    /// written — a master mid-capture, or a file still arriving in the Library — so the lane says
+    /// that instead of drawing a picture of nothing (ADR-0021). Before this, a zero-length
+    /// Recording drew its whole-width trimmed-away dimmer as a solid slab (issue #80).
+    private var emptyTelling: String {
+        recorder.isCapturing(recording) ? "Still capturing" : "No audio yet"
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -51,32 +64,45 @@ struct TrimTimeline: View {
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.35))
 
-            WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
-                          peakStyle: AnyShapeStyle(.tint.opacity(0.45)),
-                          bodyStyle: AnyShapeStyle(.tint))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+            if recording.isEmpty {
+                // Nothing to draw over: no waveform, no Trim, no playhead — a Trim over zero frames
+                // has both handles at zero, which drew the trimmed-away dimmer across the whole lane
+                // and read as a solid slab (issue #80).
+                Text(emptyTelling)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(width: width, height: height)
+            } else {
+                WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
+                              peakStyle: AnyShapeStyle(.tint.opacity(0.45)),
+                              bodyStyle: AnyShapeStyle(.tint))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
 
-            // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
-            // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
-            seamBands(x: x, height: height)
+                // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
+                // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
+                seamBands(x: x, height: height)
 
-            // Trimmed-away audio stays visible but dimmed. Trim never removes anything
-            // (ADR-0003), and the picture should say so.
-            Rectangle().fill(.background.opacity(0.62))
-                .frame(width: max(0, x(recording.trim.lowerBound)))
-            Rectangle().fill(.background.opacity(0.62))
-                .frame(width: max(0, width - x(recording.trim.upperBound)))
-                .offset(x: x(recording.trim.upperBound))
+                // Trimmed-away audio stays visible but dimmed. Trim never removes anything
+                // (ADR-0003), and the picture should say so.
+                Rectangle().fill(.background.opacity(0.62))
+                    .frame(width: max(0, x(recording.trim.lowerBound)))
+                Rectangle().fill(.background.opacity(0.62))
+                    .frame(width: max(0, width - x(recording.trim.upperBound)))
+                    .offset(x: x(recording.trim.upperBound))
 
-            handle(.start, at: x(recording.trim.lowerBound), height: height)
-            handle(.end, at: x(recording.trim.upperBound), height: height)
+                handle(.start, at: x(recording.trim.lowerBound), height: height)
+                handle(.end, at: x(recording.trim.upperBound), height: height)
 
-            playhead(at: x(player.position), height: height)
+                playhead(at: x(player.position), height: height)
 
-            if draggingHandle != nil { loupe(width: width) }
+                if draggingHandle != nil { loupe(width: width) }
+            }
         }
         .contentShape(Rectangle())
         .gesture(scrub(time: time))
+        // There is nothing to scrub or Trim on a Recording with no frames, and a drag would move
+        // handles that have nowhere to go.
+        .disabled(recording.isEmpty)
     }
 
     /// One decision per drag, taken from `startLocation`. Keying off `translation == .zero` was

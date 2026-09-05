@@ -16,6 +16,8 @@ import Observation
 /// - a **rename or move** is followed silently — the xattr identity travels with the file, and a
 ///   surviving path keeps its existing `Recording` object, so a live Trim and a built envelope
 ///   are not thrown away by a refresh;
+/// - a file that has **changed length** since it was opened is re-adopted rather than followed:
+///   the object's `frameCount` and everything else read at open no longer describe it (ADR-0021);
 /// - a **new** file is adopted;
 /// - a **vanished** file drops out, and if it was the open Recording the editor is told, so it
 ///   can close rather than hold a stale window.
@@ -131,6 +133,13 @@ final class LibraryStore {
     /// - a genuinely new file becomes a new `Recording`;
     /// - a Recording whose file is gone simply falls out; likewise a url whose file is not
     ///   readable audio yields no Recording, so an adopted junk file is not listed.
+    ///
+    /// Both of the keep-the-object cases carry the same condition: the file must still have the
+    /// length the object read (`stillDescribes`). Keeping the object is how a *reading* survives a
+    /// refresh, and a reading is only worth keeping while it is still true — so a master that has
+    /// grown since it was listed, which is every master adopted mid-capture, is re-read instead
+    /// (ADR-0021). Extended attributes sit outside the data length, so persisting a Trim, a Gain
+    /// or the Seams never trips this.
     static func reconcile(existing: [Recording], urls: [URL]) -> [Recording] {
         let byURL = Dictionary(existing.map { ($0.url, $0) }, uniquingKeysWith: { first, _ in first })
         var byIdentity: [FileIdentity: Recording] = [:]
@@ -140,13 +149,13 @@ final class LibraryStore {
         var claimed = Set<ObjectIdentifier>()
 
         return urls.compactMap { url -> Recording? in
-            if let recording = byURL[url] {
+            if let recording = byURL[url], recording.stillDescribes(url) {
                 claimed.insert(ObjectIdentifier(recording))
                 return recording
             }
             // Same file at a new path: follow the rename rather than drop-and-re-add.
             if let identity = FileIdentity(url: url), let recording = byIdentity[identity],
-               !claimed.contains(ObjectIdentifier(recording)) {
+               !claimed.contains(ObjectIdentifier(recording)), recording.stillDescribes(url) {
                 claimed.insert(ObjectIdentifier(recording))
                 recording.relocate(to: url)
                 return recording

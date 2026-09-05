@@ -36,7 +36,10 @@ final class AudioPlayer {
     }
 
     func load(_ recording: Recording) {
-        guard self.recording?.url != recording.url else { return }
+        // Identity, not path: a re-adopted Recording is a *new object at the same url* holding a
+        // different reading of a file that has since grown (ADR-0021). Keyed on the url this would
+        // decline to reload and keep playing the old, short segment.
+        guard self.recording !== recording else { return }
         stop()
         self.recording = recording
         file = try? AVAudioFile(forReading: recording.url)
