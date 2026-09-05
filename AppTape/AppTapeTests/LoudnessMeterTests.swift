@@ -15,6 +15,31 @@ import Foundation
 struct LoudnessMeterTests {
     private let sampleRate = 48_000.0
 
+    /// ADR-0022 / issue #80: the pass must never execute on the main thread. The target sets
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so dropping `nonisolated` from `LoudnessMeter`
+    /// silently makes it main-actor isolated — and the `Task.detached` in `LoudnessCorrectionModel`
+    /// then hops right back, freezing the editor for the length of the pass (over fifteen minutes
+    /// on a twenty-minute master in Debug). `onProgress` is called from inside the read loop, so it
+    /// samples the thread the filtering is actually running on.
+    @Test func theBS1770PassNeverRunsOnTheMainThread() async throws {
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // Long enough to span more than one 65 536-frame read chunk, so `onProgress` fires.
+        let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("pass.caf"), seconds: 4)
+        let frames = try #require(await Recording(url: url)).frameCount
+
+        let touchedMainThread = await Task.detached {
+            var onMain = false
+            _ = try? LoudnessMeter.measure(url: url, startFrame: 0, frameCount: frames,
+                                           onProgress: { _ in
+                                               if pthread_main_np() != 0 { onMain = true }
+                                           })
+            return onMain
+        }.value
+
+        #expect(!touchedMainThread)
+    }
+
     /// `seconds` of a sine at `frequency`, `amplitude`, `channels` identical channels, plus a phase.
     private func sine(seconds: Double, frequency: Double = 1000, amplitude: Double = 1.0,
                       channels: Int = 1, phase: Double = 0) -> [Float] {

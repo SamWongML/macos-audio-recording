@@ -101,6 +101,68 @@ struct LibraryStoreTests {
         #expect(store.recordings.count == 2)
     }
 
+    @Test func aFileThatHasGrownSinceItWasOpenedIsReAdoptedNotFollowed() throws {
+        // ADR-0021 / issue #80. A master adopted while capture was still writing it reads a
+        // `frameCount` that is already wrong, and ADR-0006's same-object rule would preserve that
+        // wrong reading forever — which is exactly what left a just-made Recording showing 0:00
+        // with an empty lane until the app was relaunched.
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("growing.caf"), seconds: 1)
+
+        let adoptedEarly = try #require(Recording(url: url))
+        #expect(abs(adoptedEarly.duration - 1) < 0.05)
+
+        // Grow the file **in place** — same device+inode, more audio — as capture does.
+        try growInPlace(url, toSeconds: 5, in: dir)
+
+        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: [url])
+        #expect(reconciled.count == 1)
+        #expect(reconciled[0] !== adoptedEarly)                  // re-adopted, not followed
+        #expect(abs(reconciled[0].duration - 5) < 0.05)          // and it reads the audio now there
+        #expect(reconciled[0].frameCount > adoptedEarly.frameCount)
+    }
+
+    @Test func aGrownFileIsReAdoptedEvenWhenItHasAlsoBeenRenamed() throws {
+        // The rename path takes the same condition. It asks the question about the *new* path,
+        // because the surviving object still holds the old one (ADR-0021).
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let original = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("growing.caf"), seconds: 1)
+
+        let adoptedEarly = try #require(Recording(url: original))
+        try growInPlace(original, toSeconds: 5, in: dir)
+        let renamed = dir.appendingPathComponent("Interview.caf")
+        try FileManager.default.moveItem(at: original, to: renamed)
+
+        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: [renamed])
+        #expect(reconciled.count == 1)
+        #expect(reconciled[0] !== adoptedEarly)
+        #expect(reconciled[0].url == renamed)
+        #expect(abs(reconciled[0].duration - 5) < 0.05)
+    }
+
+    @Test func persistingTheTrimAndGainDoesNotCostTheRecordingItsObject() throws {
+        // The other side of ADR-0021: re-adoption keys on the file's **data length**, and Trim,
+        // Gain and Seams all ride in extended attributes, which sit outside it. If they did not,
+        // every gesture-end would silently drop the open Recording's object — and with it the very
+        // live Trim and built envelope ADR-0006's same-object rule exists to protect.
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("settled.caf"), seconds: 5)
+
+        let recording = try #require(Recording(url: url))
+        recording.trim.setStart(1.0)
+        recording.persistTrim()
+        recording.gain = -3
+        recording.persistGain()
+
+        let reconciled = LibraryStore.reconcile(existing: [recording], urls: [url])
+        #expect(reconciled.count == 1)
+        #expect(reconciled[0] === recording)                    // same object
+        #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)     // and its live Trim survived
+    }
+
     @Test func reconcileOrderFollowsTheProvidedURLs() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -189,6 +251,20 @@ struct LibraryStoreTests {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("apptape-nope-\(UUID().uuidString)", isDirectory: true)
         #expect(LibraryStore.audioFiles(in: missing).isEmpty)
+    }
+
+    /// Replace a file's contents with a longer Recording **without replacing the file**: same
+    /// device+inode, greater length — which is what a growing master looks like to the store, and
+    /// what a fresh `writeCAF` at the same path would not reproduce (that makes a new inode).
+    private func growInPlace(_ url: URL, toSeconds seconds: Double, in dir: URL) throws {
+        let scratch = dir.appendingPathComponent("grow-\(UUID().uuidString).caf")
+        try AudioFixtures.writeCAF(at: scratch, seconds: seconds)
+        let longer = try Data(contentsOf: scratch)
+        try FileManager.default.removeItem(at: scratch)
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: 0)
+        try handle.write(contentsOf: longer)
+        try handle.close()
     }
 
     private func setModified(_ url: URL, _ date: Date) {

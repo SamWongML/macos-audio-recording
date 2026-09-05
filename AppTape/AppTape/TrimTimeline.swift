@@ -22,6 +22,11 @@ struct TrimTimeline: View {
     var onTrimCommitted: () -> Void
     var showsRuler = true
 
+    /// The Recording being captured right now, if any. Read here, as `ExportInspector` already
+    /// does, both to decide whether the lane has anything dependable to draw (ADR-0021) and so the
+    /// empty lane can say *why* it is empty rather than just being blank.
+    @State private var recorder = RecordingController.shared
+
     @State private var draggingHandle: Handle?
     @State private var loupeCentre: Double = 0
     @State private var gestureActive = false
@@ -29,6 +34,17 @@ struct TrimTimeline: View {
     enum Handle { case start, end }
 
     private var visible: ClosedRange<Double> { 0...max(recording.duration, 0.001) }
+
+    /// Whether the lane has anything dependable to draw. The Recording always fits the width, so a
+    /// reading of a file still being written is drawn as though it were the whole Recording — which
+    /// is how a fraction of a second became a solid slab across the lane (issue #80, ADR-0021).
+    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+
+    /// What the lane says in place of that picture. A capture in progress is named as such; a file
+    /// merely arriving in the Library has no better word than that it holds no audio yet.
+    private var arrivingTelling: String {
+        recorder.isCapturing(recording) ? "Still capturing" : "No audio yet"
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -51,32 +67,45 @@ struct TrimTimeline: View {
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.35))
 
-            WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
-                          peakStyle: AnyShapeStyle(.tint.opacity(0.45)),
-                          bodyStyle: AnyShapeStyle(.tint))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+            if isStillArriving {
+                // Nothing dependable to draw over: no waveform, no Trim, no playhead. A Trim over
+                // near-zero frames puts both handles at zero and stretches a fraction of a second
+                // across the full width, which is what read as a solid slab (issue #80).
+                Text(arrivingTelling)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(width: width, height: height)
+            } else {
+                WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
+                              peakStyle: AnyShapeStyle(.tint.opacity(0.45)),
+                              bodyStyle: AnyShapeStyle(.tint))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
 
-            // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
-            // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
-            seamBands(x: x, height: height)
+                // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
+                // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
+                seamBands(x: x, height: height)
 
-            // Trimmed-away audio stays visible but dimmed. Trim never removes anything
-            // (ADR-0003), and the picture should say so.
-            Rectangle().fill(.background.opacity(0.62))
-                .frame(width: max(0, x(recording.trim.lowerBound)))
-            Rectangle().fill(.background.opacity(0.62))
-                .frame(width: max(0, width - x(recording.trim.upperBound)))
-                .offset(x: x(recording.trim.upperBound))
+                // Trimmed-away audio stays visible but dimmed. Trim never removes anything
+                // (ADR-0003), and the picture should say so.
+                Rectangle().fill(.background.opacity(0.62))
+                    .frame(width: max(0, x(recording.trim.lowerBound)))
+                Rectangle().fill(.background.opacity(0.62))
+                    .frame(width: max(0, width - x(recording.trim.upperBound)))
+                    .offset(x: x(recording.trim.upperBound))
 
-            handle(.start, at: x(recording.trim.lowerBound), height: height)
-            handle(.end, at: x(recording.trim.upperBound), height: height)
+                handle(.start, at: x(recording.trim.lowerBound), height: height)
+                handle(.end, at: x(recording.trim.upperBound), height: height)
 
-            playhead(at: x(player.position), height: height)
+                playhead(at: x(player.position), height: height)
 
-            if draggingHandle != nil { loupe(width: width) }
+                if draggingHandle != nil { loupe(width: width) }
+            }
         }
         .contentShape(Rectangle())
         .gesture(scrub(time: time))
+        // There is nothing to scrub or Trim while the audio is still arriving, and a drag would set
+        // a Trim against a length that is about to change.
+        .disabled(isStillArriving)
     }
 
     /// One decision per drag, taken from `startLocation`. Keying off `translation == .zero` was

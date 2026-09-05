@@ -44,9 +44,16 @@ final class EditorModel {
     /// Called every time the editor opens (from the status item's stop, ADR-0016). Starts the
     /// store, remembers the Recording just made so it is selected once it appears, and begins
     /// reconciling the selection against the folder.
+    ///
+    /// The re-list is unconditional, and that matters on the path this is most often called from:
+    /// the editor opening on a Recording that capture has *just* finalized. `start()` re-lists only
+    /// on its first call, and the folder watch fires on directory writes — neither of which the
+    /// last few seconds of a growing master produce. Without a re-list here the editor would open on
+    /// the length the master had when its file was created, which is zero (ADR-0021).
     func activate(selecting url: URL? = nil) {
         if let url { pendingSelectionURL = url }
         store.start()
+        store.refresh()
         if !tracking { tracking = true; trackStore() }
         reconcileSelection()
     }
@@ -98,6 +105,7 @@ final class EditorModel {
 
     /// Keeps the selection honest as the folder changes underneath it:
     /// - a Recording just captured (a pending URL) is selected once it lists;
+    /// - the **open** Recording being re-adopted rebinds the selection to the fresh object;
     /// - the **open** Recording vanishing closes the editor;
     /// - on the first open with nothing pending, the newest Recording is selected.
     private func reconcileSelection() {
@@ -107,12 +115,17 @@ final class EditorModel {
             return
         }
         if let selection {
-            if !store.recordings.contains(where: { $0.url == selection.url }) {
+            guard let current = recording(for: selection.url) else {
                 ExportCoordinator.shared.cancel()   // the open Recording vanished — navigate away
                 self.selection = nil
                 player.stop()
                 vanishedTick += 1
+                return
             }
+            // Same file, freshly read: the store re-adopted it because its length had changed
+            // (ADR-0021), so the object the editor is rendering is now the stale one. Rebind, which
+            // also reloads the player and rebuilds the envelope against the audio that is now there.
+            if current !== selection { select(current) }
             return
         }
         if !didInitialSelect, pendingSelectionURL == nil, let first = store.recordings.first {
