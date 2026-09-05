@@ -1,0 +1,61 @@
+Analysis of sampling AppTape (pid 36821) every 1 millisecond
+Process:         AppTape [36821]
+Path:            /Users/USER/Library/Developer/Xcode/DerivedData/AppTape-fbylfxhrhjwkuohgbegywcrbzppo/Build/Products/Debug/AppTape.app/Contents/MacOS/AppTape
+Load Address:    0x100768000
+Identifier:      com.samwongml.AppTape
+Version:         1.0 (1)
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  launchd [1]
+Target Type:     live task (Roots Present)
+
+Date/Time:       2026-09-05 09:09:27.484 +0800
+Launch Time:     2026-09-05 08:58:42.516 +0800
+OS Version:      macOS 27.0 (26A5425a)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         104.4M
+Physical footprint (peak):  113.9M
+Idle exit:                  untracked
+----
+
+Call graph:
+    1005 Thread_1269024   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 1005 completeTaskWithClosure(swift::AsyncContext*, swift::SwiftError*)  (in libswift_Concurrency.dylib) + 1  [0x2ba9e0d41]
+    +   1005 partial apply for thunk for @escaping @isolated(any) @callee_guaranteed @async () -> (@out A)  (in AppTape.debug.dylib) + 1  [0x100e49d4d]  /<compiler-generated>:0
+    +     1005 thunk for @escaping @isolated(any) @callee_guaranteed @async () -> (@out A)  (in AppTape.debug.dylib) + 1  [0x100e23755]  /<compiler-generated>:0
+    +       1005 partial apply for closure #1 in LoudnessCorrectionModel.update(recording:normalize:)  (in AppTape.debug.dylib) + 1  [0x100e8e6b1]  /<compiler-generated>:0
+    +         1005 closure #1 in LoudnessCorrectionModel.update(recording:normalize:)  (in AppTape.debug.dylib) + 144  [0x100e8dce8]  LoudnessCorrectionModel.swift:66
+    +           1005 static LoudnessMeter.measure(url:startFrame:frameCount:isCancelled:onProgress:)  (in AppTape.debug.dylib) + 1352  [0x100e8fbcc]  LoudnessMeter.swift:60
+    +             1005 Array.withUnsafeMutableBufferPointer<A, B>(_:)  (in AppTape.debug.dylib) + 252  [0x100e175d8]  /<compiler-generated>:0
+    +               1005 partial apply for closure #1 in static LoudnessMeter.measure(url:startFrame:frameCount:isCancelled:onProgress:)  (in AppTape.debug.dylib) + 96  [0x100e9088c]  /<compiler-generated>:0
+    +                 1004 closure #1 in static LoudnessMeter.measure(url:startFrame:frameCount:isCancelled:onProgress:)  (in AppTape.debug.dylib) + 1424  [0x100e906b4]  LoudnessMeter.swift:73
+    +                 ! 969 LoudnessAnalyzer.process(_:frameCount:)  (in AppTape.debug.dylib) + 1200  [0x100e90d4c]  LoudnessMeter.swift:154
+    +                 ! : 650 LoudnessAnalyzer.accumulatePeak(_:channel:)  (in AppTape.debug.dylib) + 784  [0x100e92e04]  LoudnessMeter.swift:0
+    +                 ! : | 444 IndexingIterator.next()  (in libswiftCore.dylib) + 620  [0x19cc1536c]
+    +                 ! : | + 175 protocol witness for Collection.formIndex(after:) in conformance <> Range<A>  (in libswiftCore.dylib) + 988  [0x19cda33d0]
+    +                 ! : | + ! 140 specialized Collection._failEarlyRangeCheck(_:bounds:)  (in libswiftCore.dylib) + 168  [0x19cf24f08]
+    +                 ! : | + ! : 138 __swift_instantiateCanonicalPrespecializedGenericMetadata  (in libswiftCore.dylib) + 40  [0x19cf6baf4]
+    +                 ! : | + ! : | 60 _swift_getGenericMetadata(swift::MetadataRequest, void const* const*, swift::TargetTypeContextDescriptor<swift::InProcess> const*)  (in libswiftCore.dylib) + 268  [0x19cb56990]
+    +                 ! : | + ! : | + 47 swift::LockingConcurrentMap<swift::GenericCacheEntry, swift::LockingConcurrentMapStorage<swift::GenericCacheEntry, (unsigned short)14>>::getOrInsert<swift::MetadataCacheKey, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)  (in libswiftCore.dylib) + 88  [0x19cb677d0]
+    +                 ! : | + ! : | + ! 32 swift::StableAddressConcurrentReadableHashMap<swift::GenericCacheEntry, swift::TaggedMetadataAllocator<(unsigned short)14>, swift::Mutex>::getOrInsert<swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)  (in libswiftCore.dylib) + 104  [0x19cb67a2c]
+    +                 ! : | + ! : | + ! : 12 swift::MetadataCacheKey::operator==(swift::MetadataCacheKey const&) const  (in libswiftCore.dylib) + 16,4,...  [0x19cb65a50,0x19cb65a44,...]
+    +                 ! : | + ! : | + ! : 10 swift::MetadataCacheKey::operator==(swift::MetadataCacheKey const&) const  (in libswiftCore.dylib) + 132  [0x19cb65ac4]
+    +                 ! : | + ! : | + ! : | 10 _platform_memcmp  (in libsystem_platform.dylib) + 96,8  [0x1885ed1d0,0x1885ed178]
+    +                 ! : | + ! : | + ! : 8 swift::StableAddressConcurrentReadableHashMap<swift::GenericCacheEntry, swift::TaggedMetadataAllocator<(unsigned short)14>, swift::Mutex>::getOrInsert<swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)  (in libswiftCore.dylib) + 104  [0x19cb67a2c]
+    +                 ! : | + ! : | + ! : | 8 swift::MetadataCacheKey::operator==(swift::MetadataCacheKey const&) const  (in libswiftCore.dylib) + 100,60,...  [0x19cb65aa4,0x19cb65a7c,...]
+    +                 ! : | + ! : | + ! : 2 ???  (in <unknown binary>)  [0x19fe4eb98]
+    +                 ! : | + ! : | + ! 15 swift::StableAddressConcurrentReadableHashMap<swift::GenericCacheEntry, swift::TaggedMetadataAllocator<(unsigned short)14>, swift::Mutex>::getOrInsert<swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataWaitQueue::Worker&, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)  (in libswiftCore.dylib) + 68,64,...  [0x19cb67a08,0x19cb67a04,...]
+    +                 ! : | + ! : | + 10 swift::LockingConcurrentMap<swift::GenericCacheEntry, swift::LockingConcurrentMapStorage<swift::GenericCacheEntry, (unsigned short)14>>::getOrInsert<swift::MetadataCacheKey, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)  (in libswiftCore.dylib) + 20,60,...  [0x19cb6778c,0x19cb677b4,...]
+    +                 ! : | + ! : | + 2 swift::LockingConcurrentMap<swift::GenericCacheEntry, swift::LockingConcurrentMapStorage<swift::GenericCacheEntry, (unsigned short)14>>::getOrInsert<swift::MetadataCacheKey, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&>(swift::MetadataCacheKey, swift::MetadataRequest&, swift::TargetTypeContextDescriptor<swift::InProcess> const*&, void const* const*&)  (in libswiftCore.dylib) + 192  [0x19cb67838]
+    +                 ! : | + ! : | + ! 2 swift::MetadataCacheEntryBase<swift::GenericCacheEntry, void const*>::awaitSatisfyingState(swift::ConcurrencyControl&, swift::MetadataRequest)  (in libswiftCore.dylib) + 96,108  [0x19cb6658c,0x19cb66598]
+    +                 ! : | + ! : | + 1 swift::MetadataCacheEntryBase<swift::GenericCacheEntry, void const*>::awaitSatisfyingState(swift::ConcurrencyControl&, swift::MetadataRequest)  (in libswiftCore.dylib) + 660  [0x19cb667c0]
+    +                 ! : | + ! : | 56 _swift_getGenericMetadata(swift::MetadataRequest, void const* const*, swift::TargetTypeContextDescriptor<swift::InProcess> const*)  (in libswiftCore.dylib) + 40  [0x19cb568ac]
+    +                 ! : | + ! : | + 34 getCache(swift::TargetTypeContextDescriptor<swift::InProcess> const&)  (in libswiftCore.dylib) + 664  [0x19cb55ff4]
+    +                 ! : | + ! : | + ! 34 swift::TargetContextDescriptor<swift::InProcess>::getGenericContext() const  (in libswiftCore.dylib) + 392,1664,...  [0x19cb31020,0x19cb31518,...]
+    +                 ! : | + ! : | + 22 getCache(swift::TargetTypeContextDescriptor<swift::InProcess> const&)  (in libswiftCore.dylib) + 72,248,...  [0x19cb55da4,0x19cb55e54,...]
+    +                 ! : | + ! : | 11 swift_getCanonicalPrespecializedGenericMetadata  (in libswiftCore.dylib) + 36,0,...  [0x19cb569c8,0x19cb569a4,...]
+    +                 ! : | + ! : | 6 _swift_getGenericMetadata(swift::MetadataRequest, void const* const*, swift::TargetTypeContextDescriptor<swift::InProcess> const*)  (in libswiftCore.dylib) + 0,56,...  [0x19cb56884,0x19cb568bc,...]
+    +                 ! : | + ! : | 3 getCache(swift::TargetTypeContextDescriptor<swift::InProcess> const&)  (in libswiftCore.dylib) + 904,896  [0x19cb560e4,0x19cb560dc]
+...(truncated; full sample retained locally)
