@@ -216,7 +216,7 @@ private struct LibraryRow: View {
                 if recording.isTrimmed {
                     Image(systemName: "scissors")
                         .font(.caption2)
-                        .foregroundStyle(.tint)
+                        .foregroundStyle(Palette.signal)
                 }
 
                 // A subtle trailing glyph on Recordings with surfaced Seams — the Library is where a
