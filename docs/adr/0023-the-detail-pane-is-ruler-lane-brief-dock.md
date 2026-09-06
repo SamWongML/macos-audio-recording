@@ -11,8 +11,8 @@ waveform lane stretched to whatever height the window had — four hundred point
 above a single transport row, with `showsRuler: false` and nothing else on screen. A map that could
 only add ornament could not fix that; this ADR settles the layout.
 
-**Top to bottom: a ruled lane, the Seam line, the brief, air, and the transport docked to the
-window's bottom edge.**
+**Top to bottom: a lane under a time ruler, the brief, air, and the transport docked to the window's
+bottom edge.**
 
 ## Considered options
 
