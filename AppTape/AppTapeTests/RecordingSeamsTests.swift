@@ -58,4 +58,45 @@ struct RecordingSeamsTests {
         #expect(recording.laneSeams.isEmpty)             // nothing drawn in the lane
         #expect(recording.seamSummary != nil)            // but told in the one-line summary
     }
+
+    /// The summary is a `LocalizedStringResource`, so the inflection markup is parsed rather than
+    /// printed. Returned as a `String` it reached `Text`'s non-localized initializer and the editor
+    /// showed `^[3 Seam](inflect: true) · 2.8 s of silence padded in` verbatim on screen
+    /// (issue #73, finding 1).
+    ///
+    /// Resolved through **`AttributedString(localized:)`, not `String(localized:)`** — the latter
+    /// hands the markup straight back untouched even for a resource that inflects correctly
+    /// everywhere else, which is the same trap one level down. `Text` takes the attributed path.
+    private func resolved(_ resource: LocalizedStringResource) -> String {
+        String(AttributedString(localized: resource).characters)
+    }
+
+    @Test func theSummaryIsInflectedRatherThanPrintedAsMarkup() throws {
+        let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 5)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        try RecordingMetadata.writeSeams([
+            Seam(start: 48_000, frames: 48_000, cause: .rebuild),
+            Seam(start: 150_000, frames: 48_000, cause: .rebuild),
+        ], to: url)
+
+        let recording = try #require(Recording(url: url))
+        let rendered = resolved(try #require(recording.seamSummary))
+        #expect(!rendered.contains("^["))
+        #expect(!rendered.contains("inflect"))
+        #expect(rendered.hasPrefix("2 Seams · "))
+    }
+
+    /// The singular side of the same markup, so a one-Seam Recording does not read "1 Seams".
+    @Test func aSingleSeamInflectsToTheSingular() throws {
+        let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 5)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        try RecordingMetadata.writeSeams([Seam(start: 48_000, frames: 48_000, cause: .rebuild)],
+                                         to: url)
+
+        let recording = try #require(Recording(url: url))
+        let rendered = resolved(try #require(recording.seamSummary))
+        #expect(rendered.hasPrefix("1 Seam · "))
+    }
 }

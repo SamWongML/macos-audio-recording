@@ -21,6 +21,24 @@ struct AppTapeApp: App {
         // app to `.regular` (ADR-0017).
         Window("AppTape", id: Self.editorWindowID) {
             EditorView()
+                // A floor under the three columns. Without one the window clamped to 418 × 400 —
+                // below the sidebar's own 232 pt minimum plus the inspector's 248 — and SwiftUI
+                // resolved the shortfall by **collapsing the Library entirely**, with no indication
+                // and no way back except resizing. The detail pane was squeezed to ~180 pt, where
+                // the transport's clock, `Trim …` and `Reset` silently disappeared rather than
+                // truncating (issue #73, finding 26).
+                //
+                // 960 is wider than that reasoning alone wants — 232 + 280 + 248 would do — and the
+                // extra is a **guard, not a layout choice**. Below ~920 pt the editor does not
+                // merely lose its sidebar, it *aborts*: `NavigationSplitView` and a permanently
+                // presented `.inspector` re-trigger each other's layout until AppKit throws
+                // `NSGenericException` ("more Update Constraints in Window passes than there are
+                // views in the window"). Measured on `main` as well, so it is not new here;
+                // removing the `.inspector` makes 800 pt fine, and pinning its column to a fixed
+                // width does not. The real fix is structural and belongs to the redesign that is
+                // already deciding what this pane is — see the crash's own issue. Lower this floor
+                // when that lands.
+                .frame(minWidth: 960, minHeight: 420)
         }
         .defaultSize(width: 1120, height: 640)   // three columns want room: sidebar + waveform + inspector
         .defaultLaunchBehavior(.suppressed)

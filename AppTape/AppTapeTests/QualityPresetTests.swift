@@ -70,9 +70,19 @@ struct QualityPresetTests {
     }
 
     @Test func threeSignificantFiguresKeepsTrailingZeros() {
-        #expect(ExportSizeEstimate.sizeText(bytes: 500_000) == "0.500 MB")
         #expect(ExportSizeEstimate.sizeText(bytes: 5_000_000) == "5.00 MB")
         #expect(ExportSizeEstimate.sizeText(bytes: 123_000_000) == "123 MB")
+    }
+
+    /// The unit follows the number instead of being pinned to MB, so a short Trim reads `426 KB`
+    /// rather than `0.000426 MB` (issue #73, finding 23).
+    @Test func smallEstimatesReadInKilobytes() {
+        #expect(ExportSizeEstimate.sizeText(bytes: 426) == "0.426 KB")
+        #expect(ExportSizeEstimate.sizeText(bytes: 4_320) == "4.32 KB")
+        #expect(ExportSizeEstimate.sizeText(bytes: 500_000) == "500 KB")
+        // The MB boundary is 1000 KB, not 1024 — decimal units throughout.
+        #expect(ExportSizeEstimate.sizeText(bytes: 999_000) == "999 KB")
+        #expect(ExportSizeEstimate.sizeText(bytes: 1_000_000) == "1.00 MB")
     }
 
     // MARK: - Faithful-or-refuse encodability (ADR-0015)

@@ -23,21 +23,34 @@ enum ExportSizeEstimate {
         return bitsPerSecond * duration * overhead / 8
     }
 
-    /// The estimate as `≈ 12.4 MB` — three significant figures, decimal MB (or GB past 1000 MB),
-    /// matching how the ADRs speak of Export cost. The leading `≈` says out loud that the size is
-    /// estimated, never promised (CONTEXT.md's Quality Preset).
+    /// The estimate as `≈ 12.4 MB` — three significant figures, decimal units, matching how the
+    /// ADRs speak of Export cost. The leading `≈` says out loud that the size is estimated, never
+    /// promised (CONTEXT.md's Quality Preset).
     static func text(preset: QualityPreset, format: SourceFormat, duration: Double) -> String {
         "≈ \(sizeText(bytes: bytes(preset: preset, format: format, duration: duration)))"
     }
 
-    /// `12.4 MB`, `123 MB`, `1.90 GB` — three significant figures in decimal units. Public so the
-    /// pre-flight refusal can name both the estimate and the free space in the same units.
+    /// `426 KB`, `12.4 MB`, `123 MB`, `1.90 GB` — three significant figures in decimal units, with
+    /// the **unit following the number** rather than pinned to MB. Public so the pre-flight refusal
+    /// can name both the estimate and the free space in the same units.
+    ///
+    /// The unit used to be MB always, so a short Trim read `≈ 0.000426 MB` and a Recording still
+    /// capturing read `≈ 0.0000561 MB` — three significant figures of a number nobody can hold
+    /// (issue #73, finding 23). Three rungs is enough: nothing this app exports is measured in
+    /// bytes, and nothing is measured in terabytes.
     static func sizeText(bytes: Double) -> String {
-        let megabytes = max(0, bytes) / 1_000_000
-        if megabytes >= 1000 {
-            return "\(threeSigFigs(megabytes / 1000)) GB"
+        let bytes = max(0, bytes)
+        let kilobytes = bytes / 1_000
+        if kilobytes < 1000 {
+            // Sub-KB is still spoken of in KB — `0.004 KB` is a truer thing to show than `4 bytes`
+            // for a figure that is explicitly an estimate.
+            return "\(threeSigFigs(kilobytes)) KB"
         }
-        return "\(threeSigFigs(megabytes)) MB"
+        let megabytes = kilobytes / 1_000
+        if megabytes < 1000 {
+            return "\(threeSigFigs(megabytes)) MB"
+        }
+        return "\(threeSigFigs(megabytes / 1_000)) GB"
     }
 
     /// Three significant figures, trailing zeros kept (`0.500`, `12.4`, `123`) so the readout does

@@ -80,7 +80,14 @@ final class Recording: Identifiable {
 
     /// The one-line editor summary of Seams too small to draw, or nil when there are none. Every
     /// Seam is recorded even when it is not surfaced, and this is where the small ones are told.
-    var seamSummary: String? {
+    ///
+    /// A `LocalizedStringResource`, **not** a `String`: the inflection markup below is only parsed
+    /// on the way through the localization machinery. Returned as a `String` it reached
+    /// `Text`'s non-localized initializer and the editor printed `^[3 Seam](inflect: true)` on
+    /// screen verbatim (issue #73, finding 1). The sidebar footer's literal
+    /// `Text("^[\(count) Recording](inflect: true)")` renders correctly for the same reason, which
+    /// is why this went unnoticed.
+    var seamSummary: LocalizedStringResource? {
         guard !seams.isEmpty, sampleRate > 0 else { return nil }
         let subThreshold = SeamSurfacing.subThreshold(seams, sampleRate: sampleRate)
         let total = SeamSurfacing.totalSeconds(seams, sampleRate: sampleRate)
@@ -132,6 +139,20 @@ final class Recording: Identifiable {
 
     var recordedAt: Date? {
         try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+
+    /// What the editor window's title bar says beneath the name. The title is `displayName`, which
+    /// is the **Source** until the user renames the Recording themselves — so printing the Source
+    /// underneath it said the same word twice, and for a hand-adopted file with no date and no
+    /// `com.apptape.source` xattr it printed the *filename* twice (issue #73, findings 2 and 32).
+    ///
+    /// What is always worth saying is when the Recording was made, since a day's Library holds
+    /// four rows that all say `Google Chrome`. The Source joins it only once the title has stopped
+    /// being the Source — which is exactly when knowing where the audio came from starts to matter.
+    var windowSubtitle: String {
+        let origin = displayName == source ? nil : source
+        let when = recordedAt?.formatted(date: .abbreviated, time: .shortened)
+        return [origin, when].compactMap { $0 }.joined(separator: " · ")
     }
 
     /// The adoption gate (ADR-0015). A file is a Recording iff its UTType conforms to `public.audio`

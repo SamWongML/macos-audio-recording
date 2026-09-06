@@ -22,12 +22,21 @@ struct EditorView: View {
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
+    /// The editor honours these itself; only `PanelView` used to (issue #73, finding 15). Reduce
+    /// Motion rides the token set's `.motion(_:value:)` helper rather than being read here.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-    private var days: [RecordingDay] {
-        RecordingDay.group(model.store.recordings.filter {
-            query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)
-        })
+    /// The Recordings the sidebar is actually showing. Named, rather than filtered inline, because
+    /// the footer counts it too: it used to count `store.recordings`, so a query matching nothing
+    /// left an empty list under the words `44 Recordings` (issue #73, finding 35).
+    private var matches: [Recording] {
+        model.store.recordings.filter {
+            query.isEmpty || $0.displayName.localizedCaseInsensitiveContains(query)
+                || $0.name.localizedCaseInsensitiveContains(query)
+        }
     }
+
+    private var days: [RecordingDay] { RecordingDay.group(matches) }
 
     var body: some View {
         NavigationSplitView {
@@ -62,6 +71,23 @@ struct EditorView: View {
                 }
             }
         }
+        // A `List` with nothing in it simply renders nothing, so both empty states were a blank
+        // grey column with only the footer's "0 Recordings" to explain them (issue #73, findings
+        // 16 and 17). Two different silences, told apart: a Library with no Recordings yet points
+        // at where they come from, a query with no matches names the query.
+        .overlay {
+            if matches.isEmpty {
+                if !query.isEmpty {
+                    ContentUnavailableView.search(text: query)
+                } else {
+                    ContentUnavailableView {
+                        Label("No Recordings", systemImage: "waveform")
+                    } description: {
+                        Text("Recordings you make from the menu bar appear here.")
+                    }
+                }
+            }
+        }
         .searchable(text: $query, placement: .sidebar, prompt: "Recordings")
         .searchFocused($isSearchFocused)
         .onKeyPress(.return) {
@@ -81,7 +107,7 @@ struct EditorView: View {
             // Nothing critical lives down here: the HIG's Sidebars page warns that people
             // relocate windows in ways that hide the bottom edge.
             HStack {
-                Text("^[\(model.store.recordings.count) Recording](inflect: true)")
+                Text("^[\(matches.count) Recording](inflect: true)")
                 Spacer()
                 Button("Reveal", systemImage: "folder") {
                     NSWorkspace.shared.activateFileViewerSelecting([model.store.directory])
@@ -90,7 +116,11 @@ struct EditorView: View {
             }
             .font(.caption).foregroundStyle(.secondary)
             .padding(.horizontal, 12).padding(.vertical, 7)
-            .background(.bar)
+            // Reduce Transparency: the vibrant `.bar` becomes an opaque window background, as
+            // `PanelView` has always done. The map's Notes carry this constraint forward, and the
+            // editor was honouring neither of the two (issue #73, finding 15).
+            .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+                                           : AnyShapeStyle(.bar))
         }
     }
 
@@ -101,8 +131,21 @@ struct EditorView: View {
 
     // MARK: - Detail (waveform, Trim, transport) + permanent inspector
 
-    @ViewBuilder
+    /// The trailing inspector is attached **here**, above the three branches, not inside the one
+    /// that has a Recording to export. It used to hang off `editorDetail` alone, so selecting a
+    /// can't-open file — or deselecting — made the whole trailing column disappear and the window's
+    /// layout jump as the user arrowed down the Library (issue #73, finding 24). "Permanently
+    /// visible" (issue #7) has to mean permanently, or the pane is a third pane control.
     private var detail: some View {
+        detailContent
+            .inspector(isPresented: .constant(true)) {
+                inspectorColumn
+                    .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
+            }
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
         if let recording = model.selection {
             if recording.isOpenable {
                 editorDetail(recording)
@@ -111,6 +154,23 @@ struct EditorView: View {
             }
         } else {
             ContentUnavailableView("No Recording selected", systemImage: "waveform")
+        }
+    }
+
+    /// What the permanent inspector holds when there is nothing to export. It says why rather than
+    /// showing a disabled Export ladder, which would invite a click that can never work.
+    @ViewBuilder
+    private var inspectorColumn: some View {
+        if let recording = model.selection, recording.isOpenable {
+            ExportInspector(recording: recording)
+        } else {
+            ContentUnavailableView {
+                Label("Nothing to export", systemImage: "square.and.arrow.up")
+            } description: {
+                Text(model.selection == nil
+                     ? "Select a Recording in the Library."
+                     : "AppTape can't decode this file, so there is nothing to export from it.")
+            }
         }
     }
 
@@ -127,7 +187,8 @@ struct EditorView: View {
                 model.trash(recording)
             }
         }
-        .navigationTitle(recording.name)
+        .navigationTitle(recording.displayName)
+        .navigationSubtitle(recording.windowSubtitle)
     }
 
     @ViewBuilder
@@ -157,12 +218,14 @@ struct EditorView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .navigationTitle(recording.name)
-        .navigationSubtitle(recording.source)
-        .inspector(isPresented: .constant(true)) {
-            ExportInspector(recording: recording)
-                .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
-        }
+        // The Library's own name for the Recording, not the filename. The title bar used to read
+        // `Google Chrome 2026-09-04 at 21.52.43` over the subtitle `Google Chrome` — the Source
+        // stated twice, once wrapped in the on-disk naming scheme — and for a hand-adopted file
+        // with no date and no Source xattr both lines were the same string (issue #73, findings 2
+        // and 32). `windowSubtitle` says when instead, and adds the Source back only once the
+        // title has stopped being it.
+        .navigationTitle(recording.displayName)
+        .navigationSubtitle(recording.windowSubtitle)
     }
 
     private func transport(_ recording: Recording) -> some View {
@@ -255,17 +318,27 @@ private struct LibraryRow: View {
                 .lineLimit(1)
                 .foregroundStyle(recording.isOpenable ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
 
+            // No negative layout priority: starved of width it collapsed the timestamp to a bare
+            // `…` rather than dropping it, leaving a stray ellipsis between the name and
+            // `Can't open` (issue #73, finding 34). It is either shown or it is not.
             Text(recording.recordedAt?.formatted(date: .omitted, time: .shortened) ?? "")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .monospacedDigit()
-                .layoutPriority(-1)
+                .fixedSize()
 
             Spacer(minLength: 0)
 
             if !recording.isOpenable {
                 // A `public.audio`-typed file the decoder can't open (ADR-0015): listed so it doesn't
                 // vanish, but marked so the user knows why it won't play — no duration, no silhouette.
+                //
+                // The extension stands in for the duration a playable row shows. Without it two
+                // different files — a `.wma` and a `.mid` — rendered as byte-identical rows, so the
+                // Library could not tell the user which was which (issue #73, finding 33).
+                Text(recording.url.pathExtension.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                 Text("Can't open")
                     .font(.caption2)
                     .foregroundStyle(.secondary)

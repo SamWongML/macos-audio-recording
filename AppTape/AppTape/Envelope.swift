@@ -16,6 +16,13 @@ import Foundation
 /// (Watch out for the Debug build: the same reduce unoptimised is ~125× slower. A peak cache
 /// looks mandatory in Debug and is not — it is the optimiser, not the algorithm.)
 struct Envelope: Equatable, Sendable {
+    /// The fraction of the lane's half-height a **full-scale** sample is drawn at, so ordinary loud
+    /// material never reaches the lane's edge and is cut flat by the rounded-rect clip. Without it,
+    /// a loud Recording read as *clipped audio* — a claim the file does not make (issue #73,
+    /// finding 7). It belongs here rather than in the two drawing paths so the big lane and the
+    /// sidebar silhouette cannot quietly disagree about what full scale looks like.
+    static let drawnHeadroom: Double = 0.88
+
     var framesPerBucket: Int = 256
     var sampleRate: Double = 48_000
     var mins: [Float] = []
