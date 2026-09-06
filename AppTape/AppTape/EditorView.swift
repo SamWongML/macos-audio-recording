@@ -26,6 +26,11 @@ struct EditorView: View {
     /// Motion rides the token set's `.motion(_:value:)` helper rather than being read here.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// ⚠️ PROTOTYPE (issue #77) — which detail-pane variant is showing. `@AppStorage` so the pick
+    /// survives a relaunch while screenshotting. Goes away with the prototype branch.
+    @AppStorage("prototypeDetailVariant") private var variantRaw = DetailVariant.brief.rawValue
+    private var variant: DetailVariant { DetailVariant(rawValue: variantRaw) ?? .brief }
+
     /// The Recordings the sidebar is actually showing. Named, rather than filtered inline, because
     /// the footer counts it too: it used to count `store.recordings`, so a query matching nothing
     /// left an empty list under the words `44 Recordings` (issue #73, finding 35).
@@ -45,8 +50,11 @@ struct EditorView: View {
             // The hidden window-toolbar background is unconditional (the spec asks for it on the
             // title bar, not only when a Recording is shown), so it rides the detail wrapper —
             // above the empty-state branch as well as the editor.
+            // ⚠️ PROTOTYPE: variant C reopens issue #7's hidden toolbar background, because it is
+            // the only variant with a toolbar to show.
             detail
-                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                .toolbarBackgroundVisibility(variant.hidesToolbarBackground ? .hidden : .automatic,
+                                             for: .windowToolbar)
         }
         .navigationSplitViewStyle(.balanced)
         .task { model.activate() }
@@ -138,6 +146,12 @@ struct EditorView: View {
     /// visible" (issue #7) has to mean permanently, or the pane is a third pane control.
     private var detail: some View {
         detailContent
+            // ⚠️ PROTOTYPE: an **overlay**, deliberately. A `.safeAreaInset(edge: .bottom)` here —
+            // on the content hosting the permanent `.inspector` — aborts the app in `_NSViewLayout`
+            // (issue #85's loop). An overlay reserves no space and feeds no constraints.
+            .overlay(alignment: .bottom) {
+                VariantSwitcher(variant: Binding(get: { variant }, set: { variantRaw = $0.rawValue }))
+            }
             .inspector(isPresented: .constant(true)) {
                 inspectorColumn
                     .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
@@ -191,31 +205,16 @@ struct EditorView: View {
         .navigationSubtitle(recording.windowSubtitle)
     }
 
+    /// ⚠️ PROTOTYPE (issue #77): the body of this used to be the `VStack` the ticket describes —
+    /// a greedy `TrimTimeline` over one transport row, `showsRuler: false`. It now dispatches to
+    /// one of three variants; the winner is written back properly when this branch is thrown away.
     @ViewBuilder
     private func editorDetail(_ recording: Recording) -> some View {
-        VStack(spacing: 0) {
-            TrimTimeline(recording: recording,
-                         envelope: recording.envelope,
-                         player: model.player,
-                         onTrimCommitted: { recording.persistTrim() },
-                         showsRuler: false)
-                .padding(.horizontal, 22)
-                .padding(.top, 20)
-
-            transport(recording)
-
-            if let summary = recording.seamSummary {
-                // Every Seam is recorded; the small ones that do not draw are told here in one
-                // line rather than littering the lane (ADR-0010).
-                HStack(spacing: 6) {
-                    Image(systemName: "rectangle.dashed")
-                    Text(summary)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            switch variant {
+            case .air: AirDetail(recording: recording, model: model)
+            case .brief: BriefDetail(recording: recording, model: model)
+            case .docked: DockedDetail(recording: recording, model: model)
             }
         }
         // The Library's own name for the Recording, not the filename. The title bar used to read

@@ -186,6 +186,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         showPanel()
     }
 
+    /// ⚠️ PROTOTYPE (issue #77): opens the panel from code so a screenshot script can reach the
+    /// editor the way a user does — status item → panel → Open Editor. Goes away with the branch.
+    func showPanelForPrototype() { showPanel() }
+
+    /// ⚠️ PROTOTYPE (issue #77): closes the panel again once it has bound `openWindow`.
+    func dismissPanelForPrototype() { popover?.performClose(nil) }
+
     private func showPanel() {
         let popover = self.popover ?? makePopover()
         self.popover = popover

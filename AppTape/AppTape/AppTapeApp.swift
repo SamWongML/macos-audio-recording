@@ -41,6 +41,12 @@ struct AppTapeApp: App {
                 .frame(minWidth: 960, minHeight: 420)
         }
         .defaultSize(width: 1120, height: 640)   // three columns want room: sidebar + waveform + inspector
+        // ⚠️ PROTOTYPE NOTE (issue #77): flipping this to `.presented` so the editor would open at
+        // launch for screenshotting **aborts the app every time**, on unmodified `main`, at
+        // 1120 × 640 — the same `_NSViewLayout` loop as issue #85, which had only ever been seen
+        // below ~920 pt wide. So #85 is not purely width-triggered: opening this window *during
+        // launch* trips it at any size. Left `.suppressed`; the prototype drives the real path
+        // (status item → Open Editor) instead.
         .defaultLaunchBehavior(.suppressed)
         .commands {
             // Trim the standard menu set to what applies (ADR-0017): keep the

@@ -19,6 +19,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UNUserNotificationCenter.current().delegate = FaultNotificationDelegate.shared
         // Sleep, fast user switching, and logout end a Recording on notification, no Seam (ADR-0007).
         RecordingController.shared.installLifecycleObservers()
+
+        // ⚠️ PROTOTYPE (issue #77): drive the real open path — panel (which binds `openWindow`),
+        // then the editor — a beat *after* launch. Opening the window during launch, via
+        // `.defaultLaunchBehavior(.presented)`, aborts the app every time on unmodified `main`
+        // (issue #85's layout loop, at 1120 × 640). Goes away with the branch.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [menuBar] in
+            menuBar.showPanelForPrototype()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                EditorPresenter.shared.open()
+                // Dismiss the panel so it is not sitting over the editor in a screenshot.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    menuBar.dismissPanelForPrototype()
+                }
+            }
+        }
     }
 
     /// Closing the editor returns the app to `.accessory` (ADR-0017); it must
