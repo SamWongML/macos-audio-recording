@@ -92,8 +92,8 @@ final class ExportEncoder: @unchecked Sendable {
         if request.normalize {
             if isCancelled { throw Failure.cancelled }
             let measurement = try LoudnessMeter.measure(
-                url: request.source, startFrame: request.startFrame, frameCount: request.frameCount
-            ) { onProgress($0 * Self.measureFraction) }
+                url: request.source, startFrame: request.startFrame, frameCount: request.frameCount,
+                onProgress: { onProgress($0 * Self.measureFraction) })
             correctionDB = LoudnessCorrection.compute(for: measurement).decibels
             encodeStart = Self.measureFraction
         } else {

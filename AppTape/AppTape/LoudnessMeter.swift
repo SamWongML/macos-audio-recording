@@ -15,7 +15,13 @@ import Foundation
 /// `LoudnessAnalyzer` is the streaming core: push interleaved Float32 chunks and call `finish()`, so
 /// the file path never holds an hour of audio in memory and a test can push one buffer. `LoudnessMeter`
 /// is the file entry point Export and the inspector preview share.
-enum LoudnessMeter {
+///
+/// **Everything in this file is `nonisolated`, and that is load-bearing** (ADR-0022). The target sets
+/// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so an unannotated type here would be main-actor
+/// isolated — and a `Task.detached` that calls into it would hop straight back to the main thread and
+/// hold it for the whole BS.1770 pass. This is the longest-running pure computation in the app; it
+/// must never be reachable on the main actor.
+nonisolated enum LoudnessMeter {
     /// Reads the master's trimmed range as interleaved Float32 (the encode's own client format) and
     /// measures it. `onProgress` reports `0...1` across the read, so a normalized Export can show one
     /// continuous measure-then-encode bar. Throws on a Core Audio failure; a genuinely unmeasurable
@@ -104,7 +110,10 @@ enum LoudnessMeter {
 ///
 /// A range with no block that clears the absolute gate — silence, or a Trim shorter than one 400 ms
 /// block — has no integrated loudness, reported as `nil`.
-final class LoudnessAnalyzer {
+///
+/// `nonisolated` for the reason in `LoudnessMeter`'s note: this is the loop that would otherwise
+/// hold the main thread (ADR-0022).
+nonisolated final class LoudnessAnalyzer {
     private let channels: Int
     private let weights: [Double]
 
@@ -262,7 +271,9 @@ final class LoudnessAnalyzer {
 // MARK: - Biquad
 
 /// One second-order section, Direct Form II Transposed. Coefficients are normalised so `a0 == 1`.
-struct Biquad {
+/// `nonisolated`, like everything else the BS.1770 pass touches (ADR-0022) — a main-actor biquad
+/// would drag the whole filter cascade back onto the main thread one sample at a time.
+nonisolated struct Biquad {
     let b0, b1, b2, a1, a2: Double
 
     @inline(__always)
@@ -307,4 +318,4 @@ struct Biquad {
 }
 
 /// The two delay elements of one Direct Form II Transposed section.
-struct BiquadState { var z1 = 0.0; var z2 = 0.0 }
+nonisolated struct BiquadState { var z1 = 0.0; var z2 = 0.0 }

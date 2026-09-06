@@ -22,6 +22,15 @@ final class Recording: Identifiable {
     let frameCount: AVAudioFramePosition
     let sampleRate: Double
 
+    /// The file's data length at the moment this Recording was opened. Everything below —
+    /// `frameCount` above all, but also `sampleRate`, the channel count and the Seams — is read
+    /// once in `init`, which is exactly right for a finalized master, because ADR-0003 makes it
+    /// immutable. It is wrong for a file that is **still being written**: a master mid-capture, or
+    /// a large file still being copied into the Library. This is how the store tells the two apart
+    /// (ADR-0021): a Recording whose file no longer has the length it read is re-adopted, not
+    /// followed. Nil when the file could not be stat'd.
+    let openedByteCount: Int64?
+
     /// The source's channel count and sample bit depth, read at open. Export carries both through
     /// untouched — no downmix, no resample (ADR-0005, ADR-0012) — and the size estimate reads the
     /// bit depth to scale the Master-quality (ALAC) rung from the source's own footprint.
@@ -134,6 +143,11 @@ final class Recording: Identifiable {
         guard Self.conformsToAudio(url) else { return nil }
         self.url = url
         self.fileIdentity = FileIdentity(url: url)
+        // Read **before** the decode, not after. A file growing under us then records a length no
+        // greater than the one `frameCount` was derived from, so the next reconcile sees a mismatch
+        // and re-reads. Reading it after the decode could record the *later*, larger length and
+        // freeze the stale reading in place — the failure this whole mechanism exists to prevent.
+        self.openedByteCount = Self.byteCount(of: url)
 
         if let file = try? AVAudioFile(forReading: url) {
             self.isOpenable = true
@@ -162,6 +176,38 @@ final class Recording: Identifiable {
             self.envelope = Envelope(sampleRate: 0)
         }
     }
+
+    /// Whether this Recording's reading still describes the file at `url` — that is, whether the
+    /// file still has the length it had when this object read it. A file that has grown or shrunk
+    /// since is a file this object describes wrongly, so the store re-adopts it rather than
+    /// following it (ADR-0021). Two unreadable lengths compare equal, so a file that cannot be
+    /// stat'd is left alone rather than churned.
+    ///
+    /// Takes the url rather than reading `self.url`, because the rename path asks the question
+    /// about the *new* path while this object still holds the old one.
+    func stillDescribes(_ url: URL) -> Bool {
+        Self.byteCount(of: url) == openedByteCount
+    }
+
+    /// The file's data length, or nil if it cannot be stat'd. Extended attributes live outside it,
+    /// so writing the Trim, Gain or Seams xattr never changes this — which is what keeps ADR-0006's
+    /// same-object guarantee intact for everything the app itself writes.
+    ///
+    /// A bare `stat`, like `FileIdentity`, and **not** `URL.resourceValues(forKeys: [.fileSizeKey])`:
+    /// resource values are cached on the bridged `NSURL`, so asking the same URL a second time can
+    /// hand back the length from before the file grew — precisely the staleness this exists to catch.
+    static func byteCount(of url: URL) -> Int64? {
+        var info = stat()
+        guard url.withUnsafeFileSystemRepresentation({ path in
+            path != nil && stat(path, &info) == 0
+        }) else { return nil }
+        return Int64(info.st_size)
+    }
+
+    /// Whether the Recording has any audio at all. Zero frames means either a file still being
+    /// written that has not yet been re-read, or one that could not be opened — in both cases
+    /// there is no waveform to draw and nothing to play (ADR-0021).
+    var isEmpty: Bool { frameCount == 0 }
 
     /// Whether the file's UTType conforms to `public.audio` — the cheap listing half of the
     /// adoption gate (ADR-0015). Read from the file's own content type, so it follows the real type

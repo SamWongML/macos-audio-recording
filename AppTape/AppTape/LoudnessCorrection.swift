@@ -7,7 +7,12 @@ import Foundation
 
 /// The Export loudness contract's fixed numbers (ADR-0013). The target and ceiling are identical
 /// across all four Quality Presets — Loudness and quality are independent axes.
-enum LoudnessTarget {
+///
+/// This file is `nonisolated` throughout: these are the value types the BS.1770 pass produces and
+/// the editor consumes, so they sit on both sides of the actor boundary. Left implicitly main-actor
+/// under this target's `SWIFT_DEFAULT_ACTOR_ISOLATION` they would be one added member away from
+/// dragging the pass back onto the main thread (ADR-0022).
+nonisolated enum LoudnessTarget {
     /// Target integrated loudness, in LUFS.
     static let integratedLUFS = -16.0
     /// The Ceiling (CONTEXT.md): the highest true peak, in dBTP, the correction lets the audio reach.
@@ -19,7 +24,7 @@ enum LoudnessTarget {
 
 /// What a BS.1770 pass measured over a trimmed range: the integrated loudness (undefined for a
 /// silent or too-short range) and the 4× oversampled true peak that the ceiling clamps against.
-struct LoudnessMeasurement: Equatable {
+nonisolated struct LoudnessMeasurement: Equatable {
     /// Integrated loudness in LUFS, or `nil` when the range is **unmeasurable** — silent under the
     /// −70 LKFS gate, or shorter than one 400 ms gating block. An undefined measurement drives a
     /// 0 dB correction, never an invented one (ADR-0013).
@@ -35,7 +40,7 @@ struct LoudnessMeasurement: Equatable {
 ///
 /// The manual **Gain** (CONTEXT.md) is a separate axis that rides on top of this — it is not folded
 /// in here, so each figure stays legible as its own decibel value.
-struct LoudnessCorrection: Equatable {
+nonisolated struct LoudnessCorrection: Equatable {
     /// How the correction landed relative to the target, so the inspector can caption *why* it fell
     /// short. The three land-short cases are distinct on purpose: the cap guards hiss, the ceiling
     /// guards clipping, and an undefined range has nothing to correct at all.

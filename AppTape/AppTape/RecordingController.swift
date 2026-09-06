@@ -75,6 +75,19 @@ final class RecordingController {
         isRecording && capturingURL == recording.url
     }
 
+    /// Whether this Recording's audio is **still arriving**: it has no frames at all, or it is the
+    /// one being captured right now. Either way the editor is holding a reading of a file that is
+    /// still being written (ADR-0021), so the lane says so instead of drawing it and the transport
+    /// offers no Play.
+    ///
+    /// The two halves are not redundant, which is the whole point. A master is adopted moments after
+    /// the first sound creates it, so its `frameCount` is not zero, just tiny — and a Recording that
+    /// has captured 51 frames of a two-minute take drew that fraction of a second **stretched across
+    /// the entire lane** as a solid slab (issue #80). Zero frames alone did not catch it.
+    func isStillArriving(_ recording: Recording) -> Bool {
+        recording.isEmpty || isCapturing(recording)
+    }
+
     /// The wedge timeout that applies to bring-up *after* the first successful capture, when the
     /// TCC prompt can no longer appear and a slow start is a hang, not a human reading (ADR-0010).
     static let wedgeTimeout: TimeInterval = 10

@@ -16,6 +16,11 @@ import Observation
 /// pass runs on a detached `.utility` task whose own cancellation the BS.1770 loop polls, so it stops
 /// filtering early and a dragging Trim handle over a long Recording does not pile up whole-range
 /// passes. Only the resolved result hops back to the main actor, and only if its key still stands.
+///
+/// The detached task is only detached because `LoudnessMeter` is `nonisolated` (ADR-0022). It was
+/// not, once: under this target's default-MainActor isolation the meter was implicitly main-actor
+/// isolated, so this exact `Task.detached` hopped back to the main thread and froze the editor for
+/// the length of the pass — over fifteen minutes on a twenty-minute master (issue #80).
 @MainActor
 @Observable
 final class LoudnessCorrectionModel {
@@ -67,11 +72,16 @@ final class LoudnessCorrectionModel {
                                                           isCancelled: { Task.isCancelled }))
                 ?? LoudnessMeasurement(integratedLUFS: nil, truePeakDBTP: -.infinity)
             if Task.isCancelled { return }
-            await MainActor.run {
-                // Land the result only if this pass is still the current one (its key still stands).
-                guard let self, self.currentKey == key else { return }
-                self.state = .measured(LoudnessCorrection.compute(for: measurement))
-            }
+            // Bound before the hop: reading the weak capture inside the `MainActor.run` closure
+            // would capture the mutable `self` box itself into concurrently-executing code.
+            guard let model = self else { return }
+            await model.land(measurement, forKey: key)
         }
+    }
+
+    /// Land a finished pass — only if it is still the current one (its key still stands).
+    private func land(_ measurement: LoudnessMeasurement, forKey key: String) {
+        guard currentKey == key else { return }
+        state = .measured(LoudnessCorrection.compute(for: measurement))
     }
 }

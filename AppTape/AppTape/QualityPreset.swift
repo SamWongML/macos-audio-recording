@@ -235,7 +235,9 @@ extension AudioStreamBasicDescription {
     /// Interleaved, packed Float32 at a given rate and channel count — the client format the whole
     /// Export path speaks (ADR-0012): the encode reads and writes it, and the Loudness measurement
     /// reads it, always at the source's own rate and channels so nothing is resampled or downmixed.
-    static func interleavedFloat(rate: Double, channels: Int) -> AudioStreamBasicDescription {
+    /// `nonisolated` because both of those callers run off the main actor (ADR-0022) — pure
+    /// arithmetic over a C struct that must never pull a worker back onto the main thread.
+    nonisolated static func interleavedFloat(rate: Double, channels: Int) -> AudioStreamBasicDescription {
         let bytesPerFrame = UInt32(channels * MemoryLayout<Float>.size)
         return AudioStreamBasicDescription(
             mSampleRate: rate, mFormatID: kAudioFormatLinearPCM,
