@@ -4,6 +4,7 @@
 //
 
 import Testing
+import AVFoundation
 import Foundation
 @testable import AppTape
 
@@ -26,7 +27,10 @@ struct LoudnessMeterTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         // Long enough to span more than one 65 536-frame read chunk, so `onProgress` fires.
         let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("pass.caf"), seconds: 4)
-        let frames = try #require(await Recording(url: url)).frameCount
+        // Read the length straight off the file rather than through `Recording`, which is
+        // main-actor isolated like everything else in the app target — this test is about where
+        // the pass runs, and borrowing the main actor to set it up would muddy that.
+        let frames = try AVAudioFile(forReading: url).length
 
         let touchedMainThread = await Task.detached {
             var onMain = false
