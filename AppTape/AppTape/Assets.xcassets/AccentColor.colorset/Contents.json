@@ -7,5 +7,6 @@
   "info" : {
     "author" : "xcode",
     "version" : 1
-  }
+  },
+  "comment" : "Empty on purpose (ADR-0019) — do not fill this in. A custom global accent renders only when the person's System Settings > General > Accent color is set to Multicolor; any other choice overrides it app-wide. So a committed accent cannot ship this way. AppTape's accent is the 'Signal' colour set, applied explicitly at each content site via Palette.swift, and chrome keeps the user's own accent."
 }

@@ -71,14 +71,17 @@ struct TrimTimeline: View {
                 // Nothing dependable to draw over: no waveform, no Trim, no playhead. A Trim over
                 // near-zero frames puts both handles at zero and stretches a fraction of a second
                 // across the full width, which is what read as a solid slab (issue #80).
+                //
+                // Deliberately *not* a `Signal` token: ADR-0019 puts the accent on content, and the
+                // whole point here is that there is no content yet. This is chrome telling you so.
                 Text(arrivingTelling)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(width: width, height: height)
             } else {
                 WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
-                              peakStyle: AnyShapeStyle(.tint.opacity(0.45)),
-                              bodyStyle: AnyShapeStyle(.tint))
+                              peakStyle: AnyShapeStyle(Palette.signal),
+                              bodyStyle: AnyShapeStyle(Palette.signalMuted))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
@@ -195,7 +198,7 @@ struct TrimTimeline: View {
     private func handle(_ which: Handle, at x: Double, height: Double) -> some View {
         let active = draggingHandle == which
         return Capsule()
-            .fill(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            .fill(active ? AnyShapeStyle(Palette.signal) : AnyShapeStyle(.secondary))
             .frame(width: active ? 5 : 3, height: height)
             .overlay(alignment: which == .start ? .leading : .trailing) {
                 Image(systemName: which == .start ? "chevron.compact.right" : "chevron.compact.left")
@@ -210,10 +213,10 @@ struct TrimTimeline: View {
 
     private func playhead(at x: Double, height: Double) -> some View {
         Rectangle()
-            .fill(.primary)
+            .fill(Palette.signal)
             .frame(width: 1.5, height: height)
             .overlay(alignment: .top) {
-                Circle().fill(.primary).frame(width: 7, height: 7).offset(y: -3)
+                Circle().fill(Palette.signal).frame(width: 7, height: 7).offset(y: -3)
             }
             .offset(x: x - 0.75)
             .allowsHitTesting(false)
@@ -252,8 +255,8 @@ struct TrimTimeline: View {
                 }
 
                 WaveformShape(columns: columns,
-                              peakStyle: AnyShapeStyle(.tint.opacity(0.5)),
-                              bodyStyle: AnyShapeStyle(.tint))
+                              peakStyle: AnyShapeStyle(Palette.signal),
+                              bodyStyle: AnyShapeStyle(Palette.signalMuted))
                     .mask {
                         HStack(spacing: 0) {
                             Color.clear.frame(width: boxWidth * bounds.lowerBound)
@@ -311,7 +314,7 @@ struct TrimTimeline: View {
             Spacer()
             if recording.isTrimmed {
                 Text("Trim \(recording.trimRangeText)")
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(.primary)
             }
             Spacer()
             Text(Format.time(visible.upperBound))
