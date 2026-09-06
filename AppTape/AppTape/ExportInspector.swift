@@ -111,10 +111,12 @@ struct ExportInspector: View {
             }
         }
         .formStyle(.grouped)
-        .animation(.default, value: recording.trimmedDuration)
-        .animation(.default, value: coordinator.phase)
-        .animation(.default, value: preference.normalizeLoudness)
-        .animation(.default, value: editor.correction.state)
+        // Through the token set's helper, not `.animation` directly, so Reduce Motion degrades
+        // to a fade rather than an instant cut (ADR-0019).
+        .motion(value: recording.trimmedDuration)
+        .motion(value: coordinator.phase)
+        .motion(value: preference.normalizeLoudness)
+        .motion(value: editor.correction.state)
         // A new selection drops any per-file display-over, so the sticky preset shows through again
         // on the next Recording (ADR-0015).
         .onChange(of: recording.url) { perFilePreset = nil }
