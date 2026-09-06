@@ -124,14 +124,20 @@ given window size. A row that is sometimes absent is a layout that is sometimes 
 whose main element is elastic, that is a visible defect rather than a tidiness question.
 
 **A selected sidebar row drops its waveform silhouette, and its coloured glyphs yield.** macOS fills
-a selected sidebar row with the user's accent at full saturation and turns `.primary` content white
-for you — but it does nothing for content that names its own colour, which was most of that row. The
-`Signal` scissors became indigo on blue and vanished on exactly the row being looked at; the
-`.tertiary` timestamp went with it. Selected, the scissors and the Seam glyph take `.primary` and
-`.secondary`, which macOS renders legibly on a focused *and* an unfocused selection — the behaviour
-Mail's VIP star and Finder's tag dots already have. This does not amend ADR-0019's exhaustive list:
-the scissors is still a `Signal` site, it simply yields where contrast would otherwise be lost. The
-silhouette is dropped on the selected row for a different reason — over a saturated fill it stops
+a selected sidebar row with a **neutral grey capsule** — measured `#585859` in Dark Mode and
+`#DDDDE0` in Light — and it does nothing at all for content that names its own colour, which was
+most of that row. The grey is not a focus artefact and not ours to change: on macOS 27 the
+emphasized accent fill still exists for content lists (Finder's file list measures `#2C65D0` dark,
+`#3170DE` light) but the **sidebar** style no longer uses it, and Finder's own sidebar sits within
+three points of ours in both appearances. In Dark Mode that capsule lands at almost exactly
+`Signal`'s luminance, so the `Signal` scissors measured **1.40:1** against it — under the 3:1
+non-text floor, and *worse* than the 2.38:1 it manages on the unselected sidebar ground. It vanished
+on exactly the row being looked at; the `.tertiary` timestamp went with it. Selected, the scissors
+and the Seam glyph take `.primary` and `.secondary`, which reach 7.11:1 on that same capsule and
+which macOS renders legibly on a focused *and* an unfocused selection — the behaviour Mail's VIP
+star and Finder's tag dots already have. This does not amend ADR-0019's exhaustive list: the
+scissors is still a `Signal` site, it simply yields where contrast would otherwise be lost. The
+silhouette is dropped on the selected row for a different reason — over any selection fill it stops
 being a comparison aid and becomes texture on the one row that least needs it, since that
 Recording's waveform is drawn full size two panes to the right.
 
