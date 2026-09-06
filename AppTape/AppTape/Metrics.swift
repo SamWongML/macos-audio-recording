@@ -22,13 +22,13 @@ enum Metrics {
 
     /// Sidebar rows, so the name and its metadata are two real lines rather than one crowded one.
     ///
-    /// **Declared by ADR-0019 and not applied**: `LibraryRow` is one 32 pt line, with the
-    /// timestamp beside the name rather than under it. That is the layout the sweep and the
-    /// redesign both judged on screen, so the code is not obviously the wrong half — but a token
-    /// nothing reads is the disagreement this enum exists to make visible, not hide. Issue #78
-    /// restyles the sidebar and owns reconciling the two: adopt this number, or retire it from
-    /// the ADR. Do not quietly delete it, and do not adopt it without looking at the result.
-    static let sidebarRowHeight: Double = 40
+    /// **ADR-0019 declared 40; #78 judged both on screen and kept 32** (ADR-0025). Forty points
+    /// buys a second line, and the second line's only content was the timestamp — which the day
+    /// section header above and the brief two panes to the right already state. A taller row for a
+    /// fact stated twice elsewhere is emptier, not calmer, and it costs four visible Recordings at
+    /// the default window height. The number is now read by `LibraryRow`, so the token and the code
+    /// agree.
+    static let sidebarRowHeight: Double = 32
 
     // MARK: - Type
 
@@ -36,8 +36,8 @@ enum Metrics {
 
     /// A Recording's name. Body/13 semibold.
     ///
-    /// **Declared by ADR-0019 and not applied**: `LibraryRow`'s name `Text` names no font and so
-    /// inherits plain `.body`. Issue #78's, on the same terms as `sidebarRowHeight`.
+    /// **Adopted by #78**: `LibraryRow` reads it. With the timestamp gone the name carries the row
+    /// on its own, and semibold is what makes it the thing scanned rather than one of three greys.
     static let name = Font.body.weight(.semibold)
 
     /// Metadata and secondary lines. Subheadline/11 — pair it with `.secondary`.
@@ -45,9 +45,11 @@ enum Metrics {
 
     /// Inspector section headers. Headline/13 bold.
     ///
-    /// **Declared by ADR-0019 and not applied**: `ExportInspector` uses `Form` `Section` headers,
-    /// which macOS styles itself, and overriding a platform-styled header is a decision rather
-    /// than a tidy-up. Issue #78's, on the same terms as `sidebarRowHeight`.
+    /// **Retired by #78, kept as a stop nothing reads** (ADR-0025). `ExportInspector` stayed a
+    /// grouped `Form`, whose `Section` headers macOS styles itself and restyles between releases.
+    /// Overriding them would freeze this app's headers at one OS version's idea of them for no gain
+    /// the ticket could see on screen. It is left declared, and deliberately unused, because the
+    /// next surface that needs a header outside a `Form` should use this rather than invent one.
     static let sectionHeader = Font.headline
 
     /// The transport position and the Trim readouts. Body/13 with monospaced digits — the single
