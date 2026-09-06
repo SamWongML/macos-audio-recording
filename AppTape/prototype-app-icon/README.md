@@ -38,3 +38,29 @@ If it ever dies mid-run: `defaults import com.apple.dock /tmp/cc-dock-backup.pli
 - **B's Trim rails collapse into the waveform at Dock size** — at 128 pt they read as two
   more bars, so B is E wearing a moustache. That is why E exists: with the Trim eliminated,
   the live question is only *pale ground or saturated ground*.
+
+## Round 2 — refinements of the picked mark
+
+A picked. Round 2 varies one thing at a time: F refines the drawing, G retries the
+Trim with colour instead of rails, H drops to five bars.
+
+- **F is the drawing.** Stockier bars (66 wide on a 36 gap, against A's 58/42) and a
+  steadier rhythm — one clear peak with one echo, rather than seven random heights.
+  At 128 pt in Finder and in the real Dock it reads as a designed mark; A reads as noise.
+- **The Trim cannot be said in the icon, and G is the second proof.** Round 1 said it
+  with rails and they collapsed into the waveform. G says it with ADR-0019's own two
+  stops — `Signal` kept, `Signal Muted` trimmed away — and the difference is faint at
+  320 pt, gone by 64 pt. Two stops that are deliberately close enough not to fight on a
+  700 pt lane are far too close to carry meaning in a 32 pt tile.
+- **Five bars (H) is legible but not better.** Fewer bars reads as an EQ or a bar chart;
+  seven keeps the waveform texture, and seven still resolves at 16 pt.
+- **The pale ground's weak case is Light Mode Finder**, where the tile edge nearly
+  vanishes against white and the mark reads as bars floating on the page. In Dark Mode,
+  and in the Dock in either mode, it is the strongest thing in the row.
+- **The dark and tinted variants exist and were never rendered.** `assetutil` on the
+  compiled catalog shows all three stacks — `NSAppearanceNameAqua`, `NSAppearanceNameDarkAqua`,
+  `ISAppearanceTintable` — plus a derived `system-dark` gradient. The Finder shot does not
+  show the dark one because macOS 26+ makes icon style a *separate* user setting from Dark
+  Mode. Seeing them rendered needs Icon Composer, which stops on a licence agreement that
+  is the human's to accept, so this is the one claim here backed by the catalog rather
+  than by a screenshot.

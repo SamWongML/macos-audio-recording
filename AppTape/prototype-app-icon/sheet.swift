@@ -15,8 +15,12 @@ let smallRowH: CGFloat = 140
 let W = colW * CGFloat(apps.count) + pad
 let H = pad + labelH + bigSize + smallRowH + pad
 
+// The icon resolves its appearance at draw time, so the whole sheet is drawn inside
+// the appearance under test. Painting a dark rectangle behind it proves nothing.
+let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)!
 let img = NSImage(size: NSSize(width: W, height: H))
 img.lockFocus()
+appearance.performAsCurrentDrawingAppearance {
 (dark ? NSColor(calibratedWhite: 0.14, alpha: 1) : NSColor(calibratedWhite: 0.93, alpha: 1)).setFill()
 NSRect(x: 0, y: 0, width: W, height: H).fill()
 
@@ -39,6 +43,7 @@ for (i, path) in apps.enumerated() {
         icon.draw(in: NSRect(x: sx, y: sy, width: s, height: s))
         sx += s + 18
     }
+}
 }
 img.unlockFocus()
 
