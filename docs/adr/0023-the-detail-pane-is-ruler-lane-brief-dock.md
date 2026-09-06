@@ -27,9 +27,7 @@ window size it still left the bottom third of the pane blank, and because the th
 it turned out to exist already.
 
 **A window toolbar was rejected, so issue #7's *exactly one pane control* and its hidden toolbar
-background both stand.** *(Superseded in part by ADR-0024: the toolbar stays free of app chrome and
-its background stays hidden, but the editor does gain a second **pane control** — a trailing toggle
-for the inspector. The rejection below is about a toolbar full of actions, and that still holds.)* The third layout had one, and running it settled the question in a way no
+background both stand.** The third layout had one, and running it settled the question in a way no
 argument would have: the toolbar's play button and the docked transport's play button appeared in
 the same window at the same time, twenty points apart. Everything else a toolbar could hold —
 Rename, Reveal in Finder, Move to Trash — is already in the File menu and the sidebar's context menu

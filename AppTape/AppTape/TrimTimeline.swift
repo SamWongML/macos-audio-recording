@@ -20,7 +20,6 @@ struct TrimTimeline: View {
     var player: AudioPlayer
     /// Persist the Trim once, at gesture-end — never per drag frame (issue #7, ADR-0006).
     var onTrimCommitted: () -> Void
-    var showsRuler = true
 
     /// The Recording being captured right now, if any. Read here, as `ExportInspector` already
     /// does, both to decide whether the lane has anything dependable to draw (ADR-0021) and so the
@@ -55,8 +54,10 @@ struct TrimTimeline: View {
             // The ruler sits **above** the lane, which is where every peer that has one puts it
             // (Fission's restored upper timeline ruler, Sound Studio's per-pane ruler, Logic's
             // Audio Track Editor) — and it is what makes the lane read as a timeline rather than a
-            // picture. Issue #7 shipped `showsRuler: false`; ADR-0023 turns it on.
-            if showsRuler { ruler }
+            // picture. It used to be a `showsRuler` parameter the editor always passed `false`;
+            // ADR-0023 turned it on, and nothing has asked for it off since, so there is no
+            // parameter to pass any more.
+            ruler
             GeometryReader { geo in
                 lane(width: max(geo.size.width, 1), height: geo.size.height)
             }

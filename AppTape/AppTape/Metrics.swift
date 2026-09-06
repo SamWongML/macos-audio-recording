@@ -21,6 +21,13 @@ enum Metrics {
     static let xl: Double = 24
 
     /// Sidebar rows, so the name and its metadata are two real lines rather than one crowded one.
+    ///
+    /// **Declared by ADR-0019 and not applied**: `LibraryRow` is one 32 pt line, with the
+    /// timestamp beside the name rather than under it. That is the layout the sweep and the
+    /// redesign both judged on screen, so the code is not obviously the wrong half — but a token
+    /// nothing reads is the disagreement this enum exists to make visible, not hide. Issue #78
+    /// restyles the sidebar and owns reconciling the two: adopt this number, or retire it from
+    /// the ADR. Do not quietly delete it, and do not adopt it without looking at the result.
     static let sidebarRowHeight: Double = 40
 
     // MARK: - Type
@@ -28,12 +35,19 @@ enum Metrics {
     /// Wholly SF, four rungs, no light weights. Nothing goes below 11pt, though macOS permits 10.
 
     /// A Recording's name. Body/13 semibold.
+    ///
+    /// **Declared by ADR-0019 and not applied**: `LibraryRow`'s name `Text` names no font and so
+    /// inherits plain `.body`. Issue #78's, on the same terms as `sidebarRowHeight`.
     static let name = Font.body.weight(.semibold)
 
     /// Metadata and secondary lines. Subheadline/11 — pair it with `.secondary`.
     static let metadata = Font.subheadline
 
     /// Inspector section headers. Headline/13 bold.
+    ///
+    /// **Declared by ADR-0019 and not applied**: `ExportInspector` uses `Form` `Section` headers,
+    /// which macOS styles itself, and overriding a platform-styled header is a decision rather
+    /// than a tidy-up. Issue #78's, on the same terms as `sidebarRowHeight`.
     static let sectionHeader = Font.headline
 
     /// The transport position and the Trim readouts. Body/13 with monospaced digits — the single

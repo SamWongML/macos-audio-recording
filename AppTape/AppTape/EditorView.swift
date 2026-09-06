@@ -19,14 +19,6 @@ struct EditorView: View {
     /// lane and the inspector already do (ADR-0021).
     @State private var recorder = RecordingController.shared
     @State private var query = ""
-    /// Whether the Export inspector is showing. **Real state, not `.constant(true)`** — see
-    /// `detail` (ADR-0024). `@AppStorage` because a pane the user closed should stay closed across
-    /// launches, the way every other macOS pane does.
-    @AppStorage("editorShowsInspector") private var showsInspector = true
-    /// The trailing pane's width, ours to keep now that it is an ordinary column (ADR-0024).
-    @AppStorage("editorInspectorWidth") private var inspectorWidth: Double = 276
-    /// The width the current resize drag started from. See `inspectorDivider`.
-    @State private var dragStartWidth: Double?
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -155,65 +147,23 @@ struct EditorView: View {
     /// `_NSViewLayout` under any constraint it could not satisfy — too little width, too little
     /// height, or a bottom safe-area bar (issue #85).
     ///
-    /// The cost is that the two things `.inspector` gave for free are now ours: the toggle button
-    /// and the drag-to-resize divider. Both are below, and both are less code than the workarounds
-    /// for a bug Apple has not fixed in five OS releases.
+    /// **The column is permanent and it is one fixed width.** `.inspector` gave a toggle and a
+    /// drag-to-resize divider for free, and an earlier pass in this branch rebuilt both by hand
+    /// once the modifier was gone. Neither is here now: issue #7's *permanently-visible inspector*
+    /// and *exactly one pane control* both stand, reached by a different mechanism. What the pane
+    /// holds is the Export ladder and the empty state that explains its absence — nothing a window
+    /// this size needs to put away, and a hideable pane is a second pane control, a stored
+    /// preference and an animation bought for that.
     private var detail: some View {
         HStack(spacing: 0) {
             detailContent
                 .frame(maxWidth: .infinity)
 
-            if showsInspector {
-                inspectorDivider
-                inspectorColumn
-                    .frame(width: inspectorWidth)
-            }
+            // A hairline, and only a hairline: it separates two panes, it is not a handle.
+            Divider()
+            inspectorColumn
+                .frame(width: Self.inspectorWidth)
         }
-        // Keyed to the toggle, so showing and hiding the pane animates and nothing else does — a
-        // redraw of the waveform or a change of selection is not a `showsInspector` change. Through
-        // the token set's helper, so Reduce Motion degrades to a cross-fade (ADR-0019).
-        .motion(.easeOut(duration: 0.18), value: showsInspector)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showsInspector.toggle()
-                } label: {
-                    Label(showsInspector ? "Hide Inspector" : "Show Inspector",
-                          systemImage: "sidebar.trailing")
-                }
-                .help(showsInspector ? "Hides the Export inspector" : "Shows the Export inspector")
-            }
-        }
-    }
-
-    /// The pane's resize handle. A `Divider` is one point wide and nobody can hit it, so the grab
-    /// area is widened by an invisible overlay rather than by drawing a thicker rule — the line the
-    /// user sees stays a hairline, which is what the rest of the window uses.
-    private var inspectorDivider: some View {
-        Divider()
-            .overlay {
-                Color.clear
-                    .frame(width: 10)
-                    .contentShape(.rect)
-                    .onHover { inside in
-                        // The cursor is the only affordance a hairline gets.
-                        if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                    }
-                    .gesture(
-                        DragGesture(minimumDistance: 1)
-                            .onChanged { value in
-                                // Measured from the width at gesture start, not the live width:
-                                // `translation` is cumulative, so applying it to the current width
-                                // every frame accelerates the drag away from the pointer.
-                                let base = dragStartWidth ?? inspectorWidth
-                                if dragStartWidth == nil { dragStartWidth = base }
-                                inspectorWidth = min(max(Self.inspectorMinimumWidth,
-                                                         base - value.translation.width),
-                                                     Self.inspectorMaximumWidth)
-                            }
-                            .onEnded { _ in dragStartWidth = nil }
-                    )
-            }
     }
 
     @ViewBuilder
@@ -304,31 +254,33 @@ struct EditorView: View {
 
             Spacer(minLength: Metrics.lg)
 
-            // A plain last child behind the `Spacer`. **All three of the framework's own bottom-bar
-            // placements are unusable here**, which is worth writing down because each looks like
-            // the obvious answer: `ToolbarItem(placement: .bottomBar)` does not compile on macOS at
-            // all; `safeAreaInset(edge: .bottom)` and macOS 26's `safeAreaBar(edge: .bottom)` both
-            // compile and both **abort the app on open** — a bottom bar on the content hosting the
-            // permanently presented `.inspector` re-enters the layout pass until AppKit throws
-            // (issue #85's loop). So the bar is laid out by hand, and only its *appearance*
-            // follows the guidance (issue #77, ADR-0023).
+            // A plain last child behind the `Spacer`, laid out by hand — only its *appearance*
+            // follows the bottom-bar guidance (issue #77, ADR-0023).
+            //
+            // `ToolbarItem(placement: .bottomBar)` does not compile on macOS at all, so that
+            // route stays closed. The other two, `safeAreaInset(edge: .bottom)` and macOS 26's
+            // `safeAreaBar(edge: .bottom)`, **aborted the app on open** — but that was
+            // `.inspector` re-entering the layout pass until AppKit threw (issue #85's loop),
+            // and `.inspector` is gone (ADR-0024). They are probably open again; nobody has
+            // measured it, so this stays hand-laid until #85 does.
             transport(recording)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// The trailing pane's width — one number, because the pane neither hides nor resizes. 276 was
+    /// the ideal the resizable version defaulted to and the width every screenshot was judged at.
+    static let inspectorWidth: Double = 276
+
     /// The lane's height, floor and cap. The floor keeps a short window from crushing the waveform
     /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).
-    static let inspectorMinimumWidth: Double = 248
-    static let inspectorMaximumWidth: Double = 340
-
     static let laneMinimumHeight: Double = 168
     static let laneMaximumHeight: Double = 340
 
-    /// The transport, in the window's bottom safe area rather than under the lane. Its position no
-    /// longer depends on how much the pane above it holds — the reasoning that pinned the
-    /// inspector's Export control (issue #76) — and the playhead clock lands where a clock belongs,
-    /// as the largest type in the window.
+    /// The transport, pinned to the bottom of the detail pane rather than sitting under the lane.
+    /// Its position no longer depends on how much the pane above it holds — the reasoning that
+    /// pinned the inspector's Export control (issue #76) — and the playhead clock lands where a
+    /// clock belongs, as the largest type in the window.
     ///
     /// **No rule and no fill.** It had a hairline `Divider` over a `.bar` material, which is the
     /// shape Apple's own Liquid Glass guidance names: *avoid adding custom darkening backgrounds

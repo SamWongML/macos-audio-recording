@@ -221,7 +221,6 @@ struct LoupeWindow: Equatable {
     var span: Double
     var centre: Double
 
-    var secondsPerColumn: Double { columns.isEmpty ? 0 : span / Double(columns.count) }
     /// The fraction of the box, 0...1, where the file begins and ends.
     var insideFraction: ClosedRange<Double> {
         guard !columns.isEmpty else { return 0...0 }
