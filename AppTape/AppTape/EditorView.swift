@@ -23,6 +23,10 @@ struct EditorView: View {
     /// `detail` (ADR-0024). `@AppStorage` because a pane the user closed should stay closed across
     /// launches, the way every other macOS pane does.
     @AppStorage("editorShowsInspector") private var showsInspector = true
+    /// The trailing pane's width, ours to keep now that it is an ordinary column (ADR-0024).
+    @AppStorage("editorInspectorWidth") private var inspectorWidth: Double = 276
+    /// The width the current resize drag started from. See `inspectorDivider`.
+    @State private var dragStartWidth: Double?
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -135,39 +139,80 @@ struct EditorView: View {
 
     // MARK: - Detail (waveform, Trim, transport) + permanent inspector
 
-    /// The trailing inspector is attached **here**, above the three branches, not inside the one
-    /// that has a Recording to export. It used to hang off `editorDetail` alone, so selecting a
-    /// can't-open file — or deselecting — made the whole trailing column disappear and the window's
-    /// layout jump as the user arrowed down the Library (issue #73, finding 24). Whether it is
-    /// *shown* is now the user's; whether it exists is still not conditional on the selection.
+    /// The trailing pane is an **ordinary column of the detail view, not a SwiftUI `.inspector`**
+    /// (ADR-0024).
     ///
-    /// **The binding is real state, and that is the fix for a flickering button** (ADR-0024). It was
-    /// `.constant(true)`, which gave SwiftUI an inspector whose toggle could not do anything: it
-    /// suppressed the automatic toolbar item, but the item still leaked through for a frame or two
-    /// whenever the toolbar was rebuilt — hiding and showing the *leading* sidebar was the reliable
-    /// way to see it flash. A control that appears for 100 ms and then leaves reads as a rendering
-    /// bug whichever way it resolves, so it resolves toward being real.
+    /// `.inspector` on a `NavigationSplitView` is a broken combination, and the evidence is not
+    /// ours alone: FB20061521 (*abnormal Sidebar and Columns state*) and FB20061260 (*the sidebar
+    /// toggle disappears when the sidebar is collapsed*) were filed in September 2025, still
+    /// reproduce on macOS 26.2 RC, have no Apple reply and no published workaround — and the
+    /// reporter's own conclusion is the one issue #85 reached independently by bisection: *the bug
+    /// only occurs if the inspector modifier is present; removing it resolves the issue.*
     ///
-    /// The toggle is declared **explicitly, on the main toolbar**, rather than left to the automatic
-    /// one: an item declared inside the inspector's own view builder rides the section of the
-    /// toolbar above the inspector and goes with it, which is the one placement that cannot serve as
-    /// the way back once the pane is closed.
+    /// Three symptoms in this app were that one bug wearing three costumes: the toggle flickering
+    /// into the toolbar for a frame while the leading sidebar animated; the leading sidebar
+    /// collapsing and returning when the trailing pane was shown; and the editor aborting in
+    /// `_NSViewLayout` under any constraint it could not satisfy — too little width, too little
+    /// height, or a bottom safe-area bar (issue #85).
+    ///
+    /// The cost is that the two things `.inspector` gave for free are now ours: the toggle button
+    /// and the drag-to-resize divider. Both are below, and both are less code than the workarounds
+    /// for a bug Apple has not fixed in five OS releases.
     private var detail: some View {
-        detailContent
-            .inspector(isPresented: $showsInspector) {
+        HStack(spacing: 0) {
+            detailContent
+                .frame(maxWidth: .infinity)
+
+            if showsInspector {
+                inspectorDivider
                 inspectorColumn
-                    .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
+                    .frame(width: inspectorWidth)
             }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showsInspector.toggle()
-                    } label: {
-                        Label(showsInspector ? "Hide Inspector" : "Show Inspector",
-                              systemImage: "sidebar.trailing")
-                    }
-                    .help(showsInspector ? "Hides the Export inspector" : "Shows the Export inspector")
+        }
+        // Keyed to the toggle, so showing and hiding the pane animates and nothing else does — a
+        // redraw of the waveform or a change of selection is not a `showsInspector` change. Through
+        // the token set's helper, so Reduce Motion degrades to a cross-fade (ADR-0019).
+        .motion(.easeOut(duration: 0.18), value: showsInspector)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showsInspector.toggle()
+                } label: {
+                    Label(showsInspector ? "Hide Inspector" : "Show Inspector",
+                          systemImage: "sidebar.trailing")
                 }
+                .help(showsInspector ? "Hides the Export inspector" : "Shows the Export inspector")
+            }
+        }
+    }
+
+    /// The pane's resize handle. A `Divider` is one point wide and nobody can hit it, so the grab
+    /// area is widened by an invisible overlay rather than by drawing a thicker rule — the line the
+    /// user sees stays a hairline, which is what the rest of the window uses.
+    private var inspectorDivider: some View {
+        Divider()
+            .overlay {
+                Color.clear
+                    .frame(width: 10)
+                    .contentShape(.rect)
+                    .onHover { inside in
+                        // The cursor is the only affordance a hairline gets.
+                        if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                    }
+                    .gesture(
+                        DragGesture(minimumDistance: 1)
+                            .onChanged { value in
+                                // Measured from the width at gesture start, not the live width:
+                                // `translation` is cumulative, so applying it to the current width
+                                // every frame accelerates the drag away from the pointer.
+                                let base = dragStartWidth ?? inspectorWidth
+                                if dragStartWidth == nil { dragStartWidth = base }
+                                inspectorWidth = min(max(Self.inspectorMinimumWidth,
+                                                         base - value.translation.width),
+                                                     Self.inspectorMaximumWidth)
+                            }
+                            .onEnded { _ in dragStartWidth = nil }
+                    )
             }
     }
 
@@ -274,6 +319,9 @@ struct EditorView: View {
 
     /// The lane's height, floor and cap. The floor keeps a short window from crushing the waveform
     /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).
+    static let inspectorMinimumWidth: Double = 248
+    static let inspectorMaximumWidth: Double = 340
+
     static let laneMinimumHeight: Double = 168
     static let laneMaximumHeight: Double = 340
 

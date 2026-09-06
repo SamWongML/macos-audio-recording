@@ -3,24 +3,42 @@ status: accepted
 supersedes: "issue #7's *exactly one pane control* and *permanently-visible inspector*"
 ---
 
-# The inspector is hideable, and says so
+# The trailing pane is a column, not a SwiftUI inspector
 
-Hiding the Library sidebar and showing it again made a button for the *trailing* pane appear in the
-toolbar for a fraction of a second and then leave. A control that exists for 100 ms reads as a
-rendering bug whichever way you resolve it, and this ADR resolves it toward the control being real:
-**the Export inspector can be hidden, and the toggle that hides it is always in the toolbar.**
+Three symptoms were reported or measured against this editor, and they looked like three problems:
 
-## The cause
+1. A toggle for the trailing pane flickered into the toolbar for a fraction of a second whenever the
+   leading sidebar was hidden and shown again.
+2. Showing the trailing pane made the **leading** sidebar collapse and come back.
+3. The editor aborted in `_NSViewLayout` under any constraint it could not satisfy — too little
+   width, too little height, or a bottom safe-area bar (issue #85).
 
-`EditorView` presented the inspector with `.inspector(isPresented: .constant(true))`. A constant
-binding is an inspector whose toggle cannot do anything, so SwiftUI suppressed the automatic toolbar
-item — but the suppression is not stable across a toolbar rebuild, and hiding and showing the
-leading sidebar rebuilds the toolbar. The item appeared for a frame or two on the way through.
+**They are one framework bug.** `.inspector` on a `NavigationSplitView` is a known-broken
+combination: [FB20061521](https://developer.apple.com/forums/thread/799125) (*abnormal Sidebar and
+Columns state*) and [FB20061260](https://developer.apple.com/forums/thread/799794) (*the sidebar
+toggle disappears when the sidebar is collapsed*) were filed in September 2025 and still reproduce
+on macOS 26.2 RC, with no Apple reply and no published workaround anywhere. The reporter's own
+conclusion is the one issue #85 reached independently, by bisection: **the bug only occurs if the
+inspector modifier is present; removing it resolves the issue.**
 
-The binding is now real state, so the toggle has something to do. The flicker is a symptom of a
-control with no meaning; giving it meaning is what removes it.
+**So the trailing pane stops being a SwiftUI `.inspector` and becomes an ordinary column of the
+detail view** — an `HStack` with a hairline divider — and the Export inspector can be hidden by a
+toolbar toggle that is always there.
+
+## What this costs, and why it is still cheaper
+
+`.inspector` gave two things for free, and both are now ours: the toggle button and the
+drag-to-resize divider. Both are a few dozen lines. The alternative was to keep the modifier and
+work around a bug that has survived five OS releases without anyone publishing a workaround, on a
+window whose minimum width is a crash guard because of it. Owning forty lines is cheaper than
+renting a defect.
 
 ## Considered options
+
+**Keeping `.inspector` and mitigating was considered and rejected.** An explicit `columnVisibility`
+binding and more slack in the three columns' widths might have suppressed the collapse; nothing
+would have touched the abort, and the 960 pt width guard would have stayed. Betting on finding a
+workaround that the reporters of two open Feedback issues did not find is not a durable fix.
 
 **Removing the button instead was the other honest fix, and it was rejected on the human's call.**
 It preserves issue #7 exactly and is a smaller change. It was not chosen, and there is a reason
@@ -30,11 +48,11 @@ bottom edge and issue #77 gave the detail pane a brief that fills the space. A t
 cannot dismiss is a harder claim to defend for a window that now has content of its own to show,
 and the editor's minimum width is 960 in large part because that pane cannot go away (issue #85).
 
-**The toggle is declared explicitly, on the main toolbar, rather than left to the automatic one.**
-An item declared inside the inspector's own view builder rides the strip of toolbar above the
-inspector and is dismissed with it — the one placement that cannot serve as the way back once the
-pane is closed. It is the standard `sidebar.trailing` symbol with a label that names what the click
-will do, so the button is legible in a toolbar with no background behind it.
+**The toggle is ours, and there is exactly one of it.** An intermediate version kept `.inspector`
+with a real binding *and* added an explicit `ToolbarItem`, which produced two buttons side by side —
+SwiftUI's automatic `»` and ours. With the modifier gone there is no automatic one, so the single
+explicit button is both the control and the whole interface. It carries `sidebar.trailing` with a
+label naming what the click will do, so it stays legible in a toolbar with no background behind it.
 
 **`InspectorCommands()` is still not added.** Issue #7 found that `SidebarCommands()` and
 `InspectorCommands()` left the app with zero windows (ADR-0017), and nothing here revisits that. The
@@ -56,8 +74,13 @@ distinction matters: the bug that finding was about was the pane vanishing *with
 **The choice persists across launches** (`@AppStorage`), because a pane the user closed should stay
 closed, as every other macOS pane does.
 
-**The window's 960 pt width floor is unchanged for now.** It is issue #85's crash guard, and while
-hiding the inspector may well make the loop unreachable at narrower widths, that is a measurement
-nobody has taken — the floor is not lowered on a guess. If closing the inspector does prove to make
-narrow widths safe, that is a fact for issue #85 and possibly the shape of its fix, since a
-conditionally-present `.inspector` is a different structure from a permanently-presented one.
+**The window's 960 pt width floor is unchanged, and that is deliberately unfinished.** It is issue
+#85's crash guard, and #85 already measured that the editor is fine at 800 pt with `.inspector`
+removed — which is what this ADR does. The floor should therefore come down, and it has not, because
+the measurement has not been *re-taken against this code*. It is not lowered on a strong inference.
+Issue #85 owns the re-measurement and the number.
+
+**Two other things become possible and are not taken here.** The bottom bar can probably become a
+real `safeAreaBar(edge: .bottom)` — it aborts today only because of the inspector — and the editor
+window can probably open during launch. Both are for whoever re-measures the floor, and both are
+recorded so nobody has to rediscover them.
