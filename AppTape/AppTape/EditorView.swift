@@ -159,10 +159,17 @@ struct EditorView: View {
             detailContent
                 .frame(maxWidth: .infinity)
 
-            // A hairline, and only a hairline: it separates two panes, it is not a handle.
-            Divider()
+            // **No hairline.** The `Divider()` that used to be here started below the title bar and
+            // ran to the window's bottom edge, and that asymmetry is what read as wrong. Research
+            // report 0006 found the hairline is not the norm at all: Xcode's inspector boundary is a
+            // material shift reaching the literal top edge, and Finder's preview column has no
+            // boundary drawn whatsoever — the panes are told apart by background colour. So the
+            // column takes `.controlBackgroundColor`, one step off the window's own background, and
+            // where a line should start and stop stops being a question (#78).
+            // `.toolbarBackgroundVisibility(.hidden)` is untouched by this.
             inspectorColumn
                 .frame(width: Self.inspectorWidth)
+                .background(Color(nsColor: .controlBackgroundColor))
         }
     }
 
@@ -462,12 +469,18 @@ private struct RecordingBrief: View {
 
 // MARK: - The sidebar row
 
-/// One line, 32 points. The Recording's own silhouette runs behind the row but is **masked away
-/// from both ends** — it fades in past the text and out again before the duration — so nothing is
-/// drawn under a glyph and nothing is truncated to make room for it. Drawn as a `WaveformPath`
-/// (`Shape`), because a `Canvas` inside a `List` row draws nothing on macOS 27 (issue #7). The
-/// mask keeps the waveform's drawn region at a fixed *fraction* of the row, so two Recordings'
-/// silhouettes stay comparable — the only reason it is here, given Sources repeat within a day.
+/// One line, 32 points: the name, the Recording's own silhouette, and a fixed-width trailing rail
+/// of glyphs and duration. **The timestamp is gone** — the day is in the section header above and
+/// the exact minute is in the brief two panes to the right, so the row spends its width on the
+/// three things that tell two Recordings apart at a glance. The lane crowded because it was drawn
+/// for thirty-nine rows at once and read for one; the fix was to remove, not to arrange (ADR-0025).
+///
+/// The silhouette runs behind the row but is **masked away from both ends** — it fades in past the
+/// name and out again before the rail — so nothing is drawn under a glyph and nothing is truncated
+/// to make room for it. Drawn as a `WaveformPath` (`Shape`), because a `Canvas` inside a `List` row
+/// draws nothing on macOS 27 (issue #7). The mask keeps the waveform's drawn region at a fixed
+/// *fraction* of the row, so two Recordings' silhouettes stay comparable — the only reason it is
+/// here, given Sources repeat within a day.
 private struct LibraryRow: View {
     var recording: Recording
     var model: EditorModel
@@ -478,25 +491,29 @@ private struct LibraryRow: View {
 
     private var isRenaming: Bool { model.renamingURL == recording.url }
 
-    /// Whether this row is the selected one. macOS fills a selected sidebar row with the user's
-    /// accent at full saturation and turns `.primary` content white for you — but it does nothing
-    /// for content that names its own colour, which is most of this row (ADR-0023).
+    /// Whether this row is the selected one. A selected sidebar row is filled by macOS — with the
+    /// accent at full saturation while the sidebar has focus, with a mid grey when it does not —
+    /// and `.primary` content is inverted for you on both. What macOS does *not* do is touch
+    /// content that names its own colour, which is most of this row, so every colour below has to
+    /// survive **two** fills rather than one (ADR-0023).
     private var isSelected: Bool { model.selection?.url == recording.url }
 
     var body: some View {
         Group {
             if isRenaming { renameField } else { content }
         }
-        .frame(height: 32)
+        .frame(height: Metrics.sidebarRowHeight)
         // Not drawn under the name field: the silhouette is a comparison aid for browsing, and
         // behind editable text it is just noise.
         //
-        // Nor under the **selected** row. Over a saturated accent fill the silhouette stops being
-        // a comparison aid and becomes texture on the one row that least needs it — the selected
-        // Recording's waveform is drawn full size two panes to the right. Dropping it is most of
-        // what made the selection read as hard rather than elegant (issue #77, ADR-0023).
+        // It **survives selection**, where ADR-0023 dropped it. Dropping it left the row the user is
+        // looking at as the one blank row in the column, with a lone scissors floating in the space
+        // the shape used to fill. The fill was never the problem — the *colour* was: `.secondary` at
+        // 50% is a mid grey, which is mud on the accent fill and nearly invisible on the grey one.
+        // Selected, the shape takes `.primary` at a lower alpha instead, which macOS inverts for
+        // both fills (ADR-0025).
         .background(alignment: .leading) {
-            if !isRenaming, !isSelected, recording.isOpenable { silhouette }
+            if !isRenaming, recording.isOpenable { silhouette }
         }
         .contextMenu {
             // Exactly three (issue #75). `Duplicate` is out of scope: a master is 1.4 GB/hour
@@ -512,68 +529,72 @@ private struct LibraryRow: View {
     }
 
     private var content: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: 8) {
             // The Source until the user names the Recording themselves, their name after
             // (ADR-0020) — otherwise a rename would change nothing the Library shows.
+            //
+            // `fixedSize()` with the `Spacer` below is what stops the name growing into the middle
+            // of the row: the silhouette gets the space between them, rather than whatever the
+            // longest Source name happens to leave over.
             Text(recording.displayName)
+                .font(Metrics.name)
                 .lineLimit(1)
-                .foregroundStyle(recording.isOpenable ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-
-            // No negative layout priority: starved of width it collapsed the timestamp to a bare
-            // `…` rather than dropping it, leaving a stray ellipsis between the name and
-            // `Can't open` (issue #73, finding 34). It is either shown or it is not.
-            Text(recording.recordedAt?.formatted(date: .omitted, time: .shortened) ?? "")
-                .font(.caption2)
-                // `.tertiary` is a legible grey on the window background and very nearly invisible
-                // on a saturated selection fill. A selected row gets one rung brighter.
-                .foregroundStyle(isSelected ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
-                .monospacedDigit()
+                .foregroundStyle(recording.isOpenable ? AnyShapeStyle(.primary)
+                                                      : AnyShapeStyle(.secondary))
                 .fixedSize()
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 12)
 
-            if !recording.isOpenable {
-                // A `public.audio`-typed file the decoder can't open (ADR-0015): listed so it doesn't
-                // vanish, but marked so the user knows why it won't play — no duration, no silhouette.
-                //
-                // The extension stands in for the duration a playable row shows. Without it two
-                // different files — a `.wma` and a `.mid` — rendered as byte-identical rows, so the
-                // Library could not tell the user which was which (issue #73, finding 33).
-                Text(recording.url.pathExtension.uppercased())
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Text("Can't open")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .help("An audio file AppTape can't decode. Select it to remove it.")
-            } else {
-                if recording.isTrimmed {
-                    // Indigo on the accent fill is indigo on blue: the glyph vanished on exactly
-                    // the row the user is looking at. Selected, it takes `.primary`, which macOS
-                    // renders white on a focused selection and dark on an unfocused one — the
-                    // behaviour Mail's VIP star and Finder's tag dots already have. ADR-0019's
+            if recording.isOpenable {
+                // A **fixed-width slot**, so the durations line up down the column whether a
+                // Recording is trimmed, has Seams, or neither. The glyphs are drawn at zero opacity
+                // rather than omitted: an `if` here shifted the duration by the width of a glyph on
+                // every row that differed, which is the ragged trailing lane #78 was filed about.
+                // Hidden from accessibility when invisible, so VoiceOver does not read a glyph that
+                // is not being shown.
+                HStack(spacing: 3) {
+                    // `Signal` is indigo, and a focused selection fill is the accent blue: indigo on
+                    // blue, so the glyph vanished on exactly the row being looked at. It fares no
+                    // better on the unfocused grey. Selected, it takes `.primary` — the behaviour
+                    // Mail's VIP star and Finder's tag dots already have. ADR-0019's
                     // where-`Signal`-may-appear list is unchanged in substance: this is still the
-                    // scissors' colour, it simply yields where contrast would otherwise be lost.
+                    // scissors' colour, it simply yields where contrast would be lost (ADR-0023).
                     Image(systemName: "scissors")
-                        .font(.caption2)
                         .foregroundStyle(isSelected ? AnyShapeStyle(.primary)
                                                     : AnyShapeStyle(Palette.signal))
-                }
+                        .opacity(recording.isTrimmed ? 1 : 0)
+                        .accessibilityHidden(!recording.isTrimmed)
+                        .help(recording.isTrimmed ? "Trimmed" : "")
 
-                // A subtle trailing glyph on Recordings with surfaced Seams — the Library is where a
-                // user arrives weeks later, when the moment's telling is long gone (ADR-0010). Tertiary,
-                // not tinted: it is *no data here*, not a warning.
-                if recording.isSurfacedForSeams {
+                    // A subtle trailing glyph on Recordings with surfaced Seams — the Library is
+                    // where a user arrives weeks later, when the moment's telling is long gone
+                    // (ADR-0010). Tertiary, not tinted: it is *no data here*, not a warning.
                     Image(systemName: "rectangle.dashed")
-                        .font(.caption2)
                         .foregroundStyle(isSelected ? AnyShapeStyle(.secondary)
                                                     : AnyShapeStyle(.tertiary))
-                        .help("Contains Seams — silence padded in where audio was interrupted")
+                        .opacity(recording.isSurfacedForSeams ? 1 : 0)
+                        .accessibilityHidden(!recording.isSurfacedForSeams)
+                        .help(recording.isSurfacedForSeams
+                              ? "Contains Seams — silence padded in where audio was interrupted" : "")
                 }
+                .font(.caption2)
+                .frame(width: 26, alignment: .trailing)
 
                 Text(Format.time(recording.duration))
-                    .font(.caption).monospacedDigit()
+                    .font(Metrics.metadata).monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .frame(width: 42, alignment: .trailing)
+            } else {
+                // A `public.audio`-typed file the decoder can't open (ADR-0015): listed so it
+                // doesn't vanish, but marked so the user knows why it won't play — no duration, no
+                // silhouette. The extension stays even though the timestamp went: without it a
+                // `.wma` and a `.mid` rendered as byte-identical rows and the Library could not tell
+                // the user which was which (issue #73, finding 33).
+                Text("\(recording.url.pathExtension.uppercased()) · Can't open")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+                    .help("An audio file AppTape can't decode. Select it to remove it.")
             }
         }
     }
@@ -626,18 +647,28 @@ private struct LibraryRow: View {
         }
     }
 
+    /// Behind the row, in the window the name and the trailing rail leave between them.
+    ///
+    /// On a **selected** row it takes `.primary` at a lower alpha, which macOS renders white on a
+    /// focused selection and dark on an unfocused one — so one rule covers both fills. The alpha is
+    /// what keeps it a ground: at full strength `.primary` is the name's own colour and the shape
+    /// would compete with the text it sits behind (ADR-0025).
     private var silhouette: some View {
         WaveformPath(columns: recording.envelope.columns(
             over: 0...max(recording.duration, 0.001), count: 120))
-            .fill(.secondary.opacity(0.5))
+            .fill(isSelected ? AnyShapeStyle(.primary.opacity(0.30))
+                             : AnyShapeStyle(.secondary.opacity(0.5)))
             .frame(height: 15)
+            // Opened up from 0.42/0.56/0.80/0.90 now the timestamp has gone: the shape starts where
+            // the name ends rather than where the name plus a timestamp ended, and stops before the
+            // fixed rail rather than before a ragged one.
             .mask {
                 LinearGradient(stops: [
                     .init(color: .clear, location: 0.00),
-                    .init(color: .clear, location: 0.42),
-                    .init(color: .black, location: 0.56),
-                    .init(color: .black, location: 0.80),
-                    .init(color: .clear, location: 0.90),
+                    .init(color: .clear, location: 0.40),
+                    .init(color: .black, location: 0.52),
+                    .init(color: .black, location: 0.78),
+                    .init(color: .clear, location: 0.88),
                 ], startPoint: .leading, endPoint: .trailing)
             }
             .allowsHitTesting(false)

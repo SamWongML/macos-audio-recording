@@ -20,6 +20,15 @@ struct ExportInspector: View {
 
     private var format: SourceFormat { recording.sourceFormat }
 
+    /// **One height for all four Export phases**, so the dock cannot move as an Export runs.
+    ///
+    /// This is the half of the Export control #78 owned: its *position* was settled by issue #76,
+    /// but idle, running, succeeded and failed each laid out to their own intrinsic height, so the
+    /// pane's bottom content jumped twice during a two-second job — once when progress appeared and
+    /// again when it resolved. Sized to the tallest phase (a two-line failure), which every other
+    /// phase then centres inside rather than resizing the dock to fit.
+    private static let exportControlHeight: Double = 34
+
     /// The sticky Quality Preset can't always encode an adopted file (ADR-0015). When it can't, the
     /// user's pick is a **display-over for this file only** — held here, never written to the
     /// app-wide sticky preference — and reset when the selection changes. Nil means "use the sticky".
@@ -33,21 +42,20 @@ struct ExportInspector: View {
     /// shows a plain reason in place of the subtitle (ADR-0015).
     private var effectiveEncodability: QualityPreset.Encodability { effectivePreset.encodability(for: format) }
 
-    /// The picker's selection. Reading gives the effective preset; writing a rung the sticky preset
-    /// can encode updates the app-wide preference (issue #9), but writing one it can't (an adopted
-    /// file the sticky doesn't fit) is a per-file display-over that leaves the sticky untouched
-    /// (ADR-0015). A rung the codec can't encode is never accepted here.
-    private var qualityBinding: Binding<QualityPreset> {
-        Binding(
-            get: { effectivePreset },
-            set: { newValue in
-                switch QualityPreset.PresetPick.resolve(picking: newValue, sticky: preference.preset,
-                                                        format: format) {
-                case .setSticky(let preset): preference.preset = preset; perFilePreset = nil
-                case .displayOver(let preset): perFilePreset = preset
-                case .ignore: break
-                }
-            })
+    /// Choosing a rung. Picking one the sticky preset can encode updates the app-wide preference
+    /// (issue #9); picking one it can't — an adopted file the sticky doesn't fit — is a per-file
+    /// display-over that leaves the sticky untouched (ADR-0015). A rung the codec can't encode is
+    /// never accepted here.
+    ///
+    /// A method rather than the `Binding` a `Picker` needed: the rungs are buttons now, and each one
+    /// knows which preset it is, so there is nothing for a binding's getter to resolve.
+    private func pick(_ newValue: QualityPreset) {
+        switch QualityPreset.PresetPick.resolve(picking: newValue, sticky: preference.preset,
+                                                format: format) {
+        case .setSticky(let preset): preference.preset = preset; perFilePreset = nil
+        case .displayOver(let preset): perFilePreset = preset
+        case .ignore: break
+        }
     }
 
     /// Re-measure whenever the Recording, its Trim, or the toggle changes (ADR-0013). The model
@@ -71,49 +79,34 @@ struct ExportInspector: View {
 
     var body: some View {
         Form {
-            Section("Selection") {
-                LabeledContent("Length") {
-                    Text(Format.time(recording.trimmedDuration)).monospacedDigit()
+            // **No `Selection` section.** It stated the Trim's length and range forty points from a
+            // transport that already states them, in a different colour — the window disagreeing
+            // with itself, and the last of the two-colour Trim readouts #77 started closing. What
+            // the inspector says is what Export will *produce*; what is currently selected is the
+            // detail pane's job (ADR-0025). The trimmed duration has not gone quiet — it is the
+            // input to every size estimate below, and each rung prints its own.
+            Section("Quality") {
+                // All four rungs and all four estimates on screen at once, so the choice is
+                // *compared* rather than revealed one at a time by a menu. This is also the only
+                // shape in which ADR-0019's "the selected rung gains a leading checkmark, always"
+                // means anything: inside a `Picker` the checkmark lives in a menu nobody sees.
+                ForEach(QualityPreset.allCases) { preset in
+                    rung(preset)
                 }
-                .readAloud("Length", Format.time(recording.trimmedDuration))
-                LabeledContent("Trim") {
-                    Text(recording.isTrimmed ? recording.trimRangeText : "Whole Recording")
-                        .monospacedDigit()
-                        .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                }
-                .readAloud("Trim", recording.isTrimmed ? recording.trimRangeText : "Whole Recording")
+                sourceFormatLine
             }
 
-            Section("Export") {
-                Picker("Quality", selection: qualityBinding) {
-                    ForEach(QualityPreset.allCases) { preset in
-                        // A rung the source's format can't encode faithfully is disabled, with its
-                        // own plain reason on hover, so every unusable rung says why — not just the
-                        // effective one (ADR-0015).
-                        Text(preset.displayName)
-                            .tag(preset)
-                            .disabled(!preset.encodability(for: format).isAvailable)
-                            .help(preset.encodability(for: format).reason ?? "")
-                    }
-                }
-
-                presetSubtitleOrReason
-
-                // Loudness and Gain sit between the Quality Preset and the estimate (issue #55): they
-                // never move the estimate (ADR-0012), so they read below the preset, unaffected.
+            // Loudness and Gain sit below the rungs (issue #55): they never move an estimate
+            // (ADR-0012), so they read after the thing they do not affect.
+            Section("Level") {
                 loudnessAndGainControls
-
-                LabeledContent("Estimated size") {
-                    Text(ExportSizeEstimate.text(preset: effectivePreset, format: format,
-                                                 duration: recording.trimmedDuration))
-                        .monospacedDigit()
-                }
-                .readAloud("Estimated size",
-                           ExportSizeEstimate.text(preset: effectivePreset, format: format,
-                                                   duration: recording.trimmedDuration))
             }
         }
         .formStyle(.grouped)
+        // The trailing column now paints its own `.controlBackgroundColor` to separate itself from
+        // the detail pane (research report 0006), so the `Form` must not paint the window background
+        // it assumes it is sitting on back over it.
+        .scrollContentBackground(.hidden)
         // The Export control is **pinned to the pane's bottom edge**, not scrolled with the Form.
         // Inside the Form its position depended on how many rows happened to be above it — a
         // non-zero Gain, the Normalize correction row, an unencodable preset's reason block each
@@ -128,10 +121,14 @@ struct ExportInspector: View {
         // this is only about the primary action being on screen at all.
         .safeAreaInset(edge: .bottom) {
             exportControl
+                .frame(height: Self.exportControlHeight)
                 .padding(.horizontal, Metrics.lg)
                 .padding(.vertical, Metrics.md)
                 .frame(maxWidth: .infinity)
-                .background(.bar)
+                // No fill and no rule. The `.bar` here was separating the dock from a `Form` that
+                // painted the window background; now that the column carries its own, a darkening
+                // bar over it is the decorative chrome ADR-0019 spends its budget avoiding. The
+                // dock separates by air and by alignment (ADR-0025).
         }
         // Through the token set's helper, not `.animation` directly, so Reduce Motion degrades
         // to a fade rather than an instant cut (ADR-0019).
@@ -150,24 +147,76 @@ struct ExportInspector: View {
         }
     }
 
-    /// The chosen preset's codec, bitrate, rate and channels — visible, never editable (issue #9);
-    /// or, when the effective preset can't encode this file, the plain refusal reason in its place,
-    /// which reads together with the disabled Export button as "pick a rung that fits" (ADR-0015).
-    @ViewBuilder
-    private var presetSubtitleOrReason: some View {
-        if let reason = effectiveEncodability.reason {
-            VStack(alignment: .leading, spacing: 3) {
-                Label(reason, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                Text("Choose a quality that fits this file.")
+    /// One Quality Preset rung: checkmark, name, codec, and its **own** size estimate.
+    ///
+    /// A rung the source's format can't encode faithfully is disabled and dimmed, and states its
+    /// plain reason where its codec would be — so every unusable rung says why, not just the
+    /// effective one (ADR-0015). With all four reasons on screen, the disabled Export button below
+    /// reads as "pick a rung that fits" without a separate sentence saying so.
+    private func rung(_ preset: QualityPreset) -> some View {
+        let encodability = preset.encodability(for: format)
+        let isSelected = preset == effectivePreset
+        return Button {
+            pick(preset)
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
+                // Always drawn, never conditional: the accessible path and the default path are the
+                // same path, which is the only version that stays correct (ADR-0019).
+                Image(systemName: "checkmark")
+                    .font(.caption.weight(.semibold))
+                    .opacity(isSelected ? 1 : 0)
+                    .frame(width: 12)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(preset.displayName)
+                        .foregroundStyle(.primary)
+                    // The **codec and bitrate only**, not the whole `subtitle(for:)`. The rate and
+                    // channel count in that string come from the *source*, so all four rungs would
+                    // print the same "· 48 kHz stereo" — four copies of one fact, and the thing that
+                    // wrapped every rung onto two lines in a 276 pt pane. Stated once beneath the
+                    // rungs instead. Issue #9's "codec, bitrate, rate and channels, visible and
+                    // never editable" still holds; it is simply said once rather than four times.
+                    Text(encodability.reason ?? preset.codecLabel)
+                        .font(.caption)
+                        .foregroundStyle(encodability.isAvailable ? AnyShapeStyle(.secondary)
+                                                                  : AnyShapeStyle(Color.orange))
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: Metrics.xs)
+
+                Text(ExportSizeEstimate.text(preset: preset, format: format,
+                                             duration: recording.trimmedDuration))
+                    .font(.caption).monospacedDigit()
                     .foregroundStyle(.secondary)
             }
-            .font(.caption)
-        } else {
-            Text(effectivePreset.subtitle(for: format))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(!encodability.isAvailable)
+        .opacity(encodability.isAvailable ? 1 : 0.5)
+        .help(encodability.reason ?? "")
+        // Not `readAloud`: this is a button, and collapsing it to a label/value pair the way an
+        // inspector *row* wants would cost the button trait. The rung keeps its trait, states the
+        // preset as its label, folds codec and estimate into one value so they read as one sentence
+        // rather than three loose texts, and carries `.isSelected` — which is the checkmark's
+        // meaning, spoken.
+        .accessibilityLabel(preset.displayName)
+        .accessibilityValue([encodability.reason ?? preset.codecLabel,
+                             ExportSizeEstimate.text(preset: preset, format: format,
+                                                     duration: recording.trimmedDuration)]
+                                .joined(separator: ", "))
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    /// The rate and channel count Export carries through untouched, said **once**: they are the
+    /// source's, identical on every rung, and issue #9 asks for them to be visible, not repeated.
+    private var sourceFormatLine: some View {
+        Text(effectivePreset.subtitle(for: format)
+            .replacingOccurrences(of: "\(effectivePreset.codecLabel) · ", with: "")
+            + " · carried through unchanged")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
     }
 
     // MARK: - Loudness & Gain (normalize toggle, correction read-out, Gain slider)
@@ -284,7 +333,7 @@ struct ExportInspector: View {
     }
 
     private func runningControl(_ fraction: Double) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Metrics.xs) {
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
             HStack {
@@ -294,38 +343,46 @@ struct ExportInspector: View {
                 Spacer()
                 Button("Cancel") { coordinator.cancel() }
                     .buttonStyle(.link)
+                    .font(.caption)
             }
         }
     }
 
+    /// One row rather than a stack: `Reveal in Finder` shortens to `Reveal` beside the word
+    /// `Exported`, which is unambiguous next to a green check and is what lets the succeeded phase
+    /// occupy the same height as the idle button.
     private func succeededControl(_ url: URL) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: Metrics.sm) {
             Label("Exported", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-            HStack {
-                Button("Reveal in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([url])
-                }
-                Spacer()
-                Button("Done") { coordinator.cancel() }
-                    .buttonStyle(.link)
-            }
+                .font(.callout)
+                .labelStyle(.titleAndIcon)
+            Spacer(minLength: Metrics.xs)
+            Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                .buttonStyle(.link).font(.caption)
+            Button("Done") { coordinator.cancel() }
+                .buttonStyle(.link).font(.caption)
         }
     }
 
+    /// The tallest phase, and so the one that sets `exportControlHeight`: two lines of reason beside
+    /// a retry. `Try Again…` steps down from prominent to plain — a failure the user has just read
+    /// is not the moment for the loudest control in the pane, and the prominent button here made
+    /// the failed phase taller than every other.
     private func failedControl(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: Metrics.sm) {
             Label(message, systemImage: "exclamationmark.triangle.fill")
-                .font(.callout)
+                .font(.caption)
                 .foregroundStyle(.orange)
-            Button {
+                .lineLimit(2)
+            Spacer(minLength: Metrics.xs)
+            Button("Try Again…") {
                 coordinator.cancel()   // clear the failure, then re-present the save panel
                 coordinator.export(recording: recording, preset: effectivePreset)
-            } label: {
-                Text("Try Again…").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .font(.caption)
         }
+        .help(message)
     }
 }
 
