@@ -1,0 +1,40 @@
+# PROTOTYPE — AppTape app icon (issue #79)
+
+Throwaway. Nothing here ships; the winning mark gets rebuilt properly on `main`.
+
+Five candidates as Icon Composer `.icon` bundles, judged as **real system renders**
+— `NSWorkspace.icon(forFile:)` is the same pipeline the Dock draws with — and then
+in the **actual Dock** next to real neighbours.
+
+| | claim | mark | ground |
+|---|---|---|---|
+| A | the app is your audio | seven mirrored bars | pale `#E6E6F2`, bars `Signal` |
+| E | same, saturated ground | seven mirrored bars | indigo `#4A48C8`, bars white |
+| B | the app is the Trim decision | bars bracketed by two rails | indigo, white |
+| C | the app is tape (abstract) | a reel: platter, hub, three cutouts | indigo, white |
+| D | the app is tape (concrete) | a cassette: shell, two reels, window | indigo, white |
+
+## Running it
+
+```sh
+python3 make_icons.py                    # writes AppTape{A,B,C,D,E}.icon
+./dock-shot.sh                           # puts all five in the real Dock, shoots it, puts the Dock back
+swift sheet.swift out.png <apps…>        # contact sheet at 320/128/64/32/16
+swift crop.swift in.png out.png x y w h
+```
+
+`dock-shot.sh` backs the Dock up to `/tmp/cc-dock-backup.plist` and restores on exit.
+If it ever dies mid-run: `defaults import com.apple.dock /tmp/cc-dock-backup.plist && killall Dock`.
+
+## What the renders decided
+
+- The app's own envelope polygon (`WaveformShape`, 30 column midpoints) **collapses into
+  a blob below ~64 pt**. Faithful at 700 pt, unreadable in a Dock tile. Discrete bars are
+  the same idea at icon scale — and are what the status item's `waveform` symbol already is.
+- **Every tape mark read as something else.** A ring with three spokes rendered as a
+  *steering wheel*; redrawn as a platter with three cutouts it renders as a *film reel*.
+  A capsule with two holes rendered as a *toggle switch*; redrawn as a shell with a tape
+  window it renders as a *bowtie on a card*. Two rounds, four drawings, nothing said "audio".
+- **B's Trim rails collapse into the waveform at Dock size** — at 128 pt they read as two
+  more bars, so B is E wearing a moustache. That is why E exists: with the Trim eliminated,
+  the live question is only *pale ground or saturated ground*.

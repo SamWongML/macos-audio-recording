@@ -1,0 +1,38 @@
+{
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.29020,0.28235,0.78431,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "1-outside.svg",
+          "name": "Trimmed away",
+          "opacity": 0.42
+        },
+        {
+          "image-name": "2-inside.svg",
+          "name": "Kept"
+        },
+        {
+          "image-name": "3-rails.svg",
+          "name": "Trim handles"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}
