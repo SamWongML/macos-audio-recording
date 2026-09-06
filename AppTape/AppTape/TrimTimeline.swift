@@ -374,17 +374,14 @@ struct TrimTimeline: View {
 
     // MARK: - Ruler
 
-    /// Ticks at a round interval with `mm:ss` labels, and — under them, spanning the kept range —
-    /// the Trim, stated once.
+    /// **A pure time axis: ticks at a round interval with `mm:ss` labels, and nothing else.**
     ///
-    /// **The Trim is stated here and nowhere else in the detail pane.** With the ruler switched on,
-    /// the editor said `Trim 0:00 – 0:07` on the ruler, again in the transport row forty points
-    /// below it, and a third time in the inspector. The ruler wins the two in this pane because it
-    /// spans the lane and sits directly under the handles that set it; the transport row's copy is
-    /// gone (issue #77). The inspector's is its own — that row is the Export contract.
-    ///
-    /// The span bar is **`.secondary`, not `Signal`**: ADR-0019 lists exhaustively where the accent
-    /// may appear, and a ruler is not on it. The Trim's colour lives in the lane, on the audio.
+    /// It carried the Trim too, as a span bar with `0:00 – 0:06` printed under it. Two marks for
+    /// one fact, stacked, directly above a lane that *already* draws the same range as two handles
+    /// and a desaturated remainder — three statements of the Trim inside sixty vertical points.
+    /// The bar and the readout both went; the numeric range now lives once, in the bottom bar,
+    /// beside the control that resets it. This is also what the peers do: Fission, Sound Studio and
+    /// Logic all keep the ruler as time and put the selection's figures in a status area.
     private var ruler: some View {
         GeometryReader { geo in
             let width = max(geo.size.width, 1)
@@ -404,39 +401,16 @@ struct TrimTimeline: View {
                     // The last label is pulled in so it cannot run off the trailing edge.
                     .offset(x: min(x(t), width - 30))
                 }
-
-                if recording.isTrimmed {
-                    trimSpan(from: x(recording.trim.lowerBound),
-                             to: x(recording.trim.upperBound),
-                             width: width)
-                }
             }
         }
-        // Fixed, so the row does not resize as the Trim appears and disappears — a ruler that
-        // changes height nudges the whole lane every time a handle reaches the end.
         .frame(height: Self.rulerHeight)
-        // The lane already publishes the Trim in words (`laneAccessibilityValue`); a second
-        // reading of the same fact is noise, and the ticks are decoration.
+        // The lane publishes the Trim in words (`laneAccessibilityValue`) and the bottom bar
+        // publishes the range; the ticks are decoration.
         .accessibilityHidden(true)
     }
 
-    private func trimSpan(from start: Double, to end: Double, width: Double) -> some View {
-        let barWidth = max(2, end - start)
-        return VStack(spacing: 2) {
-            Capsule().fill(.secondary).frame(width: barWidth, height: 2)
-            Text(recording.trimRangeText)
-                .font(Metrics.readout)
-                .foregroundStyle(.primary)
-                .fixedSize()
-        }
-        .frame(width: barWidth)
-        // Centred on the span, then clamped so a Trim at either end keeps its label on screen.
-        .offset(x: min(max(0, start), width - barWidth), y: 20)
-    }
-
-    /// Height of the ruler row: the tick labels, the tick marks, and the Trim span with its
-    /// readout underneath.
-    static let rulerHeight: Double = 46
+    /// Height of the ruler row: one line of tick labels plus the tick marks under them.
+    static let rulerHeight: Double = 24
 
     /// Tick times at a round interval — 1/2/5/10/15/30/60 s and up — chosen so no two labels come
     /// within 64 pt of each other. The Recording always fits the width and there is no zoom, so

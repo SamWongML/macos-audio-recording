@@ -44,15 +44,20 @@ interval is a function of duration and width alone.
 
 **Turning the ruler on forced a second decision that had been invisible until then: the Trim was
 being stated three times.** The ruler said `Trim 0:00 – 0:07`, the transport row said it again forty
-points below, and the inspector said it a third time. **The ruler keeps it and the transport row's
-copy is gone.** The ruler wins the two in this pane because it spans the lane and sits directly
-under the handles that set it; Reset stays in the transport, with the control that undoes the Trim,
-since only the readout moved. The inspector's row is its own — that one is the Export contract, and
-it is issue #78's to reconcile.
+points below, and the inspector said it a third time. The transport row's copy went first.
 
-**The Trim's span bar on the ruler is `.secondary`, not `Signal`.** ADR-0019 lists exhaustively
-where the accent may appear and a ruler is not on that list. The Trim's colour lives in the lane, on
-the audio.
+**Then the ruler's own version turned out to be two statements, not one, and both went.** The first
+attempt gave the ruler a `.secondary` span bar spanning the kept range with `0:00 – 0:06` printed
+underneath — a mark and a number for the same fact, stacked, directly above a lane that *already*
+draws that range as two handles and a desaturated remainder. Three renderings of the Trim inside
+sixty vertical points, which is worse than the redundancy it was meant to fix. **The ruler is now a
+pure time axis — ticks and `mm:ss` labels, nothing else — and the Trim's numbers are stated once, in
+the bottom bar, beside the control that resets them.** That is also where the peers put them:
+Fission, Sound Studio and Logic all keep the ruler as time and put a selection's figures in a status
+area. The inspector's row remains its own — the Export contract, and issue #78's to reconcile.
+
+The corollary is that ADR-0019's accent question never arises on the ruler: there is no Trim mark
+there to colour.
 
 **A static Loudness readout was rejected, and not on taste.** It was the obvious filler for the
 freed space — the audio-editor research proposed exactly it, as *this Recording measures X LUFS,
@@ -91,11 +96,44 @@ position no longer depends on how much the pane above it happens to hold — the
 pinned the inspector's Export control in issue #76 — and the playhead clock lands where a clock
 belongs, as the largest type in the window.
 
-**The docked bar is a plain last child behind a `Spacer()`, and must not become a
-`.safeAreaInset(edge: .bottom)`.** That is the idiomatic way to dock a bar, it is how this was
-written first, and it **aborts the app on open**: a bottom safe-area inset on the content hosting
-the permanently-presented `.inspector` re-enters the layout pass until AppKit throws. Same loop as
-issue #85, reached by structure rather than by window width.
+**The bar has no rule and no fill.** It shipped first with a hairline `Divider` over a `.bar`
+material, which is exactly the shape Apple's Liquid Glass guidance names as a mistake: *avoid adding
+custom darkening backgrounds behind toolbars*, and glass belongs to the navigation layer floating
+above content rather than painted onto it. A bar earns its separation from air and alignment, not
+from a rule drawn across the pane. Nothing in it takes glass either, beyond the play button ADR-0019
+already spends one of the app's two Liquid Glass controls on.
+
+**All three of the framework's own bottom-bar placements are unusable here, and each one looks like
+the obvious answer.** `ToolbarItem(placement: .bottomBar)` is the sanctioned container and does not
+compile on macOS at all — *'bottomBar' is unavailable in macOS*. `safeAreaInset(edge: .bottom)` and
+macOS 26's `safeAreaBar(edge: .bottom)` both compile and both **abort the app on open**: a bottom bar
+on the content hosting the permanently-presented `.inspector` re-enters the layout pass until AppKit
+throws, the same loop as issue #85 and reached by structure rather than by window width. So the bar
+is a plain last child behind a `Spacer()`, laid out by hand, and only its *appearance* follows the
+guidance. **Do not "fix" it into a safe-area bar.**
+
+**Everything above the bar has a height that does not depend on which Recording is shown.** The Seam
+line was its own conditionally-present row and the brief dropped `Captured` or `Master` when it had
+nothing to put there, so the stack stood between three and five rows tall depending on the file —
+and because the lane takes the leftover height, arrowing down the Library made the waveform shrink
+and grow on every keystroke, the pane visibly collapsing and re-expanding under the pointer. **The
+brief is now always exactly five rows** — Source, Captured, Format, Master, Seams — with an em dash
+where there is nothing to say and `None` where there are no Seams, and the Seam line is one of those
+rows rather than a separate line. The lane then resolves to the same height for every Recording at a
+given window size. A row that is sometimes absent is a layout that is sometimes different; in a pane
+whose main element is elastic, that is a visible defect rather than a tidiness question.
+
+**A selected sidebar row drops its waveform silhouette, and its coloured glyphs yield.** macOS fills
+a selected sidebar row with the user's accent at full saturation and turns `.primary` content white
+for you — but it does nothing for content that names its own colour, which was most of that row. The
+`Signal` scissors became indigo on blue and vanished on exactly the row being looked at; the
+`.tertiary` timestamp went with it. Selected, the scissors and the Seam glyph take `.primary` and
+`.secondary`, which macOS renders legibly on a focused *and* an unfocused selection — the behaviour
+Mail's VIP star and Finder's tag dots already have. This does not amend ADR-0019's exhaustive list:
+the scissors is still a `Signal` site, it simply yields where contrast would otherwise be lost. The
+silhouette is dropped on the selected row for a different reason — over a saturated fill it stops
+being a comparison aid and becomes texture on the one row that least needs it, since that
+Recording's waveform is drawn full size two panes to the right.
 
 **The editor window's minimum height is now a layout number, where 960 wide is still a guard.** The
 pane's content stops fitting between 460 and 480 pt of window height, and an over-constrained
