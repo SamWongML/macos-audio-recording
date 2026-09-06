@@ -27,6 +27,10 @@ struct TrimTimeline: View {
     /// empty lane can say *why* it is empty rather than just being blank.
     @State private var recorder = RecordingController.shared
 
+    /// The loupe's material is the editor's one vibrant surface in the detail pane (issue #73,
+    /// finding 15). Reduce Motion is handled by `.motion(_:value:)`, not read here.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     @State private var draggingHandle: Handle?
     @State private var loupeCentre: Double = 0
     @State private var gestureActive = false
@@ -79,22 +83,11 @@ struct TrimTimeline: View {
                     .foregroundStyle(.secondary)
                     .frame(width: width, height: height)
             } else {
-                WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
-                              peakStyle: AnyShapeStyle(Palette.signal),
-                              bodyStyle: AnyShapeStyle(Palette.signalMuted))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                waveform(x: x, width: width)
 
                 // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
                 // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
                 seamBands(x: x, height: height)
-
-                // Trimmed-away audio stays visible but dimmed. Trim never removes anything
-                // (ADR-0003), and the picture should say so.
-                Rectangle().fill(.background.opacity(0.62))
-                    .frame(width: max(0, x(recording.trim.lowerBound)))
-                Rectangle().fill(.background.opacity(0.62))
-                    .frame(width: max(0, width - x(recording.trim.upperBound)))
-                    .offset(x: x(recording.trim.upperBound))
 
                 handle(.start, at: x(recording.trim.lowerBound), height: height)
                 handle(.end, at: x(recording.trim.upperBound), height: height)
@@ -109,6 +102,49 @@ struct TrimTimeline: View {
         // There is nothing to scrub or Trim while the audio is still arriving, and a drag would set
         // a Trim against a length that is about to change.
         .disabled(isStillArriving)
+        // The lane exposed exactly two elements to accessibility — the two chevron `Image`s inside
+        // the handles, read out as "Compact Right Chevron" — and nothing at all for the waveform,
+        // the playhead or the Trim (issue #73, finding 14). The decorations are hidden and three
+        // real elements are published in their place: the lane, and one adjustable element per
+        // handle. This is the *reading* half; the full keyboard editing path is issue #21's.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Waveform")
+        .accessibilityValue(laneAccessibilityValue)
+    }
+
+    /// What the lane says when VoiceOver lands on it: how long the Recording is and what the Trim
+    /// currently keeps, in words, since none of that is otherwise readable without a mouse.
+    private var laneAccessibilityValue: String {
+        if isStillArriving { return arrivingTelling }
+        let whole = "\(Format.time(recording.duration)) long"
+        return recording.isTrimmed
+            ? "\(whole), trimmed to \(recording.trimRangeText)"
+            : "\(whole), whole Recording"
+    }
+
+    /// The lane's audio, drawn twice: **colourless everywhere, in colour inside the Trim**.
+    ///
+    /// Trim never removes anything (ADR-0003) and the picture has to say so. It used to say it with
+    /// `Rectangle().fill(.background.opacity(0.62))` over the trimmed-away ends — an alpha overlay
+    /// that is dark grey over dark grey in Dark Mode, where the two sides of the boundary differed
+    /// only in the waveform's saturation and the lane background not at all (issue #73, finding 8).
+    /// ADR-0019 rejected raising that opacity in favour of this: what changes outside the Trim is
+    /// **colour, not brightness**, which states *still there, just not Exported* directly, needs no
+    /// per-appearance magic number, and survives Increase Contrast as an alpha overlay does not.
+    /// It also leaves the Trim as the only indigo on the lane, which is the point of the ADR.
+    private func waveform(x: @escaping (Double) -> Double, width: Double) -> some View {
+        let shape = WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
+                                  peakStyle: AnyShapeStyle(Palette.signal),
+                                  bodyStyle: AnyShapeStyle(Palette.signalMuted))
+        let keptStart = x(recording.trim.lowerBound)
+        let keptWidth = max(0, x(recording.trim.upperBound) - keptStart)
+        return ZStack(alignment: .topLeading) {
+            shape.grayscale(1)
+            shape.mask(alignment: .topLeading) {
+                Rectangle().frame(width: keptWidth).offset(x: keptStart)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     /// One decision per drag, taken from `startLocation`. Keying off `translation == .zero` was
@@ -195,8 +231,14 @@ struct TrimTimeline: View {
 
     // MARK: - Decorations
 
+    /// How far one accessibility nudge moves a handle: a fixed fraction of the Recording, so the
+    /// gesture takes the same number of steps end-to-end whatever the length. It is the same
+    /// always-fits-the-width reasoning the hit-test tolerance uses.
+    private var accessibilityStep: Double { max(0.1, recording.duration / 100) }
+
     private func handle(_ which: Handle, at x: Double, height: Double) -> some View {
         let active = draggingHandle == which
+        let time = which == .start ? recording.trim.lowerBound : recording.trim.upperBound
         return Capsule()
             .fill(active ? AnyShapeStyle(Palette.signal) : AnyShapeStyle(.secondary))
             .frame(width: active ? 5 : 3, height: height)
@@ -205,10 +247,22 @@ struct TrimTimeline: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.background)
                     .padding(which == .start ? .leading : .trailing, 1)
+                    // These two were the only things the whole lane published (finding 14).
+                    .accessibilityHidden(true)
             }
             .offset(x: x - (active ? 2.5 : 1.5))
             .shadow(radius: active ? 3 : 0)
-            .animation(.easeOut(duration: 0.12), value: active)
+            // Through the token set's helper, not `.animation` directly, so Reduce Motion degrades
+            // to a cross-fade rather than travelling (ADR-0019, issue #73 finding 15).
+            .motion(.easeOut(duration: 0.12), value: active)
+            .accessibilityElement()
+            .accessibilityLabel(which == .start ? "Trim start" : "Trim end")
+            .accessibilityValue(Format.time(time, precise: true))
+            .accessibilityAdjustableAction { direction in
+                let delta = direction == .increment ? accessibilityStep : -accessibilityStep
+                move(which, to: time + delta)
+                onTrimCommitted()
+            }
     }
 
     private func playhead(at x: Double, height: Double) -> some View {
@@ -220,6 +274,7 @@ struct TrimTimeline: View {
             }
             .offset(x: x - 0.75)
             .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     // MARK: - Loupe
@@ -297,13 +352,20 @@ struct TrimTimeline: View {
             }
         }
         .padding(7)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 9))
+        // Reduce Transparency swaps the vibrant material for an opaque window background, as
+        // `PanelView` already did — the editor honoured neither accessibility setting (issue #73,
+        // finding 15).
+        .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+                                       : AnyShapeStyle(.regularMaterial),
+                    in: RoundedRectangle(cornerRadius: 9))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(.separator))
         .shadow(radius: 10, y: 3)
         // Inside the lane, not above it: floated above, it was clipped by the window on a layout
         // that puts the waveform near the top (issue #7).
         .offset(x: x - (boxWidth / 2 + 7), y: 10)
         .allowsHitTesting(false)
+        // It exists only while a handle is under the hand; the handle's own value says the time.
+        .accessibilityHidden(true)
     }
 
     // MARK: - Ruler

@@ -75,11 +75,13 @@ struct ExportInspector: View {
                 LabeledContent("Length") {
                     Text(Format.time(recording.trimmedDuration)).monospacedDigit()
                 }
+                .readAloud("Length", Format.time(recording.trimmedDuration))
                 LabeledContent("Trim") {
                     Text(recording.isTrimmed ? recording.trimRangeText : "Whole Recording")
                         .monospacedDigit()
                         .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 }
+                .readAloud("Trim", recording.isTrimmed ? recording.trimRangeText : "Whole Recording")
             }
 
             Section("Export") {
@@ -106,11 +108,31 @@ struct ExportInspector: View {
                                                  duration: recording.trimmedDuration))
                         .monospacedDigit()
                 }
-
-                exportControl
+                .readAloud("Estimated size",
+                           ExportSizeEstimate.text(preset: effectivePreset, format: format,
+                                                   duration: recording.trimmedDuration))
             }
         }
         .formStyle(.grouped)
+        // The Export control is **pinned to the pane's bottom edge**, not scrolled with the Form.
+        // Inside the Form its position depended on how many rows happened to be above it — a
+        // non-zero Gain, the Normalize correction row, an unencodable preset's reason block each
+        // pushed it ~37 pt lower — and the running and succeeded phases are taller still. At the
+        // declared default window size only the idle `Export…` button fit: `Exporting… 9%`,
+        // `Cancel`, `Reveal in Finder` and `Done` were all bisected by the window's bottom edge, so
+        // a user who exported at the default size could not see progress, cancel, or reveal the
+        // file they had just made (issue #73, findings 3 and 22). Pinning it also stops the Form
+        // needing to scroll for the ordinary case, which takes the overlay scroller — and its 8 pt
+        // overlap of the group's trailing edge — with it (finding 4). Its *treatment* across the
+        // four phases is [#78](https://github.com/SamWongML/macos-audio-recording/issues/78)'s;
+        // this is only about the primary action being on screen at all.
+        .safeAreaInset(edge: .bottom) {
+            exportControl
+                .padding(.horizontal, Metrics.lg)
+                .padding(.vertical, Metrics.md)
+                .frame(maxWidth: .infinity)
+                .background(.bar)
+        }
         // Through the token set's helper, not `.animation` directly, so Reduce Motion degrades
         // to a fade rather than an instant cut (ADR-0019).
         .motion(value: recording.trimmedDuration)
@@ -156,11 +178,17 @@ struct ExportInspector: View {
 
         if preference.normalizeLoudness {
             LabeledContent("Correction") { correctionReadout }
+                .readAloud("Correction", correctionSpokenValue)
         }
 
         LabeledContent("Gain") {
             Text(LoudnessCorrection.signedDecibels(recording.gain)).monospacedDigit()
         }
+        .readAloud("Gain", LoudnessCorrection.signedDecibels(recording.gain))
+        // The slider's own label is hidden, not removed: the `LabeledContent` row directly above
+        // already names this control, and printing both made the inspector read
+        // "Gain … 0.0 dB / Gain −12 ▬ +12" (issue #73, finding 12). `.labelsHidden()` keeps the
+        // label for VoiceOver, which still needs to be told what the slider adjusts.
         Slider(value: gainBinding, in: -12...12) {
             Text("Gain")
         } minimumValueLabel: {
@@ -171,12 +199,26 @@ struct ExportInspector: View {
             // Persist once at drag-end, never per frame — like Trim (ADR-0006).
             if !editing { recording.persistGain() }
         }
+        .labelsHidden()
+        .accessibilityLabel("Gain")
+        .accessibilityValue(LoudnessCorrection.signedDecibels(recording.gain))
         if recording.gain != 0 {
             Button("Reset Gain") {
                 recording.gain = 0
                 recording.persistGain()
             }
             .buttonStyle(.link)
+        }
+    }
+
+    /// The Correction row in words. The rendered readout is a `VStack` of a figure and an optional
+    /// caption, which accessibility would otherwise publish as two loose `AXStaticText`s beside the
+    /// label instead of one row that reads as a sentence.
+    private var correctionSpokenValue: String {
+        switch editor.correction.state {
+        case .off, .measuring: "Measuring"
+        case .measured(let correction):
+            [correction.figureText, correction.caption].compactMap { $0 }.joined(separator: ", ")
         }
     }
 
@@ -225,11 +267,16 @@ struct ExportInspector: View {
     }
 
     private var exportButton: some View {
-        Button("Export…") {
+        // The width is asked for on the **label**, not on the `Button`. `.frame(maxWidth: .infinity)`
+        // on a `Button` widens the layout slot and leaves the control hugging its title inside it,
+        // which is why the old `Export…` centred itself and the code's intent and the render
+        // disagreed (issue #73, finding 37). Widening the label widens the button.
+        Button {
             coordinator.export(recording: recording, preset: effectivePreset)
+        } label: {
+            Text("Export…").frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .frame(maxWidth: .infinity)
         // Blocked while the effective preset can't encode this file, until a working rung is chosen
         // (ADR-0015).
         .disabled(recording.trimmedDuration <= 0 || coordinator.isExporting
@@ -271,12 +318,29 @@ struct ExportInspector: View {
             Label(message, systemImage: "exclamationmark.triangle.fill")
                 .font(.callout)
                 .foregroundStyle(.orange)
-            Button("Try Again…") {
+            Button {
                 coordinator.cancel()   // clear the failure, then re-present the save panel
                 coordinator.export(recording: recording, preset: effectivePreset)
+            } label: {
+                Text("Try Again…").frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .frame(maxWidth: .infinity)
         }
+    }
+}
+
+private extension View {
+    /// One accessibility element per inspector row, carrying **both** the label and the number.
+    ///
+    /// `LabeledContent` around a styled `Text` published the figure twice — outer and inner — and
+    /// the outer copy lagged a selection behind, so VoiceOver read the *previous* Recording's
+    /// numbers while the pixels were correct (issue #73, finding 13). `.accessibilityElement(children:
+    /// .combine)` collapses the pair but drops the value with it: measured in the running app, the
+    /// row was left with an `AXDescription` of `Length` and **no `AXValueDescription` at all**, which
+    /// trades a stale number for no number. Stating both explicitly is the only form that survives.
+    func readAloud(_ label: LocalizedStringKey, _ value: String) -> some View {
+        accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+            .accessibilityValue(value)
     }
 }

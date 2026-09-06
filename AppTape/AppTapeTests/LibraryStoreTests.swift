@@ -85,6 +85,31 @@ struct LibraryStoreTests {
             atPath: dir.appendingPathComponent("Interview.caf").path))
     }
 
+    /// The title bar shows `displayName` over `windowSubtitle`, and the subtitle never repeats the
+    /// title. It used to read the raw filename over the Source — the Source twice, once wrapped in
+    /// the on-disk naming scheme — and for a hand-adopted file with neither a date nor a Source
+    /// xattr both lines were the same string (issue #73, findings 2 and 32).
+    @Test func theWindowSubtitleNeverRepeatsTheTitle() throws {
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try AudioFixtures.writeCAF(
+            at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"), seconds: 5)
+
+        let store = LibraryStore(directory: dir)
+        store.refresh()
+        let recording = try #require(store.recordings.first)
+
+        // Generated name: the title *is* the Source, so the subtitle says when instead.
+        #expect(recording.displayName == "Test Source")
+        #expect(!recording.windowSubtitle.contains("Test Source"))
+        #expect(!recording.windowSubtitle.isEmpty)
+
+        // Renamed: the title is the user's name, so the Source is worth saying again.
+        #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
+        #expect(recording.displayName == "Interview")
+        #expect(recording.windowSubtitle.hasPrefix("Test Source · "))
+    }
+
     @Test func aRefusedRenameLeavesTheFileExactlyWhereItWas() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

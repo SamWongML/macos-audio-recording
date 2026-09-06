@@ -20,7 +20,7 @@ struct WaveformShape: View {
         Canvas(opaque: false, rendersAsynchronously: false) { context, size in
             guard !columns.isEmpty else { return }
             let mid = size.height / 2
-            let scale = size.height / 2
+            let scale = size.height / 2 * Envelope.drawnHeadroom
             let step = size.width / Double(columns.count)
 
             context.fill(path(columns.map { ($0.min, $0.max) },
@@ -32,16 +32,21 @@ struct WaveformShape: View {
         }
     }
 
+    /// No minimum thickness: a column with no signal draws **nothing**. The old
+    /// `max(v * scale, 0.5)` painted a continuous 1 px bar the full width of the lane, so genuine
+    /// silence — the gap between two phrases, which is exactly where an edit lands — read as a
+    /// low-level signal that is not there (issue #73, finding 36). The lane's own trough is what
+    /// says "timeline here"; the waveform's job is to say only what the audio does.
     private func path(_ pairs: [(Float, Float)], size: CGSize, mid: Double, scale: Double, step: Double) -> Path {
         var p = Path()
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, pair) in pairs.enumerated() {
             let v = shape(Double(pair.1))
-            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - v * scale))
         }
         for (i, pair) in pairs.enumerated().reversed() {
             let v = shape(Double(-pair.0))
-            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + v * scale))
         }
         p.closeSubpath()
         return p
@@ -64,16 +69,16 @@ struct WaveformPath: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
         guard !columns.isEmpty else { return p }
-        let mid = rect.midY, scale = rect.height / 2
+        let mid = rect.midY, scale = rect.height / 2 * Envelope.drawnHeadroom
         let step = rect.width / Double(columns.count)
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, column) in columns.enumerated() {
             let v = pow(min(1, max(0, Double(column.max))), curve)
-            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - Swift.max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - v * scale))
         }
         for (i, column) in columns.enumerated().reversed() {
             let v = pow(min(1, max(0, Double(-column.min))), curve)
-            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + Swift.max(v * scale, 0.5)))
+            p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + v * scale))
         }
         p.closeSubpath()
         return p
