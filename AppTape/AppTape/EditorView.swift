@@ -153,7 +153,16 @@ struct EditorView: View {
                 cantOpenDetail(recording)
             }
         } else {
-            ContentUnavailableView("No Recording selected", systemImage: "waveform")
+            // A bare `ContentUnavailableView(_:systemImage:)` — title and glyph, no second line.
+            // Report 0002 found no premium comparison app with a bespoke empty state and Apple's
+            // own guidance is the only grounding there is: say what to do next. So it says it.
+            // No button: the action is *pick a row*, and a button that merely moved focus to the
+            // sidebar would be a control invented to fill a hole.
+            ContentUnavailableView {
+                Label("No Recording selected", systemImage: "waveform")
+            } description: {
+                Text("Choose one in the Library to play it, set its Trim, and Export it.")
+            }
         }
     }
 
@@ -191,33 +200,47 @@ struct EditorView: View {
         .navigationSubtitle(recording.windowSubtitle)
     }
 
+    /// Top to bottom: the ruled lane, the Seam line, the **brief**, then air, then the transport
+    /// docked to the window's bottom edge (issue #77, ADR-0023).
+    ///
+    /// The lane is the only element allowed to take the leftover height (ADR-0019) — but it is
+    /// **capped**, which the ADR did not say and the running app did. Uncapped, a tall window gave
+    /// it four hundred points of one silhouette, which is the "reads as a scaffold" this ticket
+    /// exists for; the cap turns extra height into air below the brief instead.
     @ViewBuilder
     private func editorDetail(_ recording: Recording) -> some View {
         VStack(spacing: 0) {
             TrimTimeline(recording: recording,
                          envelope: recording.envelope,
                          player: model.player,
-                         onTrimCommitted: { recording.persistTrim() },
-                         showsRuler: false)
-                .padding(.horizontal, 22)
-                .padding(.top, 20)
-
-            transport(recording)
+                         onTrimCommitted: { recording.persistTrim() })
+                .frame(minHeight: Self.laneMinimumHeight, maxHeight: Self.laneMaximumHeight)
+                .padding(.horizontal, Metrics.xl)
+                .padding(.top, Metrics.lg)
 
             if let summary = recording.seamSummary {
                 // Every Seam is recorded; the small ones that do not draw are told here in one
                 // line rather than littering the lane (ADR-0010).
-                HStack(spacing: 6) {
+                HStack(spacing: Metrics.xs + 2) {
                     Image(systemName: "rectangle.dashed")
                     Text(summary)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 10)
+                .padding(.horizontal, Metrics.xl)
+                .padding(.top, Metrics.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            RecordingBrief(recording: recording)
+                .padding(.horizontal, Metrics.xl)
+                .padding(.top, Metrics.lg)
+
+            Spacer(minLength: Metrics.lg)
+
+            transport(recording)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // The Library's own name for the Recording, not the filename. The title bar used to read
         // `Google Chrome 2026-09-04 at 21.52.43` over the subtitle `Google Chrome` — the Source
         // stated twice, once wrapped in the on-disk naming scheme — and for a hand-adopted file
@@ -228,46 +251,132 @@ struct EditorView: View {
         .navigationSubtitle(recording.windowSubtitle)
     }
 
+    /// The lane's height, floor and cap. The floor keeps a short window from crushing the waveform
+    /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).
+    static let laneMinimumHeight: Double = 168
+    static let laneMaximumHeight: Double = 340
+
+    /// The transport, **docked to the window's bottom edge** rather than sitting directly under
+    /// the lane. Docked, its position no longer depends on how much the pane above it happens to
+    /// hold — the same reasoning that pinned the inspector's Export control (issue #76) — and the
+    /// playhead clock lands where a clock belongs, at the largest type in the window.
+    ///
+    /// It **no longer states the Trim.** The ruler does, once, directly under the handles that set
+    /// it; this row said the same thing forty points below and the inspector said it a third time
+    /// (issue #77, ADR-0023).
+    ///
+    /// It is a plain last child of the `VStack` behind a `Spacer`, deliberately *not* a
+    /// `.safeAreaInset(edge: .bottom)`, which is the idiomatic way to dock a bar: a bottom safe-area
+    /// inset on the content hosting the permanently-presented `.inspector` re-enters the layout pass
+    /// until AppKit throws, aborting the app on open — issue #85's loop, reached by structure rather
+    /// than by window width.
     private func transport(_ recording: Recording) -> some View {
         // A Recording whose audio is still arriving has no dependable length and nothing to play
         // (ADR-0021): the lane says so, and the transport must not contradict it.
         let isStillArriving = recorder.isStillArriving(recording)
-        return HStack(spacing: 14) {
-            Button {
-                model.player.toggle()
-            } label: {
-                Image(systemName: model.player.isPlaying ? "pause.fill" : "play.fill")
-                    .frame(width: 24, height: 20)
-            }
-            .buttonStyle(.glass)
-            .keyboardShortcut(.space, modifiers: [])
-            .help("Plays the Trim, looping")
-            // The space shortcut goes inert with the button (ADR-0021).
-            .disabled(isStillArriving)
+        return VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: Metrics.lg) {
+                Button {
+                    model.player.toggle()
+                } label: {
+                    Image(systemName: model.player.isPlaying ? "pause.fill" : "play.fill")
+                        .frame(width: 26, height: 22)
+                }
+                .buttonStyle(.glass)
+                .keyboardShortcut(.space, modifiers: [])
+                .help("Plays the Trim, looping")
+                // The space shortcut goes inert with the button (ADR-0021).
+                .disabled(isStillArriving)
 
-            Text(Format.time(model.player.position, precise: true))
-                .font(.system(.title3, design: .monospaced)).monospacedDigit()
-                .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                Text(Format.time(model.player.position, precise: true))
+                    .font(.system(.largeTitle, design: .monospaced)).monospacedDigit()
+                    .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                    .accessibilityLabel("Playhead")
+                    .accessibilityValue(Format.time(model.player.position, precise: true))
 
-            Spacer()
+                Spacer()
 
-            // Nothing is said about the length of a Recording whose file is still being written:
-            // the lane already says why, and `Whole Recording · 0:00` was a confident statement of
-            // a length that had simply not been read yet (issue #80).
-            if !isStillArriving {
-                Text(recording.isTrimmed
-                     ? "Trim \(recording.trimRangeText)"
-                     : "Whole Recording · \(Format.time(recording.duration))")
-                    .font(.callout).monospacedDigit()
-                    .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-
-                if recording.isTrimmed {
-                    Button("Reset") { recording.resetTrim() }.buttonStyle(.link)
+                // Reset stays here, with the control that undoes the Trim — only the *readout*
+                // moved to the ruler. Nothing at all is said while the audio is still arriving:
+                // there is no dependable Trim to reset (issue #80).
+                if !isStillArriving, recording.isTrimmed {
+                    Button("Reset Trim") { recording.resetTrim() }.buttonStyle(.link)
                 }
             }
+            .padding(.horizontal, Metrics.xl)
+            .padding(.vertical, Metrics.md)
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .background(.bar)
+    }
+}
+
+// MARK: - The brief
+
+/// What this master **is**, and where it came from — the space below the lane, filled with the
+/// app's own data rather than with chrome (issue #77, ADR-0023).
+///
+/// It states nothing the Export inspector states. Length, Trim, Quality, the Loudness correction,
+/// Gain and the estimated size are all the inspector's, and a window that says the same fact in two
+/// panes is a window disagreeing with itself. What had no home anywhere was the master's provenance
+/// and shape, which is the one thing here.
+///
+/// **There is no loudness figure, and that is ADR-0013's doing, not an omission.** The obvious
+/// filler — *measures −21.4 LUFS, corrected to −16.0 at Export* — is forbidden in as many words:
+/// the figure shown is always dB, and the measured LUFS is never shown to the user. The correction
+/// in dB is already an inspector row, so there is nothing left for this block to add.
+private struct RecordingBrief: View {
+    var recording: Recording
+    @State private var recorder = RecordingController.shared
+
+    var body: some View {
+        Grid(alignment: .leadingFirstTextBaseline,
+             horizontalSpacing: Metrics.lg,
+             verticalSpacing: Metrics.sm) {
+            row("Source", recording.source)
+            if let when = recording.recordedAt {
+                row("Captured", when.formatted(date: .long, time: .shortened))
+            }
+            row("Format", formatText)
+            // A file still being written has a byte count that is already out of date, and
+            // ADR-0021 is the whole record of what that costs. Say nothing rather than a stale
+            // number.
+            if let bytes = recording.openedByteCount, !recorder.isStillArriving(recording) {
+                row("Master", bytes.formatted(.byteCount(style: .file)))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func row(_ label: LocalizedStringKey, _ value: String) -> some View {
+        GridRow {
+            Text(label)
+                .font(Metrics.metadata)
+                .foregroundStyle(.secondary)
+                .gridColumnAlignment(.leading)
+            Text(value)
+                .font(Metrics.metadata)
+        }
+        // Each row states its own label and value. `.combine` collapses a two-`Text` row into one
+        // element and drops the value with it — measured on the inspector's rows, which kept their
+        // label and had no `AXValueDescription` at all (issue #76).
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
+    }
+
+    /// `48 kHz · Stereo · 32-bit float`. The captured master is Float32 (ADR-0003); an adopted file
+    /// states its own depth, so "float" is claimed only where it is true.
+    private var formatText: String {
+        let format = recording.sourceFormat
+        let rate = (format.sampleRate / 1000).formatted(.number.precision(.fractionLength(0...1)))
+        let channels = switch format.channelCount {
+        case 1: "Mono"
+        case 2: "Stereo"
+        default: "\(format.channelCount) channels"
+        }
+        let depth = format.bitsPerChannel == 32 ? "32-bit float" : "\(format.bitsPerChannel)-bit"
+        return "\(rate) kHz · \(channels) · \(depth)"
     }
 }
 

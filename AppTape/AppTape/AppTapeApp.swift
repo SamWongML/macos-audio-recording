@@ -38,7 +38,17 @@ struct AppTapeApp: App {
                 // width does not. The real fix is structural and belongs to the redesign that is
                 // already deciding what this pane is — see the crash's own issue. Lower this floor
                 // when that lands.
-                .frame(minWidth: 960, minHeight: 420)
+                // The **height** floor is a layout number, unlike the width above it. The detail
+                // pane's content — ruler, a lane with a floor under it, the Seam line, the brief
+                // and the docked transport — stops fitting somewhere between 460 and 480 pt of
+                // window, and an over-constrained `NavigationSplitView` + permanent `.inspector`
+                // does not clip, it *aborts* (issue #85's loop again). Measured on this layout:
+                // 960 × 460 aborts, 960 × 480 does not; `main`'s shorter pane was fine at 420.
+                // In the ordinary case the content's own minimum resolves higher than this — a
+                // Recording with a Seam line and four brief rows clamps the window at 552 — so
+                // this is the backstop for the shortest pane there is, not the number you will
+                // usually see (issue #77).
+                .frame(minWidth: 960, minHeight: 500)
         }
         .defaultSize(width: 1120, height: 640)   // three columns want room: sidebar + waveform + inspector
         .defaultLaunchBehavior(.suppressed)
