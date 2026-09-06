@@ -16,6 +16,7 @@ import SwiftUI
 struct EditorView: View {
     @State private var model = EditorModel.shared
     @State private var query = ""
+    @FocusState private var isSearchFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -52,13 +53,26 @@ struct EditorView: View {
             ForEach(days) { day in
                 Section(day.title) {
                     ForEach(day.recordings) { recording in
-                        LibraryRow(recording: recording)
+                        LibraryRow(recording: recording, model: model)
                             .tag(recording.url)
                     }
                 }
             }
         }
         .searchable(text: $query, placement: .sidebar, prompt: "Recordings")
+        .searchFocused($isSearchFocused)
+        .onKeyPress(.return) {
+            // Return renames the selected row, as it does in a Finder list. Ignored while the
+            // search field has focus, where Return means "search", and while a rename is already
+            // open, where Return belongs to the field's own submit (ADR-0020).
+            guard !isSearchFocused, model.renamingURL == nil, let selection = model.selection
+            else { return .ignored }
+            model.beginRename(selection)
+            return .handled
+        }
+        // Published only while the sidebar itself has focus: this is what gates File ▸ Move to
+        // Trash, so ⌘⌫ cannot fire out of the search field or a Trim drag (ADR-0020).
+        .focusedValue(\.librarySidebarRecording, model.selection?.url)
         .navigationSplitViewColumnWidth(min: 232, ideal: 268, max: 360)
         .safeAreaInset(edge: .bottom) {
             // Nothing critical lives down here: the HIG's Sidebars page warns that people
@@ -190,10 +204,40 @@ struct EditorView: View {
 /// silhouettes stay comparable — the only reason it is here, given Sources repeat within a day.
 private struct LibraryRow: View {
     var recording: Recording
+    var model: EditorModel
+
+    @FocusState private var isEditing: Bool
+    @State private var draft = ""
+    @State private var refusal: LibraryLocation.NameRefusal?
+
+    private var isRenaming: Bool { model.renamingURL == recording.url }
 
     var body: some View {
+        Group {
+            if isRenaming { renameField } else { content }
+        }
+        .frame(height: 32)
+        // Not drawn under the name field: the silhouette is a comparison aid for browsing, and
+        // behind editable text it is just noise.
+        .background(alignment: .leading) { if !isRenaming, recording.isOpenable { silhouette } }
+        .contextMenu {
+            // Exactly three (issue #75). `Duplicate` is out of scope: a master is 1.4 GB/hour
+            // (ADR-0003), and a second Trim over one master has nowhere to live under ADR-0006.
+            RenameButton()
+            Button("Reveal in Finder") { model.reveal(recording) }
+            Divider()
+            // No confirm sheet — the Trash is the confirmation (ADR-0006).
+            Button("Move to Trash", role: .destructive) { model.trash(recording) }
+        }
+        // Feeds `RenameButton` above, and is why the menu item needs no action of its own.
+        .renameAction { model.beginRename(recording) }
+    }
+
+    private var content: some View {
         HStack(spacing: 7) {
-            Text(recording.source)
+            // The Source until the user names the Recording themselves, their name after
+            // (ADR-0020) — otherwise a rename would change nothing the Library shows.
+            Text(recording.displayName)
                 .lineLimit(1)
                 .foregroundStyle(recording.isOpenable ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
 
@@ -234,8 +278,54 @@ private struct LibraryRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(height: 32)
-        .background(alignment: .leading) { if recording.isOpenable { silhouette } }
+    }
+
+    /// The name field, in the row rather than in a sheet — a rename is a file rename (ADR-0006),
+    /// and Finder is the idiom the user already has for it. It takes focus as it appears, commits
+    /// on Return, reverts on Escape, and on a name the Library refuses it stays open with what was
+    /// typed still in it, saying why (ADR-0020).
+    private var renameField: some View {
+        TextField("Name", text: $draft)
+            .textFieldStyle(.plain)
+            .focused($isEditing)
+            .onSubmit { commit(keepingFocus: true) }
+            .onExitCommand { model.endRename() }
+            .onAppear {
+                draft = recording.name   // the base name: the extension is never the user's to edit
+                isEditing = true
+            }
+            .onChange(of: draft) { refusal = nil }
+            .onChange(of: isEditing) { _, focused in
+                // Focus left the field — another row, or the window. Finder commits here; a name
+                // it would refuse is abandoned instead, because there is no longer a field to hold
+                // open and a popover over a row the user has left is noise.
+                if !focused, isRenaming { commit(keepingFocus: false) }
+            }
+            .popover(isPresented: refusalPresented, arrowEdge: .trailing) {
+                Text(refusal?.message ?? "")
+                    .font(.callout)
+                    // Wraps rather than truncates: the reason is the whole point of the popover,
+                    // and a name long enough to collide is long enough to overflow one line.
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 240, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+            }
+    }
+
+    private var refusalPresented: Binding<Bool> {
+        Binding(get: { refusal != nil }, set: { if !$0 { refusal = nil } })
+    }
+
+    private func commit(keepingFocus: Bool) {
+        switch model.rename(recording, to: draft) {
+        case .unchanged, .rename:
+            model.endRename()
+        case .refused(let why):
+            guard keepingFocus else { model.endRename(); return }
+            refusal = why
+            isEditing = true
+        }
     }
 
     private var silhouette: some View {
@@ -254,6 +344,16 @@ private struct LibraryRow: View {
             }
             .allowsHitTesting(false)
     }
+}
+
+// MARK: - Focused values
+
+extension FocusedValues {
+    /// The Library sidebar's selected Recording, published **only while the sidebar has focus**.
+    /// ADR-0020 gates File ▸ Move to Trash on it: Rename and Reveal are harmless from anywhere,
+    /// but ⌘⌫ moves a file to the Trash, and firing that out of a search field the user is typing
+    /// into is the one outcome worth spending a focus value on.
+    @Entry var librarySidebarRecording: URL?
 }
 
 #Preview {

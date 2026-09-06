@@ -99,6 +99,16 @@ final class Recording: Identifiable {
     /// The filename without extension — the Recording's name (ADR-0006).
     var name: String { url.deletingPathExtension().lastPathComponent }
 
+    /// What the Library calls this Recording in a row (ADR-0020). While the filename is still the
+    /// one capture generated, that is the **Source** — the rest of the generated name is the date
+    /// and time, which the row already shows in its own column, so repeating it would say nothing.
+    /// Once the user has renamed the file themselves the filename stops matching that pattern, and
+    /// it becomes their name: renaming is how you say *this one is the interview*, so it has to
+    /// show. The Source xattr is never rewritten by a rename and stays the window's subtitle.
+    var displayName: String {
+        LibraryLocation.isGeneratedName(name) ? source : name
+    }
+
     var duration: Double { sampleRate > 0 ? Double(frameCount) / sampleRate : 0 }
 
     /// The Source rides in an xattr written at capture (ADR-0006); the filename is the fallback.
