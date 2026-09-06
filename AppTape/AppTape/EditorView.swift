@@ -131,17 +131,39 @@ struct EditorView: View {
 
     // MARK: - Detail (waveform, Trim, transport) + permanent inspector
 
-    /// The trailing inspector is attached **here**, above the three branches, not inside the one
-    /// that has a Recording to export. It used to hang off `editorDetail` alone, so selecting a
-    /// can't-open file — or deselecting — made the whole trailing column disappear and the window's
-    /// layout jump as the user arrowed down the Library (issue #73, finding 24). "Permanently
-    /// visible" (issue #7) has to mean permanently, or the pane is a third pane control.
+    /// The trailing pane is an **ordinary column of the detail view, not a SwiftUI `.inspector`**
+    /// (ADR-0024).
+    ///
+    /// `.inspector` on a `NavigationSplitView` is a broken combination, and the evidence is not
+    /// ours alone: FB20061521 (*abnormal Sidebar and Columns state*) and FB20061260 (*the sidebar
+    /// toggle disappears when the sidebar is collapsed*) were filed in September 2025, still
+    /// reproduce on macOS 26.2 RC, have no Apple reply and no published workaround — and the
+    /// reporter's own conclusion is the one issue #85 reached independently by bisection: *the bug
+    /// only occurs if the inspector modifier is present; removing it resolves the issue.*
+    ///
+    /// Three symptoms in this app were that one bug wearing three costumes: the toggle flickering
+    /// into the toolbar for a frame while the leading sidebar animated; the leading sidebar
+    /// collapsing and returning when the trailing pane was shown; and the editor aborting in
+    /// `_NSViewLayout` under any constraint it could not satisfy — too little width, too little
+    /// height, or a bottom safe-area bar (issue #85).
+    ///
+    /// **The column is permanent and it is one fixed width.** `.inspector` gave a toggle and a
+    /// drag-to-resize divider for free, and an earlier pass in this branch rebuilt both by hand
+    /// once the modifier was gone. Neither is here now: issue #7's *permanently-visible inspector*
+    /// and *exactly one pane control* both stand, reached by a different mechanism. What the pane
+    /// holds is the Export ladder and the empty state that explains its absence — nothing a window
+    /// this size needs to put away, and a hideable pane is a second pane control, a stored
+    /// preference and an animation bought for that.
     private var detail: some View {
-        detailContent
-            .inspector(isPresented: .constant(true)) {
-                inspectorColumn
-                    .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
-            }
+        HStack(spacing: 0) {
+            detailContent
+                .frame(maxWidth: .infinity)
+
+            // A hairline, and only a hairline: it separates two panes, it is not a handle.
+            Divider()
+            inspectorColumn
+                .frame(width: Self.inspectorWidth)
+        }
     }
 
     @ViewBuilder
@@ -153,7 +175,16 @@ struct EditorView: View {
                 cantOpenDetail(recording)
             }
         } else {
-            ContentUnavailableView("No Recording selected", systemImage: "waveform")
+            // A bare `ContentUnavailableView(_:systemImage:)` — title and glyph, no second line.
+            // Report 0002 found no premium comparison app with a bespoke empty state and Apple's
+            // own guidance is the only grounding there is: say what to do next. So it says it.
+            // No button: the action is *pick a row*, and a button that merely moved focus to the
+            // sidebar would be a control invented to fill a hole.
+            ContentUnavailableView {
+                Label("No Recording selected", systemImage: "waveform")
+            } description: {
+                Text("Choose one in the Library to play it, set its Trim, and Export it.")
+            }
         }
     }
 
@@ -191,83 +222,241 @@ struct EditorView: View {
         .navigationSubtitle(recording.windowSubtitle)
     }
 
+    /// Top to bottom: the ruled lane, the **brief**, then air, with the transport in the bottom
+    /// safe area (issue #77, ADR-0023).
+    ///
+    /// The lane is the only element allowed to take the leftover height (ADR-0019) — but it is
+    /// **capped**, which the ADR did not say and the running app did. Uncapped, a tall window gave
+    /// it four hundred points of one silhouette; the cap turns extra height into air below the
+    /// brief instead.
+    ///
+    /// **Everything above the bar has a height that does not depend on which Recording is shown.**
+    /// The Seam line used to be its own conditionally-present row, and the brief dropped `Captured`
+    /// or `Master` when it had nothing to put there, so the stack was between three and five rows
+    /// tall depending on the file — and because the lane takes what is left, arrowing down the
+    /// Library made the lane shrink and grow under the pointer on every keystroke. The brief is now
+    /// always exactly five rows, Seams among them, and the lane resolves to the same height for
+    /// every Recording at a given window size.
     @ViewBuilder
     private func editorDetail(_ recording: Recording) -> some View {
         VStack(spacing: 0) {
             TrimTimeline(recording: recording,
                          envelope: recording.envelope,
                          player: model.player,
-                         onTrimCommitted: { recording.persistTrim() },
-                         showsRuler: false)
-                .padding(.horizontal, 22)
-                .padding(.top, 20)
+                         onTrimCommitted: { recording.persistTrim() })
+                .frame(minHeight: Self.laneMinimumHeight, maxHeight: Self.laneMaximumHeight)
+                .padding(.horizontal, Metrics.xl)
+                .padding(.top, Metrics.lg)
 
+            RecordingBrief(recording: recording)
+                .padding(.horizontal, Metrics.xl)
+                .padding(.top, Metrics.xl)
+
+            Spacer(minLength: Metrics.lg)
+
+            // A plain last child behind the `Spacer`, laid out by hand — only its *appearance*
+            // follows the bottom-bar guidance (issue #77, ADR-0023).
+            //
+            // `ToolbarItem(placement: .bottomBar)` does not compile on macOS at all, so that
+            // route stays closed. The other two, `safeAreaInset(edge: .bottom)` and macOS 26's
+            // `safeAreaBar(edge: .bottom)`, **aborted the app on open** — but that was
+            // `.inspector` re-entering the layout pass until AppKit threw (issue #85's loop),
+            // and `.inspector` is gone (ADR-0024). They are probably open again; nobody has
+            // measured it, so this stays hand-laid until #85 does.
             transport(recording)
-
-            if let summary = recording.seamSummary {
-                // Every Seam is recorded; the small ones that do not draw are told here in one
-                // line rather than littering the lane (ADR-0010).
-                HStack(spacing: 6) {
-                    Image(systemName: "rectangle.dashed")
-                    Text(summary)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
-        // The Library's own name for the Recording, not the filename. The title bar used to read
-        // `Google Chrome 2026-09-04 at 21.52.43` over the subtitle `Google Chrome` — the Source
-        // stated twice, once wrapped in the on-disk naming scheme — and for a hand-adopted file
-        // with no date and no Source xattr both lines were the same string (issue #73, findings 2
-        // and 32). `windowSubtitle` says when instead, and adds the Source back only once the
-        // title has stopped being it.
-        .navigationTitle(recording.displayName)
-        .navigationSubtitle(recording.windowSubtitle)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// The trailing pane's width — one number, because the pane neither hides nor resizes. 276 was
+    /// the ideal the resizable version defaulted to and the width every screenshot was judged at.
+    static let inspectorWidth: Double = 276
+
+    /// The lane's height, floor and cap. The floor keeps a short window from crushing the waveform
+    /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).
+    static let laneMinimumHeight: Double = 168
+    static let laneMaximumHeight: Double = 340
+
+    /// The transport, pinned to the bottom of the detail pane rather than sitting under the lane.
+    /// Its position no longer depends on how much the pane above it holds — the reasoning that
+    /// pinned the inspector's Export control (issue #76) — and the playhead clock lands where a
+    /// clock belongs, as the largest type in the window.
+    ///
+    /// **No rule and no fill.** It had a hairline `Divider` over a `.bar` material, which is the
+    /// shape Apple's own Liquid Glass guidance names: *avoid adding custom darkening backgrounds
+    /// behind toolbars*, and glass belongs to the navigation layer, never painted onto content. A
+    /// bar earns its separation from air and alignment, not from a rule drawn across the pane.
+    /// (`ToolbarItem(placement: .bottomBar)` would be the sanctioned container and is **unavailable
+    /// on macOS** — it does not compile.) Nothing here takes glass either: ADR-0019 spends the
+    /// app's two Liquid Glass controls on this play button and the Export button, and two is the
+    /// rule.
+    ///
+    /// **This is the one place the Trim's numbers are stated.** They were on the ruler, as a span
+    /// bar *and* a readout stacked above a lane that already draws the range — three statements
+    /// inside sixty points. Here they sit beside the control that resets them, which is where the
+    /// peers put a selection's figures.
     private func transport(_ recording: Recording) -> some View {
         // A Recording whose audio is still arriving has no dependable length and nothing to play
         // (ADR-0021): the lane says so, and the transport must not contradict it.
         let isStillArriving = recorder.isStillArriving(recording)
-        return HStack(spacing: 14) {
+        return HStack(spacing: Metrics.lg) {
             Button {
                 model.player.toggle()
             } label: {
                 Image(systemName: model.player.isPlaying ? "pause.fill" : "play.fill")
-                    .frame(width: 24, height: 20)
+                    .font(.system(size: 13))
+                    .frame(width: 30, height: 30)
             }
             .buttonStyle(.glass)
+            // `buttonBorderShape`, not a `clipShape` over the glass: the style draws its own
+            // material and clipping it crops the material rather than reshaping the control.
+            .buttonBorderShape(.circle)
             .keyboardShortcut(.space, modifiers: [])
             .help("Plays the Trim, looping")
             // The space shortcut goes inert with the button (ADR-0021).
             .disabled(isStillArriving)
 
             Text(Format.time(model.player.position, precise: true))
-                .font(.system(.title3, design: .monospaced)).monospacedDigit()
+                .font(.system(.largeTitle, design: .monospaced)).monospacedDigit()
                 .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                .accessibilityLabel("Playhead")
+                .accessibilityValue(Format.time(model.player.position, precise: true))
 
             Spacer()
 
-            // Nothing is said about the length of a Recording whose file is still being written:
-            // the lane already says why, and `Whole Recording · 0:00` was a confident statement of
-            // a length that had simply not been read yet (issue #80).
+            // Nothing is claimed about a Recording whose file is still being written: the lane
+            // already says why, and a Trim over a length that has not been read yet is a
+            // confident statement of a number nobody has (issue #80).
             if !isStillArriving {
-                Text(recording.isTrimmed
-                     ? "Trim \(recording.trimRangeText)"
-                     : "Whole Recording · \(Format.time(recording.duration))")
-                    .font(.callout).monospacedDigit()
-                    .foregroundStyle(recording.isTrimmed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-
-                if recording.isTrimmed {
-                    Button("Reset") { recording.resetTrim() }.buttonStyle(.link)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(recording.isTrimmed ? recording.trimRangeText
+                                             : Format.time(recording.duration))
+                        .font(Metrics.readout)
+                    Text(recording.isTrimmed ? "Trim" : "Whole Recording")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(recording.isTrimmed ? "Trim" : "Length")
+                .accessibilityValue(recording.isTrimmed ? recording.trimRangeText
+                                                        : Format.time(recording.duration))
+
+                // Reset keeps its place beside the figure it undoes. It is `.borderless` with a
+                // glyph rather than a blue `.link`: a link reads as navigation, and this is the
+                // only destructive-ish control in the bar.
+                Button {
+                    recording.resetTrim()
+                } label: {
+                    Label("Reset Trim", systemImage: "arrow.uturn.backward")
+                }
+                .buttonStyle(.borderless)
+                .labelStyle(.iconOnly)
+                .help("Restores the Trim to the whole Recording")
+                // Kept in the layout when there is nothing to reset, so the bar does not reflow
+                // the moment a Trim is set or cleared.
+                .disabled(!recording.isTrimmed)
+                .opacity(recording.isTrimmed ? 1 : 0.25)
             }
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .padding(.horizontal, Metrics.xl)
+        .padding(.vertical, Metrics.md)
+    }
+}
+
+// MARK: - The brief
+
+/// What this master **is**, and where it came from — the space below the lane, filled with the
+/// app's own data rather than with chrome (issue #77, ADR-0023).
+///
+/// It states nothing the Export inspector states. Length, Trim, Quality, the Loudness correction,
+/// Gain and the estimated size are all the inspector's, and a window that says the same fact in two
+/// panes is a window disagreeing with itself. What had no home anywhere was the master's provenance
+/// and shape, which is the one thing here.
+///
+/// **There is no loudness figure, and that is ADR-0013's doing, not an omission.** The obvious
+/// filler — *measures −21.4 LUFS, corrected to −16.0 at Export* — is forbidden in as many words:
+/// the figure shown is always dB, and the measured LUFS is never shown to the user. The correction
+/// in dB is already an inspector row, so there is nothing left for this block to add.
+private struct RecordingBrief: View {
+    var recording: Recording
+    @State private var recorder = RecordingController.shared
+
+    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+
+    var body: some View {
+        Grid(alignment: .leadingFirstTextBaseline,
+             horizontalSpacing: Metrics.lg,
+             verticalSpacing: Metrics.sm) {
+            row("Source", recording.source)
+            row("Captured", recording.recordedAt?.formatted(date: .long, time: .shortened) ?? "—")
+            row("Format", formatText)
+            // A file still being written has a byte count that is already out of date, and
+            // ADR-0021 is the whole record of what that costs. An em dash rather than a stale
+            // number — and rather than a missing row, which would change the pane's height.
+            row("Master", isStillArriving ? "—"
+                        : recording.openedByteCount?.formatted(.byteCount(style: .file)) ?? "—")
+            // Seams were a separate line under the lane, present only for Recordings that have
+            // any. That made the pane two different heights, and the lane above it took up the
+            // slack — so arrowing down the Library resized the waveform on every keystroke. It is
+            // a fact about the master like the four above it, so it is a row like them, and it is
+            // always here (ADR-0010, ADR-0023).
+            seamRow
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var seamRow: some View {
+        GridRow {
+            Text("Seams")
+                .font(Metrics.metadata)
+                .foregroundStyle(.secondary)
+                .gridColumnAlignment(.leading)
+            Group {
+                if let summary = recording.seamSummary {
+                    HStack(spacing: Metrics.xs) {
+                        Image(systemName: "rectangle.dashed").foregroundStyle(.tertiary)
+                        Text(summary)
+                    }
+                } else {
+                    Text("None").foregroundStyle(.secondary)
+                }
+            }
+            .font(Metrics.metadata)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Seams")
+        .accessibilityValue(recording.seamSummary.map { String(localized: $0) } ?? "None")
+    }
+
+    private func row(_ label: LocalizedStringKey, _ value: String) -> some View {
+        GridRow {
+            Text(label)
+                .font(Metrics.metadata)
+                .foregroundStyle(.secondary)
+                .gridColumnAlignment(.leading)
+            Text(value)
+                .font(Metrics.metadata)
+        }
+        // Each row states its own label and value. `.combine` collapses a two-`Text` row into one
+        // element and drops the value with it — measured on the inspector's rows, which kept their
+        // label and had no `AXValueDescription` at all (issue #76).
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
+    }
+
+    /// `48 kHz · Stereo · 32-bit float`. The captured master is Float32 (ADR-0003); an adopted file
+    /// states its own depth, so "float" is claimed only where it is true.
+    private var formatText: String {
+        let format = recording.sourceFormat
+        let rate = (format.sampleRate / 1000).formatted(.number.precision(.fractionLength(0...1)))
+        let channels = switch format.channelCount {
+        case 1: "Mono"
+        case 2: "Stereo"
+        default: "\(format.channelCount) channels"
+        }
+        let depth = format.bitsPerChannel == 32 ? "32-bit float" : "\(format.bitsPerChannel)-bit"
+        return "\(rate) kHz · \(channels) · \(depth)"
     }
 }
 
@@ -289,6 +478,11 @@ private struct LibraryRow: View {
 
     private var isRenaming: Bool { model.renamingURL == recording.url }
 
+    /// Whether this row is the selected one. macOS fills a selected sidebar row with the user's
+    /// accent at full saturation and turns `.primary` content white for you — but it does nothing
+    /// for content that names its own colour, which is most of this row (ADR-0023).
+    private var isSelected: Bool { model.selection?.url == recording.url }
+
     var body: some View {
         Group {
             if isRenaming { renameField } else { content }
@@ -296,7 +490,14 @@ private struct LibraryRow: View {
         .frame(height: 32)
         // Not drawn under the name field: the silhouette is a comparison aid for browsing, and
         // behind editable text it is just noise.
-        .background(alignment: .leading) { if !isRenaming, recording.isOpenable { silhouette } }
+        //
+        // Nor under the **selected** row. Over a saturated accent fill the silhouette stops being
+        // a comparison aid and becomes texture on the one row that least needs it — the selected
+        // Recording's waveform is drawn full size two panes to the right. Dropping it is most of
+        // what made the selection read as hard rather than elegant (issue #77, ADR-0023).
+        .background(alignment: .leading) {
+            if !isRenaming, !isSelected, recording.isOpenable { silhouette }
+        }
         .contextMenu {
             // Exactly three (issue #75). `Duplicate` is out of scope: a master is 1.4 GB/hour
             // (ADR-0003), and a second Trim over one master has nowhere to live under ADR-0006.
@@ -323,7 +524,9 @@ private struct LibraryRow: View {
             // `Can't open` (issue #73, finding 34). It is either shown or it is not.
             Text(recording.recordedAt?.formatted(date: .omitted, time: .shortened) ?? "")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                // `.tertiary` is a legible grey on the window background and very nearly invisible
+                // on a saturated selection fill. A selected row gets one rung brighter.
+                .foregroundStyle(isSelected ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
                 .monospacedDigit()
                 .fixedSize()
 
@@ -345,9 +548,16 @@ private struct LibraryRow: View {
                     .help("An audio file AppTape can't decode. Select it to remove it.")
             } else {
                 if recording.isTrimmed {
+                    // Indigo on the accent fill is indigo on blue: the glyph vanished on exactly
+                    // the row the user is looking at. Selected, it takes `.primary`, which macOS
+                    // renders white on a focused selection and dark on an unfocused one — the
+                    // behaviour Mail's VIP star and Finder's tag dots already have. ADR-0019's
+                    // where-`Signal`-may-appear list is unchanged in substance: this is still the
+                    // scissors' colour, it simply yields where contrast would otherwise be lost.
                     Image(systemName: "scissors")
                         .font(.caption2)
-                        .foregroundStyle(Palette.signal)
+                        .foregroundStyle(isSelected ? AnyShapeStyle(.primary)
+                                                    : AnyShapeStyle(Palette.signal))
                 }
 
                 // A subtle trailing glyph on Recordings with surfaced Seams — the Library is where a
@@ -356,7 +566,8 @@ private struct LibraryRow: View {
                 if recording.isSurfacedForSeams {
                     Image(systemName: "rectangle.dashed")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(isSelected ? AnyShapeStyle(.secondary)
+                                                    : AnyShapeStyle(.tertiary))
                         .help("Contains Seams — silence padded in where audio was interrupted")
                 }
 

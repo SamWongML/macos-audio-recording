@@ -28,17 +28,36 @@ struct AppTapeApp: App {
                 // the transport's clock, `Trim …` and `Reset` silently disappeared rather than
                 // truncating (issue #73, finding 26).
                 //
-                // 960 is wider than that reasoning alone wants — 232 + 280 + 248 would do — and the
-                // extra is a **guard, not a layout choice**. Below ~920 pt the editor does not
-                // merely lose its sidebar, it *aborts*: `NavigationSplitView` and a permanently
-                // presented `.inspector` re-trigger each other's layout until AppKit throws
+                // 960 is wider than that reasoning alone wants — 232 + 280 + 276 would do — and
+                // the extra is a **guard, not a layout choice**. Below ~920 pt the editor did not
+                // merely lose its sidebar, it *aborted*: `NavigationSplitView` and a permanently
+                // presented `.inspector` re-triggered each other's layout until AppKit threw
                 // `NSGenericException` ("more Update Constraints in Window passes than there are
-                // views in the window"). Measured on `main` as well, so it is not new here;
-                // removing the `.inspector` makes 800 pt fine, and pinning its column to a fixed
-                // width does not. The real fix is structural and belongs to the redesign that is
-                // already deciding what this pane is — see the crash's own issue. Lower this floor
-                // when that lands.
-                .frame(minWidth: 960, minHeight: 420)
+                // views in the window"). Measured on `main` too, so it was never new here.
+                //
+                // **`.inspector` is gone** — the trailing pane is an ordinary column now
+                // (ADR-0024) — and issue #85 already measured 800 pt as fine without the
+                // modifier. So this guard has probably outlived its cause. It is still 960
+                // because that measurement was taken against older code and has not been
+                // re-taken against this one, and a crash guard is not lowered on inference.
+                // Issue #85 owns the re-measurement and the number.
+                // The **height** floor is a layout number, unlike the width above it: the detail
+                // pane's content — ruler, a lane with a floor under it, the five-row brief and
+                // the docked transport — stops fitting somewhere between 460 and 480 pt of
+                // window. Measured at 960 × 460 aborting and 960 × 480 not, back when an
+                // over-constrained `NavigationSplitView` + permanent `.inspector` answered a
+                // squeeze by *aborting* rather than clipping (issue #85's loop). Without the
+                // modifier the failure below the floor should be ordinary clipping, but the
+                // fitting height itself is unchanged, so the number stands as a layout floor
+                // whatever it now guards against.
+                //
+                // In the ordinary case the content's own minimum resolves higher, so this is the
+                // backstop for the shortest pane there is, not the number you will usually see.
+                // The 552 that used to be quoted here was a Recording with a Seam line and four
+                // brief rows, and that shape no longer exists — the brief is always five rows
+                // (ADR-0023), so the content minimum is now the same for every Recording and
+                // has not been re-measured (issue #77).
+                .frame(minWidth: 960, minHeight: 500)
         }
         .defaultSize(width: 1120, height: 640)   // three columns want room: sidebar + waveform + inspector
         .defaultLaunchBehavior(.suppressed)

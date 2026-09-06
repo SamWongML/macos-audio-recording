@@ -20,7 +20,6 @@ struct TrimTimeline: View {
     var player: AudioPlayer
     /// Persist the Trim once, at gesture-end — never per drag frame (issue #7, ADR-0006).
     var onTrimCommitted: () -> Void
-    var showsRuler = true
 
     /// The Recording being captured right now, if any. Read here, as `ExportInspector` already
     /// does, both to decide whether the lane has anything dependable to draw (ADR-0021) and so the
@@ -51,11 +50,17 @@ struct TrimTimeline: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Metrics.xs) {
+            // The ruler sits **above** the lane, which is where every peer that has one puts it
+            // (Fission's restored upper timeline ruler, Sound Studio's per-pane ruler, Logic's
+            // Audio Track Editor) — and it is what makes the lane read as a timeline rather than a
+            // picture. It used to be a `showsRuler` parameter the editor always passed `false`;
+            // ADR-0023 turned it on, and nothing has asked for it off since, so there is no
+            // parameter to pass any more.
+            ruler
             GeometryReader { geo in
                 lane(width: max(geo.size.width, 1), height: geo.size.height)
             }
-            if showsRuler { ruler }
         }
     }
 
@@ -370,18 +375,56 @@ struct TrimTimeline: View {
 
     // MARK: - Ruler
 
+    /// **A pure time axis: ticks at a round interval with `mm:ss` labels, and nothing else.**
+    ///
+    /// It carried the Trim too, as a span bar with `0:00 – 0:06` printed under it. Two marks for
+    /// one fact, stacked, directly above a lane that *already* draws the same range as two handles
+    /// and a desaturated remainder — three statements of the Trim inside sixty vertical points.
+    /// The bar and the readout both went; the numeric range now lives once, in the bottom bar,
+    /// beside the control that resets it. This is also what the peers do: Fission, Sound Studio and
+    /// Logic all keep the ruler as time and put the selection's figures in a status area.
     private var ruler: some View {
-        HStack {
-            Text(Format.time(visible.lowerBound))
-            Spacer()
-            if recording.isTrimmed {
-                Text("Trim \(recording.trimRangeText)")
-                    .foregroundStyle(.primary)
+        GeometryReader { geo in
+            let width = max(geo.size.width, 1)
+            let span = visible.upperBound - visible.lowerBound
+            // A closure, not a `func`: a `ViewBuilder` closure cannot contain a declaration.
+            let x: (Double) -> Double = { ($0 - visible.lowerBound) / span * width }
+
+            ZStack(alignment: .topLeading) {
+                ForEach(Self.tickTimes(duration: recording.duration, width: width), id: \.self) { t in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(Format.time(t))
+                            .font(.caption2).monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                        Rectangle().fill(.quaternary).frame(width: 1, height: 4)
+                    }
+                    // The last label is pulled in so it cannot run off the trailing edge.
+                    .offset(x: min(x(t), width - 30))
+                }
             }
-            Spacer()
-            Text(Format.time(visible.upperBound))
         }
-        .font(.caption).monospacedDigit()
-        .foregroundStyle(.secondary)
+        .frame(height: Self.rulerHeight)
+        // The lane publishes the Trim in words (`laneAccessibilityValue`) and the bottom bar
+        // publishes the range; the ticks are decoration.
+        .accessibilityHidden(true)
+    }
+
+    /// Height of the ruler row: one line of tick labels plus the tick marks under them.
+    static let rulerHeight: Double = 24
+
+    /// Tick times at a round interval — 1/2/5/10/15/30/60 s and up — chosen so no two labels come
+    /// within 64 pt of each other. The Recording always fits the width and there is no zoom, so
+    /// this is a function of duration and width alone.
+    static func tickTimes(duration: Double, width: Double) -> [Double] {
+        let step = tickInterval(duration: duration, width: width)
+        return stride(from: 0.0, through: max(duration, 0.001), by: step).map { $0 }
+    }
+
+    static func tickInterval(duration: Double, width: Double) -> Double {
+        let candidates: [Double] = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600]
+        let minimumSpacing = 64.0
+        let safeDuration = max(duration, 0.001)
+        return candidates.first { $0 / safeDuration * width >= minimumSpacing } ?? candidates.last!
     }
 }
