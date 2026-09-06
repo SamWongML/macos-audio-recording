@@ -19,6 +19,10 @@ struct EditorView: View {
     /// lane and the inspector already do (ADR-0021).
     @State private var recorder = RecordingController.shared
     @State private var query = ""
+    /// Whether the Export inspector is showing. **Real state, not `.constant(true)`** — see
+    /// `detail` (ADR-0024). `@AppStorage` because a pane the user closed should stay closed across
+    /// launches, the way every other macOS pane does.
+    @AppStorage("editorShowsInspector") private var showsInspector = true
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -134,13 +138,36 @@ struct EditorView: View {
     /// The trailing inspector is attached **here**, above the three branches, not inside the one
     /// that has a Recording to export. It used to hang off `editorDetail` alone, so selecting a
     /// can't-open file — or deselecting — made the whole trailing column disappear and the window's
-    /// layout jump as the user arrowed down the Library (issue #73, finding 24). "Permanently
-    /// visible" (issue #7) has to mean permanently, or the pane is a third pane control.
+    /// layout jump as the user arrowed down the Library (issue #73, finding 24). Whether it is
+    /// *shown* is now the user's; whether it exists is still not conditional on the selection.
+    ///
+    /// **The binding is real state, and that is the fix for a flickering button** (ADR-0024). It was
+    /// `.constant(true)`, which gave SwiftUI an inspector whose toggle could not do anything: it
+    /// suppressed the automatic toolbar item, but the item still leaked through for a frame or two
+    /// whenever the toolbar was rebuilt — hiding and showing the *leading* sidebar was the reliable
+    /// way to see it flash. A control that appears for 100 ms and then leaves reads as a rendering
+    /// bug whichever way it resolves, so it resolves toward being real.
+    ///
+    /// The toggle is declared **explicitly, on the main toolbar**, rather than left to the automatic
+    /// one: an item declared inside the inspector's own view builder rides the section of the
+    /// toolbar above the inspector and goes with it, which is the one placement that cannot serve as
+    /// the way back once the pane is closed.
     private var detail: some View {
         detailContent
-            .inspector(isPresented: .constant(true)) {
+            .inspector(isPresented: $showsInspector) {
                 inspectorColumn
                     .inspectorColumnWidth(min: 248, ideal: 276, max: 340)
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showsInspector.toggle()
+                    } label: {
+                        Label(showsInspector ? "Hide Inspector" : "Show Inspector",
+                              systemImage: "sidebar.trailing")
+                    }
+                    .help(showsInspector ? "Hides the Export inspector" : "Shows the Export inspector")
+                }
             }
     }
 
