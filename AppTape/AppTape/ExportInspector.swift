@@ -34,6 +34,10 @@ struct ExportInspector: View {
     /// app-wide sticky preference — and reset when the selection changes. Nil means "use the sticky".
     @State private var perFilePreset: QualityPreset?
 
+    /// Whether this Recording's audio is still arriving, so nothing may be claimed about its
+    /// length (ADR-0021, ADR-0031). The lane, the transport and the sidebar row ask the same.
+    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+
     /// The preset actually shown selected and exported: the per-file display-over if one was chosen,
     /// otherwise the sticky preference.
     private var effectivePreset: QualityPreset { perFilePreset ?? preference.preset }
@@ -197,8 +201,16 @@ struct ExportInspector: View {
 
                 Spacer(minLength: Metrics.xs)
 
-                Text(ExportSizeEstimate.text(preset: preset, format: format,
-                                             duration: recording.trimmedDuration))
+                // **No estimate while the audio is still arriving** (ADR-0031). The figure is
+                // reckoned from `trimmedDuration`, which for a growing master is the last folder
+                // listing's reading — and the folder is not re-listed while a file is appended to,
+                // so every rung read `≈ 630 KB` beside a `Master` row already past 60 MB. The
+                // dock below already says the Recording is still capturing and refuses the export
+                // (ADR-0012); a confident size for an export that cannot happen is the inspector
+                // disagreeing with itself two rows down.
+                Text(isStillArriving ? "—"
+                                     : ExportSizeEstimate.text(preset: preset, format: format,
+                                                               duration: recording.trimmedDuration))
                     .font(.caption).monospacedDigit()
                     .foregroundStyle(.secondary)
                     // The estimate re-reckons as the Trim moves: a figure that ticks, which is
@@ -221,8 +233,9 @@ struct ExportInspector: View {
         // meaning, spoken.
         .accessibilityLabel(preset.displayName)
         .accessibilityValue([encodability.reason ?? preset.codecLabel,
-                             ExportSizeEstimate.text(preset: preset, format: format,
-                                                     duration: recording.trimmedDuration)]
+                             isStillArriving ? "size not yet known"
+                                             : ExportSizeEstimate.text(preset: preset, format: format,
+                                                                       duration: recording.trimmedDuration)]
                                 .joined(separator: ", "))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

@@ -401,7 +401,15 @@ struct TrimTimeline: View {
             let x: (Double) -> Double = { ($0 - visible.lowerBound) / span * width }
 
             ZStack(alignment: .topLeading) {
-                ForEach(Self.tickTimes(duration: recording.duration, width: width), id: \.self) { t in
+                // **No ticks while the audio is still arriving** (ADR-0031). The ruler's times are
+                // a function of `recording.duration`, which for a growing master is whatever the
+                // last folder listing read — so a two-minute capture drew `0:00 0:01 0:02 0:03`
+                // over a lane with no waveform in it, a timeline for a length nobody has. The
+                // alternative, ticking against the live figure, is worse: the ruler would rescale
+                // continuously, which is the ambient motion ADR-0028 forbids. The ruler simply has
+                // nothing to say until there is a Recording to lay out.
+                ForEach(Self.tickTimes(duration: isStillArriving ? 0 : recording.duration,
+                                       width: width), id: \.self) { t in
                     VStack(alignment: .leading, spacing: 1) {
                         Text(Format.time(t))
                             .font(.caption2).monospacedDigit()
@@ -426,9 +434,14 @@ struct TrimTimeline: View {
     /// Tick times at a round interval — 1/2/5/10/15/30/60 s and up — chosen so no two labels come
     /// within 64 pt of each other. The Recording always fits the width and there is no zoom, so
     /// this is a function of duration and width alone.
+    ///
+    /// **No duration means no ticks, not one tick at zero** (ADR-0031). A lone `0:00` under an
+    /// empty lane is a ruler insisting there is a timeline here; there isn't one until the file
+    /// stops growing.
     static func tickTimes(duration: Double, width: Double) -> [Double] {
+        guard duration > 0 else { return [] }
         let step = tickInterval(duration: duration, width: width)
-        return stride(from: 0.0, through: max(duration, 0.001), by: step).map { $0 }
+        return stride(from: 0.0, through: duration, by: step).map { $0 }
     }
 
     static func tickInterval(duration: Double, width: Double) -> Double {

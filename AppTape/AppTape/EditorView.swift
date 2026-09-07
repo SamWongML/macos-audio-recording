@@ -408,10 +408,21 @@ struct EditorView: View {
 
             Spacer()
 
-            // Nothing is claimed about a Recording whose file is still being written: the lane
-            // already says why, and a Trim over a length that has not been read yet is a
-            // confident statement of a number nobody has (issue #80).
-            if !isStillArriving {
+            // **The trailing group is one group, whatever it is saying** (ADR-0027, ADR-0031).
+            //
+            // While this Recording is the one capturing, the figure is what has been captured so
+            // far. That slot was empty because the *listing's* length is stale — and it stays
+            // stale, because `LibraryStore` watches the directory and appending to a file does not
+            // touch its directory's mtime. But the engine knows the master's real frame count and
+            // publishes it four times a second, so there is an honest figure to state after all.
+            //
+            // It shares the Trim readout's reserved width **and its `Reset` slot**, which is the
+            // part that is easy to get wrong: written as two separate branches, the bar looked
+            // right in both states and *jumped by the width of `Reset`* at the moment capture
+            // ended — the exact reflow ADR-0027 reserved the width to prevent, reintroduced one
+            // control to the right of where it was fixed.
+            if !isStillArriving || recorder.isCapturing(recording) {
+                let capturing = recorder.isCapturing(recording)
                 // Reserved the same way as the clock, and for the same reason. The two rows carry
                 // different fonts, so the reference is a `ZStack` of both — it takes the width of
                 // whichever is wider, which for a short Recording is the caption, not the figure.
@@ -423,20 +434,28 @@ struct EditorView: View {
                 .hidden()
                 .overlay(alignment: .trailing) {
                     VStack(alignment: .trailing, spacing: 1) {
-                        Text(recording.isTrimmed ? recording.trimRangeText
-                                                 : Format.time(recording.duration))
+                        // `Format.time`, **not** `RecordingController.elapsedText`. The menu bar's
+                        // clock is `mm:ss` zero-padded (`00:27`) and every figure in the editor is
+                        // `m:ss` (`0:30`); the sidebar column showed both at once until this was
+                        // one function rather than two.
+                        Text(capturing ? Format.time(recorder.elapsed)
+                                       : recording.isTrimmed ? recording.trimRangeText
+                                                             : Format.time(recording.duration))
                             .font(Metrics.readout)
                             .lineLimit(1)
-                        Text(recording.isTrimmed ? "Trim" : "Whole Recording")
+                        Text(capturing ? "Capturing"
+                                       : recording.isTrimmed ? "Trim" : "Whole Recording")
                             .font(.caption2)
                             .lineLimit(1)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(recording.isTrimmed ? "Trim" : "Length")
-                .accessibilityValue(recording.isTrimmed ? recording.trimRangeText
-                                                        : Format.time(recording.duration))
+                .accessibilityLabel(capturing ? "Captured so far"
+                                              : recording.isTrimmed ? "Trim" : "Length")
+                .accessibilityValue(capturing ? Format.time(recorder.elapsed)
+                                              : recording.isTrimmed ? recording.trimRangeText
+                                                                    : Format.time(recording.duration))
 
                 // Reset keeps its place beside the figure it undoes. It is `.borderless` with a
                 // glyph rather than a blue `.link`: a link reads as navigation, and this is the
@@ -449,10 +468,11 @@ struct EditorView: View {
                 .buttonStyle(.borderless)
                 .labelStyle(.iconOnly)
                 .help("Restores the Trim to the whole Recording")
-                // Kept in the layout when there is nothing to reset, so the bar does not reflow
-                // the moment a Trim is set or cleared.
-                .disabled(!recording.isTrimmed)
-                .opacity(recording.isTrimmed ? 1 : 0.25)
+                // Kept in the layout when there is nothing to reset — which now includes the whole
+                // capture, when there is no Trim to reset yet — so the bar does not reflow the
+                // moment a Trim is set or cleared, nor the moment the capture ends.
+                .disabled(capturing || !recording.isTrimmed)
+                .opacity(!capturing && recording.isTrimmed ? 1 : 0.25)
             }
         }
         .padding(.horizontal, Metrics.xl)
@@ -490,8 +510,13 @@ private struct RecordingBrief: View {
             // A file still being written has a byte count that is already out of date, and
             // ADR-0021 is the whole record of what that costs. An em dash rather than a stale
             // number — and rather than a missing row, which would change the pane's height.
-            row("Master", isStillArriving ? "—"
-                        : recording.openedByteCount?.formatted(.byteCount(style: .file)) ?? "—")
+            // **What the master weighs right now, while it is being written** (ADR-0031). The em
+            // dash was right for the *listing's* byte count, which is out of date the moment it is
+            // read — but a bare `stat` of the growing file is current, so the row says what is
+            // actually on disk rather than declining to say anything. Still an em dash for a file
+            // merely arriving in the Library rather than being captured: nothing is watching that
+            // one, so there is no figure to be current about.
+            row("Master", masterText)
             // Seams were a separate line under the lane, present only for Recordings that have
             // any. That made the pane two different heights, and the lane above it took up the
             // slack — so arrowing down the Library resized the waveform on every keystroke. It is
@@ -500,6 +525,22 @@ private struct RecordingBrief: View {
             seamRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The master's size, current while it is being written.
+    ///
+    /// `Recording.byteCount` is a bare `stat`, which is not observable — so the row is recomputed
+    /// by reading `recorder.elapsed` first. The 4 Hz clock is what drives it, which is also the
+    /// cadence the figure deserves: a byte count that ticked twenty times a second would be
+    /// ambient motion (ADR-0028) rather than a fact changing.
+    private var masterText: String {
+        if recorder.isCapturing(recording) {
+            _ = recorder.elapsed
+            let size = Recording.byteCount(of: recording.url)?.formatted(.byteCount(style: .file))
+            return size.map { "\($0) and growing" } ?? "—"
+        }
+        if isStillArriving { return "—" }
+        return recording.openedByteCount?.formatted(.byteCount(style: .file)) ?? "—"
     }
 
     private var seamRow: some View {
@@ -578,8 +619,14 @@ private struct LibraryRow: View {
     @FocusState private var isEditing: Bool
     @State private var draft = ""
     @State private var refusal: LibraryLocation.NameRefusal?
+    /// The row asks whether it is the one capturing, as the lane, the transport and the inspector
+    /// already do (ADR-0031).
+    @State private var recorder = RecordingController.shared
 
     private var isRenaming: Bool { model.renamingURL == recording.url }
+
+    private var isCapturing: Bool { recorder.isCapturing(recording) }
+    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
 
     /// Whether this row is the selected one. A selected sidebar row is filled by macOS — with the
     /// accent at full saturation while the sidebar has focus, with a mid grey when it does not —
@@ -602,8 +649,14 @@ private struct LibraryRow: View {
         // 50% is a mid grey, which is mud on the accent fill and nearly invisible on the grey one.
         // Selected, the shape takes `.primary` at a lower alpha instead, which macOS inverts for
         // both fills (ADR-0025).
+        //
+        // **Not drawn while the audio is still arriving either** (ADR-0031). The envelope is
+        // whatever was scanned off the file at its last adoption, and the silhouette draws it as
+        // *the whole Recording* — so a capturing row showed a picture of its first few seconds
+        // stretched across the row, the same lie in the sidebar that [#80] fixed in the lane. The
+        // row is not left blank by it: the live clock is what tells this one apart.
         .background(alignment: .leading) {
-            if !isRenaming, recording.isOpenable { silhouette }
+            if !isRenaming, recording.isOpenable, !isStillArriving { silhouette }
         }
         .contextMenu {
             // Exactly three (issue #75). `Duplicate` is out of scope: a master is 1.4 GB/hour
@@ -670,7 +723,16 @@ private struct LibraryRow: View {
                 .font(.caption2)
                 .frame(width: 26, alignment: .trailing)
 
-                Text(Format.time(recording.duration))
+                // **The capturing row counts up** (ADR-0031). `recording.duration` is the frame
+                // count read when the file was last listed, and the folder is not re-listed while
+                // a master grows — a `DispatchSource` on the directory does not fire for an append
+                // to a file inside it — so this sat at its adoption reading, near `0:00`, for the
+                // whole capture and only stepped when the app was next activated.
+                //
+                // Still `Format.time`, so the column keeps one number format: the engine's own
+                // `elapsedText` is the menu bar's zero-padded `mm:ss`, which put `00:27` in a
+                // column of `0:30`s.
+                Text(Format.time(isCapturing ? recorder.elapsed : recording.duration))
                     .font(Metrics.metadata).monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(width: 42, alignment: .trailing)

@@ -137,8 +137,18 @@ final class Recording: Identifiable {
         return String(name[name.startIndex..<range.lowerBound])
     }
 
+    /// When this Recording was made — **its creation, not its last write** (ADR-0031).
+    ///
+    /// It used to be `contentModificationDate`, which for a finished master is the moment capture
+    /// *stopped* and for one still being written is **now**: the editor's `Captured` row ticked
+    /// forward while you watched it, gaining a new minute every time the file was re-adopted, and
+    /// a Recording that ran across midnight was filed under the wrong day by `RecordingDay`.
+    /// Creation is what the word means and what capture's own generated filename records.
+    ///
+    /// Modification remains the fallback, for the one case creation cannot be read.
     var recordedAt: Date? {
-        try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+        let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        return values?.creationDate ?? values?.contentModificationDate
     }
 
     /// What the editor window's title bar says beneath the name. The title is `displayName`, which

@@ -108,7 +108,8 @@ final class LibraryStore {
     /// subdirectories are skipped (ADR-0006 lists the folder, not a tree). Whether a file is
     /// actually a Recording is decided by `Recording.init?`, not here.
     static func audioFiles(in directory: URL) -> [URL] {
-        let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey, .isDirectoryKey]
+        let keys: [URLResourceKey] = [.creationDateKey, .contentModificationDateKey,
+                                      .fileSizeKey, .isDirectoryKey]
         let urls = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: keys,
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])) ?? []
@@ -117,9 +118,13 @@ final class LibraryStore {
             .sorted { modified($0) > modified($1) }
     }
 
+    /// The sort key, and deliberately the **same** notion `Recording.recordedAt` publishes
+    /// (ADR-0031): creation, falling back to modification. The store sorts the folder newest-first
+    /// and `RecordingDay` groups the result by `recordedAt` — if the two disagreed about what a
+    /// Recording's date is, a row could sort into a day it does not belong to.
     private static func modified(_ url: URL) -> Date {
-        (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
-            ?? .distantPast
+        let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+        return values?.creationDate ?? values?.contentModificationDate ?? .distantPast
     }
 
     /// Reconcile a fresh set of `urls` against the `Recording` objects already held. Order follows
