@@ -10,9 +10,14 @@ import SwiftUI
 ///
 /// Chrome stays on system materials and the **user's** accent. Indigo marks the audio and the
 /// Trim, and appears **exhaustively** at these sites and nowhere else: the waveform peaks, the
-/// playhead, the Trim drag handle while it is under the hand, and the Library's "is Trimmed"
-/// scissors glyph — plus the waveform body, which takes `signalMuted`. Not the Export button,
-/// not the selected Quality Preset rung, not focus rings, not the sidebar selection.
+/// Trim drag handle while it is under the hand, and the Library's "is Trimmed" scissors glyph —
+/// plus the waveform body, which takes `signalMuted`. Not the Export button, not the selected
+/// Quality Preset rung, not focus rings, not the sidebar selection.
+///
+/// **The playhead was on this list and is not any more** (ADR-0033). It is a transport readout
+/// drawn *over* the audio, not audio — the same object as the loupe's crosshair, which was
+/// `.primary` from the start — and while it was `Signal` it crossed `Signal` peaks at **1.00 : 1**
+/// in both appearances. The list is the audio and the Trim; the playhead was never either.
 ///
 /// **Never a text colour in Dark Mode.** `Signal` dark measures 3.29:1 on the dark window
 /// background, under the 4.5:1 small-text floor. It is legitimate as a fill and as a small
@@ -31,8 +36,8 @@ import SwiftUI
 /// that happen to have no opinion. `Signal` is therefore written at each content site instead. We
 /// never contest the user's accent; we simply stopped using it for content.
 enum Palette {
-    /// The small bright marks: waveform peaks, playhead, the Trim handle under the hand, the
-    /// "is Trimmed" scissors. Seeded from `systemIndigo` and **ours** thereafter — Apple declines
+    /// The small bright marks: waveform peaks, the Trim handle under the hand, the "is Trimmed"
+    /// scissors. **Not the playhead** — see the note above. Seeded from `systemIndigo` and **ours** thereafter — Apple declines
     /// to publish stable values for the system colours, and indigo has moved before.
     ///
     /// Light `#5856D6` (5.65:1 on the light window background), dark `#5E5CE6` (3.29:1).

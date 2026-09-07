@@ -30,6 +30,12 @@ struct TrimTimeline: View {
     /// finding 15). Reduce Motion is handled by `.motion(_:value:)`, not read here.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// The playhead's two opacity stops are per-appearance, so both are read here (ADR-0033).
+    /// `colorSchemeContrast` is readable but not settable — `.environment(_:_:)` does not compile
+    /// for it — so the Increase Contrast branch below is reasoned, not measured (issue #103).
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     @State private var draggingHandle: Handle?
     @State private var loupeCentre: Double = 0
     @State private var gestureActive = false
@@ -264,6 +270,11 @@ struct TrimTimeline: View {
                     .accessibilityHidden(true)
             }
             .offset(x: x - (active ? 2.5 : 1.5))
+            // **The one custom shadow in the app, and ADR-0033 amends ADR-0019 to permit it here
+            // rather than deleting it.** It predates the token set and does real work: it lifts the
+            // handle off the waveform for the one moment the handle is `Signal` over `Signal`. The
+            // ADR's "nothing gets a custom shadow" is about inventing an elevation system; this is
+            // a single mark separating itself from the field it is dragged across.
             .shadow(radius: active ? 3 : 0)
             // The handle answering the cursor: `motionQuick`, AppTape's direct-manipulation stop
             // and the value this token was seeded from. Through the helper, not `.animation`
@@ -280,12 +291,50 @@ struct TrimTimeline: View {
             }
     }
 
+    /// The playhead's ink: **the true ink of the appearance, at a measured opacity** — not
+    /// `Color.primary`, and the difference is the whole margin (ADR-0033).
+    ///
+    /// `Color.primary` is `labelColor`, which is **85% ink, not ink**. Built that way first and
+    /// measured on the running app over loud continuous material, it reached only **3.13 : 1**
+    /// against the `Signal` peaks in Dark and **2.93 : 1** in Light — both under the 3 : 1 floor,
+    /// against predictions of 3.74 and 3.17 that assumed a full-strength black and white. This is
+    /// ADR-0032 repeating one level down: `.primary` was still a name read off the palette.
+    ///
+    /// So the stops are white and black outright, and they are **asymmetric because the lane is**:
+    ///
+    /// - **Dark, 0.75.** Full strength measures 13.0 : 1 against the lane ground, which would make
+    ///   the playhead the brightest thing in a lane whose premise is that the *audio* is the loud
+    ///   thing. 0.75 buys that back (8.1 : 1) and still clears the binding fill — the peaks — at
+    ///   4.05 : 1.
+    /// - **Light, 1.0, and there is no other value.** The light `Signal` peaks render dark,
+    ///   `(77, 75, 202)`, so black over them is **3.16 : 1 at full strength and nothing better
+    ///   exists**: solving the three fills together admits only inks below L 0.003, and 0.9 alpha
+    ///   already drops the peaks to 3.02. White is worse, not better — 6.6 : 1 on the peaks but
+    ///   **1.10 : 1 on the near-white lane ground**.
+    ///
+    /// **Light therefore ships with 5% of margin and no more available.** If the light `Signal`
+    /// stop ever darkens, the playhead fails and it is `Signal` that has to move, not this.
+    ///
+    /// Under Increase Contrast the Dark subordination is given back. That branch is **stated, not
+    /// verified**: `NSAppearance(named: .accessibilityHighContrastDarkAqua)` does not move
+    /// `effectiveAppearance`, so the setting cannot be forced on this machine (issue #103).
+    private var playheadInk: Color {
+        let isDark = colorScheme == .dark
+        let subdued = isDark && colorSchemeContrast == .standard
+        return (isDark ? Color.white : Color.black).opacity(subdued ? 0.75 : 1)
+    }
+
     private func playhead(at x: Double, height: Double) -> some View {
-        Rectangle()
-            .fill(Palette.signal)
+        let ink = playheadInk
+        return Rectangle()
+            .fill(ink)
             .frame(width: 1.5, height: height)
             .overlay(alignment: .top) {
-                Circle().fill(Palette.signal).frame(width: 7, height: 7).offset(y: -3)
+                // The disc follows the line rather than substituting for it. It sits above the
+                // lane, where peaks (capped at 88% of half-height) never reach, so it never had
+                // the line's problem — but a `Signal` disc on a `.primary` line would read as two
+                // marks instead of one.
+                Circle().fill(ink).frame(width: 7, height: 7).offset(y: -3)
             }
             .offset(x: x - 0.75)
             .allowsHitTesting(false)
