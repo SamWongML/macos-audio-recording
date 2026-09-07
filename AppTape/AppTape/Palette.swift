@@ -18,6 +18,13 @@ import SwiftUI
 /// background, under the 4.5:1 small-text floor. It is legitimate as a fill and as a small
 /// non-text mark; a glyph carrying words takes `.primary`.
 ///
+/// **One site lives outside this file: the app icon** (`AppTape.icon`, ADR-0026). The list above
+/// governs *views*, where the test is "is this pixel captured audio?". The icon is the app's
+/// identity seen from outside the app, and it is the waveform, so it takes `Signal` for the same
+/// reason the lane does — light `#5856D6` on a pale tile, and `Signal`'s High Contrast dark stop
+/// `#9694F0` on the dark one, because a small indigo mark on a near-black tile needs exactly the
+/// lift Increase Contrast needs. Those values are in the `.icon` bundle, not here.
+///
 /// **`AccentColor.colorset` is empty on purpose — do not fill it in.** A custom global accent
 /// renders only when the person's System Settings → General → Accent color is Multicolor, and any
 /// other choice overrides it app-wide, so an accent shipped that way is committed only on machines
