@@ -305,6 +305,12 @@ struct EditorView: View {
             transport(recording)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // PROTOTYPE (#98): the variant switcher, overlaid on the pane whose lane it changes.
+        // Top-trailing rather than bottom-centre: the bottom of this pane is the transport, and
+        // the transport's live readout is one of the things being judged.
+        .overlay(alignment: .topTrailing) {
+            CaptureLaneSwitcher().padding(.trailing, Metrics.xl).padding(.top, 2)
+        }
     }
 
     /// The trailing pane's width — one number, because the pane neither hides nor resizes. 276 was
@@ -408,6 +414,34 @@ struct EditorView: View {
 
             Spacer()
 
+            // PROTOTYPE (#98), shared by all three variants. The reason this slot was empty was
+            // that the *listing's* length is stale — but the engine knows the master's real
+            // duration and publishes it at 4 Hz, so while this Recording is the one capturing
+            // there is an honest figure to state after all. It takes the same reserved slot as
+            // the Trim readout, so the bar does not reflow when the capture ends.
+            if recorder.isCapturing(recording) {
+                ZStack {
+                    Text(Self.widestTrimRange).font(Metrics.readout)
+                    Text(Self.widestTrimCaption).font(.caption2)
+                }
+                .fixedSize()
+                .hidden()
+                .overlay(alignment: .trailing) {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(recorder.elapsedText)
+                            .font(Metrics.readout)
+                            .lineLimit(1)
+                        Text("Capturing")
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Captured so far")
+                .accessibilityValue(recorder.elapsedText)
+            }
+
             // Nothing is claimed about a Recording whose file is still being written: the lane
             // already says why, and a Trim over a length that has not been read yet is a
             // confident statement of a number nobody has (issue #80).
@@ -490,8 +524,12 @@ private struct RecordingBrief: View {
             // A file still being written has a byte count that is already out of date, and
             // ADR-0021 is the whole record of what that costs. An em dash rather than a stale
             // number — and rather than a missing row, which would change the pane's height.
-            row("Master", isStillArriving ? "—"
-                        : recording.openedByteCount?.formatted(.byteCount(style: .file)) ?? "—")
+            // PROTOTYPE (#98), shared by all three variants. The em dash was right for the
+            // *listing's* byte count, which is out of date the moment it is read — but a bare
+            // `stat` of the growing file is current, and re-reading it as the clock ticks makes
+            // the row say what the master actually weighs right now. Still an em dash for a file
+            // that is merely arriving rather than being captured: nothing is watching that one.
+            row("Master", masterText)
             // Seams were a separate line under the lane, present only for Recordings that have
             // any. That made the pane two different heights, and the lane above it took up the
             // slack — so arrowing down the Library resized the waveform on every keystroke. It is
@@ -500,6 +538,19 @@ private struct RecordingBrief: View {
             seamRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// PROTOTYPE (#98). Reading `recorder.elapsed` first is what makes this recompute: the
+    /// `stat` itself is not observable, so the 4 Hz clock is what drives the row.
+    private var masterText: String {
+        if recorder.isCapturing(recording) {
+            let live = recorder.elapsed
+            _ = live
+            return (Recording.byteCount(of: recording.url)?.formatted(.byteCount(style: .file))
+                    ?? "—") + " and growing"
+        }
+        if isStillArriving { return "—" }
+        return recording.openedByteCount?.formatted(.byteCount(style: .file)) ?? "—"
     }
 
     private var seamRow: some View {
@@ -578,6 +629,11 @@ private struct LibraryRow: View {
     @FocusState private var isEditing: Bool
     @State private var draft = ""
     @State private var refusal: LibraryLocation.NameRefusal?
+    /// PROTOTYPE (#98): the row asks whether it is the capturing one, as the lane, the transport
+    /// and the inspector already do.
+    @State private var recorder = RecordingController.shared
+
+    private var isCapturing: Bool { recorder.isCapturing(recording) }
 
     private var isRenaming: Bool { model.renamingURL == recording.url }
 
@@ -670,7 +726,13 @@ private struct LibraryRow: View {
                 .font(.caption2)
                 .frame(width: 26, alignment: .trailing)
 
-                Text(Format.time(recording.duration))
+                // PROTOTYPE (#98), shared by all three variants. `recording.duration` is the
+                // frame count read when the file was listed, and the folder is **not re-listed
+                // while a master grows** — a `DispatchSource` on the directory does not fire for
+                // an append — so a capturing row sat at its adoption reading (near `0:00`) until
+                // the app was next activated. The engine's own clock is the honest number, and it
+                // keeps the column a column of durations.
+                Text(isCapturing ? recorder.elapsedText : Format.time(recording.duration))
                     .font(Metrics.metadata).monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(width: 42, alignment: .trailing)

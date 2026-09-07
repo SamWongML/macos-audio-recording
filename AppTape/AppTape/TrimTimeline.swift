@@ -83,9 +83,11 @@ struct TrimTimeline: View {
                 //
                 // Deliberately *not* a `Signal` token: ADR-0019 puts the accent on content, and the
                 // whole point here is that there is no content yet. This is chrome telling you so.
-                Text(arrivingTelling)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                //
+                // PROTOTYPE (#98): the three lane variants replace this text. Variant A *is* this
+                // text, so nothing is lost by routing through it.
+                CaptureLanePrototype(telling: arrivingTelling,
+                                     isCapturing: recorder.isCapturing(recording))
                     .frame(width: width, height: height)
             } else {
                 waveform(x: x, width: width)

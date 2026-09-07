@@ -92,6 +92,13 @@ final class CaptureEngine: @unchecked Sendable {
     private let publishedLevelBits = Atomic<UInt32>(0)
     var currentLevel: Float { Float(bitPattern: publishedLevelBits.load(ordering: .acquiring)) }
 
+    /// How long a published peak stands before an empty drain is allowed to zero it. Longer than
+    /// the ~170 ms between real chunks, so an ordinary gap between drains never reads as silence,
+    /// and short enough that a tap which stops delivering reads zero within a meter frame or two.
+    /// Writer-thread only, like `lastProducedAt` beside it.
+    private static let levelHold: TimeInterval = 0.25
+    private var lastLevelPublishAt: TimeInterval = 0
+
     /// The master's on-disk byte rate, the divisor in the Runway guard's `(free − 2 GB) ÷ rate`
     /// (ADR-0009). The master is interleaved Float32 (`CAFMasterWriter`), so the rate is
     /// `channels × 4 bytes × sampleRate` — fixed at creation but not a constant across Recordings,
@@ -281,10 +288,28 @@ final class CaptureEngine: @unchecked Sendable {
     /// samples drained.
     private func drainOnce(into scratch: inout [Float]) -> Int {
         let produced = scratch.withUnsafeMutableBufferPointer { tap.ring.read(into: $0) }
-        // Publish the chunk's peak for the live meter — 0 for an empty drain (a famine) or an
-        // all-zero chunk (a soft-fault dead tap), so the meter reads exactly zero (issue #59).
-        let peak = produced > 0 ? Self.peakMagnitude(in: scratch, sampleCount: produced) : 0
-        publishedLevelBits.store(peak.bitPattern, ordering: .releasing)
+        // Publish the chunk's peak for the live meter (issue #59).
+        //
+        // **An empty drain does not publish zero, and that is the whole point** (issue #98). It
+        // used to: `produced > 0 ? peak : 0`, stored unconditionally. But the loop below naps 5 ms
+        // when the ring is empty while a real chunk carries ~170 ms of audio, so roughly thirty
+        // empty drains stamp 0 over every real peak, and the atomic holds a true value for the
+        // sub-millisecond it takes to write the chunk. Sampled at 20 Hz, the meter read 0 on
+        // provably loud audio: measured against a master whose last four seconds peaked at
+        // −2.0 dBFS, a 54-second capture caught **two** real samples out of 1080.
+        //
+        // `LevelMeter`'s contract — a dead tap reads *exactly* zero — is preserved rather than
+        // traded away, and by both routes it actually cares about: a soft-fault tap delivers
+        // all-zero chunks, which are `produced > 0` with a zero peak and publish immediately;
+        // and a famine delivers nothing at all, which falls to the hold below and reads zero a
+        // quarter-second later. What no longer reads as a dead tap is a live one between chunks.
+        if produced > 0 {
+            let peak = Self.peakMagnitude(in: scratch, sampleCount: produced)
+            publishedLevelBits.store(peak.bitPattern, ordering: .releasing)
+            lastLevelPublishAt = ProcessInfo.processInfo.systemUptime
+        } else if ProcessInfo.processInfo.systemUptime - lastLevelPublishAt >= Self.levelHold {
+            publishedLevelBits.store(Float(0).bitPattern, ordering: .releasing)
+        }
         guard produced > 0 else { return 0 }
         let frames = produced / channels
         let firstNonSilent = Self.firstNonSilentFrame(in: scratch, sampleCount: produced, channels: channels)
