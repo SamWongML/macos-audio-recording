@@ -58,15 +58,23 @@ struct AppTapeApp: App {
                 // `.safeAreaInset` the control is pinned with — the rows scroll clear of it — not
                 // a reason to raise this floor by a hundred points.
                 //
-                // In the ordinary case the content's own minimum resolves higher, so this is the
-                // backstop for the shortest pane there is, not the number you will usually see.
-                // The 552 that used to be quoted here was a Recording with a Seam line and four
-                // brief rows, and that shape no longer exists — the brief is always five rows
-                // (ADR-0023), so the content minimum is now the same for every Recording and
-                // has not been re-measured (issue #77).
+                // **The width floor binds and the height floor does not.** Re-measured against
+                // this code (issue #97): asked for 900 the window resolves to 960, so `minWidth`
+                // is the number in force; asked for 500 it resolves to **552**, because the
+                // content's own minimum is higher and always wins. So 552 is alive after all —
+                // the note that used to stand here had it as a stale figure from a four-row brief
+                // and expected the five-row brief (ADR-0023) to have moved it. It did not. The
+                // declared 500 is kept as the backstop it was, and it is honest about never being
+                // the number you hit.
                 .frame(minWidth: 960, minHeight: 500)
         }
-        .defaultSize(width: 1120, height: 640)   // three columns want room: sidebar + waveform + inspector
+        // **The trailing column sets this height, not the waveform** (ADR-0030). The lane reaches
+        // its 340 pt cap at 620 pt of window, so height above that is air below the brief; the
+        // Export column needs 645 before it stops drawing an overlay scroller, and 670 to survive
+        // the longest Correction caption. The old 1120 × 640 was the one size in the band that was
+        // wrong twice — past the cap and still scrolling, on all 39 Recordings in the Library.
+        // The extra 80 pt of width is not slack: the lane draws one envelope column per point.
+        .defaultSize(width: 1200, height: 680)
         .defaultLaunchBehavior(.suppressed)
         .commands {
             // Trim the standard menu set to what applies (ADR-0017): keep the
