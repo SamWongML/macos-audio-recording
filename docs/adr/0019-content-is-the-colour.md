@@ -131,7 +131,11 @@ handles both automatically, "across the board". But Apple's own implementation o
 **broken in Tahoe 26.1 and 26.2** and was fixed in 26.3, so the automatic behaviour is a contract to
 **verify empirically each OS cycle**, not one to trust.
 
-**Reduce Motion is the app's job and gets one helper, not four call sites.** Only Liquid Glass's own
+**Reduce Motion is the app's job and gets one helper, not four call sites.** *(Superseded in part by
+[ADR-0028](0028-motion-is-feedback.md): the principle stands, but it is **two** helpers — one for the
+animation, one for the content transition — because bundling both contracts into one is what let a
+wrong content transition sit unnoticed at every site. The four `ExportInspector` calls named below
+have also moved off the `Form` onto the rows whose values they track.)* Only Liquid Glass's own
 morph is automatic; every `withAnimation` and `.animation` the app writes is ours. Apple's stated
 preferred replacement is a **fade, not an instant cut**. The helper lives in the token set and returns
 the intended animation normally and an opacity fade when the setting is on, so the next animation
