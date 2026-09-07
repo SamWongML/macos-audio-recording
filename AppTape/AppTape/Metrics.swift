@@ -119,7 +119,8 @@ extension View {
 }
 
 private struct ReducedMotionAnimation<V: Equatable>: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    private var reduceMotion: Bool { systemReduceMotion || SweepFlags.reduceMotion }
 
     var intended: Animation?
     var value: V
@@ -130,7 +131,8 @@ private struct ReducedMotionAnimation<V: Equatable>: ViewModifier {
 }
 
 private struct ReducedMotionTextTransition: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    private var reduceMotion: Bool { systemReduceMotion || SweepFlags.reduceMotion }
 
     var intended: ContentTransition
 

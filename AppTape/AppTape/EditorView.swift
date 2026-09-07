@@ -27,7 +27,8 @@ struct EditorView: View {
     @Environment(\.dismissWindow) private var dismissWindow
     /// The editor honours these itself; only `PanelView` used to (issue #73, finding 15). Reduce
     /// Motion rides the token set's `.motion(_:value:)` helper rather than being read here.
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
+    private var reduceTransparency: Bool { systemReduceTransparency || SweepFlags.reduceTransparency }
 
     /// The Recordings the sidebar is actually showing. Named, rather than filtered inline, because
     /// the footer counts it too: it used to count `store.recordings`, so a query matching nothing

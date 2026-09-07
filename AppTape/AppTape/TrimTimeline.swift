@@ -28,7 +28,8 @@ struct TrimTimeline: View {
 
     /// The loupe's material is the editor's one vibrant surface in the detail pane (issue #73,
     /// finding 15). Reduce Motion is handled by `.motion(_:value:)`, not read here.
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
+    private var reduceTransparency: Bool { systemReduceTransparency || SweepFlags.reduceTransparency }
 
     /// The playhead's two opacity stops are per-appearance, so both are read here (ADR-0033).
     /// `colorSchemeContrast` is readable but not settable — `.environment(_:_:)` does not compile
