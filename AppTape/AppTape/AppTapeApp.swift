@@ -28,28 +28,35 @@ struct AppTapeApp: App {
                 // the transport's clock, `Trim …` and `Reset` silently disappeared rather than
                 // truncating (issue #73, finding 26).
                 //
-                // 960 is wider than that reasoning alone wants — 232 + 280 + 276 would do — and
-                // the extra is a **guard, not a layout choice**. Below ~920 pt the editor did not
-                // merely lose its sidebar, it *aborted*: `NavigationSplitView` and a permanently
-                // presented `.inspector` re-triggered each other's layout until AppKit threw
-                // `NSGenericException` ("more Update Constraints in Window passes than there are
-                // views in the window"). Measured on `main` too, so it was never new here.
+                // **960 is a layout number, not a crash guard — the number is unchanged and its
+                // reason is not** (issue #85, ADR-0027). It used to be a guard: below ~920 pt the
+                // editor did not merely lose its sidebar, it *aborted*, because
+                // `NavigationSplitView` and a permanently presented `.inspector` re-triggered each
+                // other's layout until AppKit threw `NSGenericException` ("more Update Constraints
+                // in Window passes than there are views in the window").
                 //
-                // **`.inspector` is gone** — the trailing pane is an ordinary column now
-                // (ADR-0024) — and issue #85 already measured 800 pt as fine without the
-                // modifier. So this guard has probably outlived its cause. It is still 960
-                // because that measurement was taken against older code and has not been
-                // re-taken against this one, and a crash guard is not lowered on inference.
-                // Issue #85 owns the re-measurement and the number.
-                // The **height** floor is a layout number, unlike the width above it: the detail
-                // pane's content — ruler, a lane with a floor under it, the five-row brief and
-                // the docked transport — stops fitting somewhere between 460 and 480 pt of
-                // window. Measured at 960 × 460 aborting and 960 × 480 not, back when an
-                // over-constrained `NavigationSplitView` + permanent `.inspector` answered a
-                // squeeze by *aborting* rather than clipping (issue #85's loop). Without the
-                // modifier the failure below the floor should be ordinary clipping, but the
-                // fitting height itself is unchanged, so the number stands as a layout floor
-                // whatever it now guards against.
+                // **That loop is gone.** `.inspector` is gone with it (ADR-0024), and the editor
+                // was re-measured against this code down to **400 pt wide in 10 pt steps with no
+                // abort at any size** — so nothing here is protecting against a crash any more.
+                //
+                // What 960 now buys is the width the three columns actually need with the
+                // transport's readouts reserved at their widest (ADR-0027): the sidebar at the
+                // 268 pt it resolves to rather than its 232 minimum, this window's 276 pt trailing
+                // column, and the transport's ~405 pt. Measured, with the longest Recording in the
+                // Library selected: **940 overflows** — the sidebar's names and the trailing
+                // column are both clipped by the window's edges — and **960 is clean**.
+                // The **height** floor was always a layout number, and it stays 500. The 460/480
+                // bracket behind it was measured when an over-constrained `NavigationSplitView` +
+                // permanent `.inspector` answered a squeeze by *aborting*; re-measured against
+                // this code, **960 × 460 no longer aborts** and the detail pane still resolves
+                // ruler, lane, brief and transport at that height (issue #85). So 500 is now
+                // comfort rather than a boundary, and it was left where it was rather than
+                // lowered on one screenshot.
+                //
+                // Below roughly 600 the *trailing column* starts to scroll, and its pinned Export
+                // control overlaps the Level rows at rest. That is the ordinary behaviour of the
+                // `.safeAreaInset` the control is pinned with — the rows scroll clear of it — not
+                // a reason to raise this floor by a hundred points.
                 //
                 // In the ordinary case the content's own minimum resolves higher, so this is the
                 // backstop for the shortest pane there is, not the number you will usually see.
