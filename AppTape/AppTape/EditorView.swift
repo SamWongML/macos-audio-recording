@@ -41,6 +41,10 @@ struct EditorView: View {
 
     private var days: [RecordingDay] { RecordingDay.group(matches) }
 
+    /// Whether the Library holds anything at all — *not* whether the query matched. The detail's
+    /// empty state asks this; `matches` is the sidebar's business (ADR-0034).
+    private var hasRecordings: Bool { !model.store.recordings.isEmpty }
+
     var body: some View {
         NavigationSplitView {
             sidebar
@@ -82,21 +86,15 @@ struct EditorView: View {
         // list is the key window's first responder, a mid grey when it is not (ADR-0029). What
         // was wrong was the focus, not the fill — see `selectionBinding`.
         .focused($isSidebarFocused)
-        // A `List` with nothing in it simply renders nothing, so both empty states were a blank
-        // grey column with only the footer's "0 Recordings" to explain them (issue #73, findings
-        // 16 and 17). Two different silences, told apart: a Library with no Recordings yet points
-        // at where they come from, a query with no matches names the query.
+        // **The query's silence is the sidebar's to explain; the Library's is not** (ADR-0034).
+        // Issue #73's finding 16 put a `No Recordings` state here, and it was true, but it made
+        // the empty Library the third of three statements in one window. It is superseded, not
+        // reverted: the footer below still says `0 Recordings` in this same column, and the
+        // detail now carries the sentence. A query that matches nothing has no other pane that
+        // could name it — the field is here — so that one stays.
         .overlay {
-            if matches.isEmpty {
-                if !query.isEmpty {
-                    ContentUnavailableView.search(text: query)
-                } else {
-                    ContentUnavailableView {
-                        Label("No Recordings", systemImage: "waveform")
-                    } description: {
-                        Text("Recordings you make from the menu bar appear here.")
-                    }
-                }
+            if matches.isEmpty && !query.isEmpty {
+                ContentUnavailableView.search(text: query)
             }
         }
         .searchable(text: $query, placement: .sidebar, prompt: "Recordings")
@@ -250,33 +248,49 @@ struct EditorView: View {
             .navigationTitle(recording.displayName)
             .navigationSubtitle(recording.windowSubtitle)
         } else {
-            // A bare `ContentUnavailableView(_:systemImage:)` — title and glyph, no second line.
-            // Report 0002 found no premium comparison app with a bespoke empty state and Apple's
-            // own guidance is the only grounding there is: say what to do next. So it says it.
-            // No button: the action is *pick a row*, and a button that merely moved focus to the
-            // sidebar would be a control invented to fill a hole.
+            // **The window's one sentence** (ADR-0034). Report 0002 found no premium comparison app
+            // with a bespoke empty state and Apple's own guidance is the only grounding there is:
+            // say what to do next. So it says it — once, here, on the surface the eye lands on,
+            // while the sidebar and the trailing column stay quiet.
+            //
+            // Two states, told apart: *nothing exists* and *nothing is picked* need different
+            // sentences, and until issue #106 the app could not tell them apart, so on a first run
+            // it told the user to choose from a Library that was empty. The condition is
+            // `store.recordings`, deliberately **not** `matches`: a query that hides every row
+            // leaves the Library full, and the sidebar is already naming the query in its own
+            // overlay. One `ContentUnavailableView` rather than an if/else, so the view keeps its
+            // identity when the first Recording arrives and the sentence changes under it.
+            //
+            // No button: the action is *pick a row*, or — on an empty Library — start a capture
+            // from the menu bar, which is outside this window entirely (ADR-0017). A control
+            // invented to fill a hole is not a decision (issue #77).
             ContentUnavailableView {
-                Label("No Recording selected", systemImage: "waveform")
+                Label(hasRecordings ? "No Recording selected" : "No Recordings",
+                      systemImage: "waveform")
             } description: {
-                Text("Choose one in the Library to play it, set its Trim, and Export it.")
+                Text(hasRecordings
+                     ? "Choose one in the Library to play it, set its Trim, and Export it."
+                     : "Record from the AppTape icon in the menu bar.")
             }
         }
     }
 
-    /// What the permanent inspector holds when there is nothing to export. It says why rather than
-    /// showing a disabled Export ladder, which would invite a click that can never work.
+    /// The Export ladder, or nothing. **The column never explains itself** (ADR-0034): it used to
+    /// carry a `Nothing to export` state whose two sentences each repeated the pane beside it —
+    /// `Select a Recording in the Library` next to the detail's own `No Recording selected`, and
+    /// `AppTape can't decode this file` next to `cantOpenDetail`'s. Every state that has no ladder
+    /// already has the detail speaking, so nothing here goes unexplained. Showing a *disabled*
+    /// ladder is still wrong for the original reason — it invites a click that can never work.
+    ///
+    /// `Color.clear` rather than `EmptyView`: the caller fixes the width and stretches the height
+    /// and paints the fill behind it (issue #103, finding 3), and a column that is present but
+    /// silent has to keep its own shape.
     @ViewBuilder
     private var inspectorColumn: some View {
         if let recording = model.selection, recording.isOpenable {
             ExportInspector(recording: recording)
         } else {
-            ContentUnavailableView {
-                Label("Nothing to export", systemImage: "square.and.arrow.up")
-            } description: {
-                Text(model.selection == nil
-                     ? "Select a Recording in the Library."
-                     : "AppTape can't decode this file, so there is nothing to export from it.")
-            }
+            Color.clear
         }
     }
 
