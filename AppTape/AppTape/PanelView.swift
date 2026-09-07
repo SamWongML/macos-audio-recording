@@ -19,8 +19,10 @@ import SwiftUI
 /// material — and **Reduce Motion**, which stills the record glyph's pulse (issue #59).
 struct PanelView: View {
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
+    private var reduceTransparency: Bool { systemReduceTransparency || SweepFlags.reduceTransparency }
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    private var reduceMotion: Bool { systemReduceMotion || SweepFlags.reduceMotion }
     @State private var model = SourceModel()
     private var recorder: RecordingController { .shared }
     /// Rescans the world for the list's live ordering (playing first). Slow enough not to churn.

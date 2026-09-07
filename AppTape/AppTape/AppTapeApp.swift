@@ -67,6 +67,9 @@ struct AppTapeApp: App {
                 // declared 500 is kept as the backstop it was, and it is honest about never being
                 // the number you hit.
                 .frame(minWidth: 960, minHeight: 500)
+                // SWEEP HARNESS ONLY (issue #103) — never merged. See `SweepFlags`.
+                .environment(\.dynamicTypeSize, SweepFlags.largeText ? .accessibility3 : .large)
+                .onAppear { SweepFlags.applyAppearanceOverride() }
         }
         // **The trailing column sets this height, not the waveform** (ADR-0030). The lane reaches
         // its 340 pt cap at 620 pt of window, so height above that is air below the brief; the
@@ -138,5 +141,44 @@ private struct LibraryRowCommands: View {
         }
         .keyboardShortcut(.delete, modifiers: .command)
         .disabled(focusedRecording == nil)
+    }
+}
+
+
+/// **Throwaway sweep harness (issue #103), never merged.** `com.apple.universalaccess` is
+/// TCC-protected, so Reduce Transparency / Reduce Motion / Increase Contrast cannot be toggled from
+/// a script, and toggling them in System Settings would change the human's live configuration —
+/// which is why issue #73 could only settle finding 15 from source. This forces the same values the
+/// shipped code already reads, inside this process only, so the after-picture can photograph them.
+///
+/// `APPTAPE_SWEEP_A11Y=transparency,motion,contrast,text`
+enum SweepFlags {
+    private static let flags: Set<String> = Set(
+        (ProcessInfo.processInfo.environment["APPTAPE_SWEEP_A11Y"] ?? "")
+            .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+
+    static let reduceTransparency = flags.contains("transparency")
+    static let reduceMotion = flags.contains("motion")
+    static let increaseContrast = flags.contains("contrast")
+    static let largeText = flags.contains("text")
+
+    /// **This one does not work, and the failure is the finding.** Increase Contrast is not a
+    /// SwiftUI environment value the app reads — it selects the High Contrast variants out of
+    /// `Assets.car`, and those are chosen by the *appearance*. Naming the high-contrast appearance
+    /// looked like the in-process equivalent of the system switch and is silently refused:
+    /// after assigning it to `NSApp.appearance` **and** to every window,
+    /// `NSApp.effectiveAppearance.name` still reads `NSAppearanceNameDarkAqua`, and the lane's
+    /// three fills are pixel-identical to a standard-contrast run. `\.colorSchemeContrast` is not
+    /// writable either (`EnvironmentValues` exposes it get-only, so `.environment(_:_:)` does not
+    /// compile). So Increase Contrast stays unphotographed, as it was for issue #73.
+    @MainActor static func applyAppearanceOverride() {
+        guard increaseContrast else { return }
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        NSApp.appearance = NSAppearance(named: dark ? .accessibilityHighContrastDarkAqua
+                                                    : .accessibilityHighContrastAqua)
+        for w in NSApp.windows { w.appearance = NSAppearance(named: dark ? .accessibilityHighContrastDarkAqua
+                                                                          : .accessibilityHighContrastAqua) }
+        let names = NSApp.windows.map(\.effectiveAppearance.name.rawValue).joined(separator: ",")
+        FileHandle.standardError.write("SWEEP app -> \(NSApp.effectiveAppearance.name.rawValue)  windows -> \(names)\n".data(using: .utf8)!)
     }
 }
