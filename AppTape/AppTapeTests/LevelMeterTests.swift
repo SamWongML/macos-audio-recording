@@ -40,4 +40,43 @@ struct LevelMeterTests {
         #expect(LevelMeter.fill(forLinearPeak: 0.1) < LevelMeter.fill(forLinearPeak: 0.5))
         #expect(LevelMeter.fill(forLinearPeak: 0.5) < LevelMeter.fill(forLinearPeak: 1.0))
     }
+
+    // MARK: - Publish or hold (issue #100)
+    //
+    // The engine drains far faster than audio arrives — a 5 ms nap on an empty ring against
+    // ~170 ms of audio per real chunk — so whether an empty drain may zero the published level
+    // is the whole difference between a live meter and a dead one.
+
+    @Test func aRealChunkPublishesItsPeak() {
+        let decision = LevelMeter.publication(producedSamples: 1024, peak: 0.7,
+                                              now: 100, lastPublishedAt: 99.9)
+        #expect(decision == .publish(0.7))
+    }
+
+    @Test func anEmptyDrainHoldsTheLastPeakRatherThanZeroingIt() {
+        // The defect in one assertion: this used to publish 0, ~30 times per real chunk.
+        let decision = LevelMeter.publication(producedSamples: 0, peak: 0,
+                                              now: 100, lastPublishedAt: 99.99)
+        #expect(decision == .hold)
+    }
+
+    @Test func aFamineReadsZeroOnceTheHoldExpires() {
+        let decision = LevelMeter.publication(producedSamples: 0, peak: 0,
+                                              now: 100, lastPublishedAt: 100 - LevelMeter.holdSeconds)
+        #expect(decision == .publish(0))
+    }
+
+    @Test func aSoftFaultedTapReadsZeroImmediately() {
+        // An all-zero chunk is still a chunk: `producedSamples > 0` with a zero peak, so it
+        // publishes at once rather than waiting out the hold. This is the contract's other half.
+        let decision = LevelMeter.publication(producedSamples: 1024, peak: 0,
+                                              now: 100, lastPublishedAt: 99.99)
+        #expect(decision == .publish(0))
+    }
+
+    @Test func theHoldOutlastsTheGapBetweenRealChunks() {
+        // A real chunk carries ~170 ms; the hold has to be longer or an ordinary gap reads as
+        // silence, which is the bug wearing a smaller number.
+        #expect(LevelMeter.holdSeconds > 0.17)
+    }
 }
