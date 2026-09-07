@@ -98,7 +98,10 @@ and, on one of the two, the 3:1 large-and-bold floor. It is legitimate as a larg
 non-text mark; it is not legitimate as a glyph carrying words. This immediately condemns the `.tint`
 Trim readout in `TrimTimeline.swift`, which becomes `.primary`.
 
-**Where `Signal` may appear, exhaustively.** The waveform peaks; the playhead; the Trim drag handle
+**Where `Signal` may appear, exhaustively.** *(Superseded in part by
+[ADR-0033](0033-the-playhead-is-an-instrument-not-content.md): the playhead comes off this list. It
+is a transport readout drawn over the audio, not audio, and while it was `Signal` it crossed
+`Signal` peaks at 1.00 : 1 in both appearances.)* The waveform peaks; the playhead; the Trim drag handle
 while it is under the hand; the "is Trimmed" scissors glyph in the Library sidebar (the HIG's
 Mail-VIP carve-out — a sidebar glyph with a fixed, meaning-carrying colour is left alone). The
 waveform body takes `Signal Muted`. **Nowhere else.** In particular: not the Export button, not the
@@ -124,7 +127,10 @@ play/pause and the Export button. Not the lane, not the inspector rungs, not the
 condemns the third glass control now in the tree — the "Try Again…" button after a failed Export
 (`ExportInspector.swift`), which drops to plain `.glass` because a recovery is not the primary path.
 Separators are the system `Divider`. **Nothing gets a custom shadow**: the HIG publishes no elevation
-system, and inventing one is how an app arrives at a dated skeuomorph.
+system, and inventing one is how an app arrives at a dated skeuomorph. *(Amended by
+[ADR-0033](0033-the-playhead-is-an-instrument-not-content.md): the active Trim handle's
+`shadow(radius: 3)` is permitted. The rule is about inventing an elevation system; one mark lifting
+itself off the field it is dragged across is not one.)*
 
 **Reduce Transparency and Increase Contrast need no code for the glass controls** — the material
 handles both automatically, "across the board". But Apple's own implementation of this shipped
