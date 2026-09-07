@@ -205,6 +205,22 @@ struct EditorView: View {
             // column two units it does not need; in Light it makes the step exist. No new colour is
             // owned by the app — ADR-0019 keeps chrome on system colours, and this is a system colour
             // with a measured correction, not a third entry in `Palette`.
+            //
+            // **And the fill runs to the window's top edge, which is the whole of issue #111's fix**
+            // (ADR-0035). ADR-0034 emptied this column, and what was left read as a hole in Dark. It
+            // was not the alpha: five treatments were built into the running app and measured, and
+            // the one that changed what the column *is* changed no pixel of its colour. The fill
+            // used to begin at **y = 52 pt**, below the title bar, with a square top corner against a
+            // rounded window — a rectangle stuck to the right-hand side rather than a pane. Report
+            // 0006's primary source is that Apple does the opposite: Xcode's inspector seam starts at
+            // the literal top of the window, and WWDC20's *Adopt the new look of macOS* calls
+            // dividers reaching the top of the window the point of `fullSizeContentView` — which is
+            // why issue #7 hid the toolbar background here in the first place.
+            //
+            // Measured on the running app, this moves nothing but the top edge: Dark stays
+            // `(40,40,40)` detail against `(27,27,27)` column, Light `(255,255,255)` against
+            // `(242,242,242)`. **ADR-0032 is untouched** — the scrim is still flat black, still not
+            // appearance-adaptive.
             inspectorColumn
                 .frame(width: Self.inspectorWidth)
                 // Width only, before this. `ExportInspector` stretches so the fill covered the
@@ -214,8 +230,16 @@ struct EditorView: View {
                 // selection, can't-open, and the empty Library (issue #103, finding 3).
                 .frame(maxHeight: .infinity)
                 .background {
-                    Color(nsColor: .controlBackgroundColor)
-                    Color.black.opacity(Self.inspectorColumnScrim)
+                    // `ignoresSafeArea` on the *background*, not on the column: the ladder keeps
+                    // its inset from the title bar, only the paint goes under it. And a modifier
+                    // rather than a negative padding, because the title bar's 52 pt is a safe-area
+                    // inset — a hard-coded number is how a window that ever grows a second toolbar
+                    // row gets a stripe.
+                    ZStack {
+                        Color(nsColor: .controlBackgroundColor)
+                        Color.black.opacity(Self.inspectorColumnScrim)
+                    }
+                    .ignoresSafeArea(edges: .top)
                 }
         }
     }
