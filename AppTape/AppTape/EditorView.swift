@@ -29,6 +29,17 @@ struct EditorView: View {
     /// Motion rides the token set's `.motion(_:value:)` helper rather than being read here.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// ⚠️ PROTOTYPE (issue #111) — which trailing-column treatment is showing. `@AppStorage` so the
+    /// pick survives the relaunch that switching appearance needs; the env var overrides it so a
+    /// screenshot pass can launch fresh at the saved frame with no picker in the title bar.
+    @AppStorage("prototypeEmptyColumnVariant") private var columnVariantRaw = EmptyColumnVariant.asIs.rawValue
+    private var columnVariant: EmptyColumnVariant {
+        EmptyColumnPrototype.forced ?? EmptyColumnVariant(rawValue: columnVariantRaw) ?? .asIs
+    }
+    /// Whether the column holds nothing — the same condition `inspectorColumn` branches on
+    /// (ADR-0034: the ladder, or nothing).
+    private var columnIsEmpty: Bool { !(model.selection?.isOpenable ?? false) }
+
     /// The Recordings the sidebar is actually showing. Named, rather than filtered inline, because
     /// the footer counts it too: it used to count `store.recordings`, so a query matching nothing
     /// left an empty list under the words `44 Recordings` (issue #73, finding 35).
@@ -54,6 +65,18 @@ struct EditorView: View {
             // above the empty-state branch as well as the editor.
             detail
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                // ⚠️ PROTOTYPE (issue #111) — the switcher lives in the title bar so the body's
+                // geometry, which is what is being judged, is untouched. Absent when a variant is
+                // forced by env var, so the photographed window has no harness in it.
+                .toolbar {
+                    if EmptyColumnPrototype.showsPicker {
+                        ToolbarItem(placement: .automatic) {
+                            EmptyColumnVariantPicker(variant: Binding(
+                                get: { columnVariant },
+                                set: { columnVariantRaw = $0.rawValue }))
+                        }
+                    }
+                }
         }
         .navigationSplitViewStyle(.balanced)
         .task { model.activate() }
@@ -205,6 +228,12 @@ struct EditorView: View {
             // column two units it does not need; in Light it makes the step exist. No new colour is
             // owned by the app — ADR-0019 keeps chrome on system colours, and this is a system colour
             // with a measured correction, not a third entry in `Palette`.
+            // ⚠️ PROTOTYPE (issue #111) — the boundary the five variants disagree about. Only C
+            // draws a rule; see `EmptyColumnVariant`.
+            if columnVariant.drawsHairline(isEmpty: columnIsEmpty) {
+                Divider()
+            }
+
             inspectorColumn
                 .frame(width: Self.inspectorWidth)
                 // Width only, before this. `ExportInspector` stretches so the fill covered the
@@ -213,9 +242,11 @@ struct EditorView: View {
                 // in the right-hand third and no column at all. Three states shared the cause: no
                 // selection, can't-open, and the empty Library (issue #103, finding 3).
                 .frame(maxHeight: .infinity)
+                // ⚠️ PROTOTYPE (issue #111): variant A is the two lines that used to be here.
                 .background {
-                    Color(nsColor: .controlBackgroundColor)
-                    Color.black.opacity(Self.inspectorColumnScrim)
+                    PrototypeColumnFill(variant: columnVariant,
+                                        isEmpty: columnIsEmpty,
+                                        reduceTransparency: reduceTransparency)
                 }
         }
     }
