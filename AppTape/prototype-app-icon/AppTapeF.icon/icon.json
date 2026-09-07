@@ -1,7 +1,11 @@
 {
-  "fill": {
-    "automatic-gradient": "extended-srgb:0.90196,0.90196,0.94902,1.00000"
-  },
+  "fill-specializations": [
+    {
+      "value": {
+        "automatic-gradient": "extended-srgb:0.90196,0.90196,0.94902,1.00000"
+      }
+    }
+  ],
   "groups": [
     {
       "layers": [

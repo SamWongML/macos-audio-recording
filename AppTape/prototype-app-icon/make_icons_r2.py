@@ -7,6 +7,7 @@ Round 1 picked A: indigo bars on a pale ground. Round 2 varies one thing at a ti
   F  refined              7 bars, w66/gap36, max half 236, steadier rhythm
   G  F + the Trim, again  outer bar each side in Signal Muted, no rails
   H  F at five bars       fewest bars that still say audio, for the 16 pt tile
+  Final  F + dark stop     what ships: F with an explicit dark appearance
 
 G is the trimmed-away idea's second attempt. Round 1 said it with rails and the
 rails collapsed into the waveform. Here it is said with colour instead, using
@@ -18,7 +19,14 @@ import json, os, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 SIGNAL = "#5856D6"          # Palette.signal, light
 SIGNAL_MUTED = "#6C6BC9"    # Palette.signalMuted, light
+SIGNAL_HC_DARK = "#9694F0"  # Palette.signal, High Contrast dark
 GROUND_PALE = "#E6E6F2"
+GROUND_DARK = "#1A1929"
+
+
+def srgb(h):
+    return "extended-srgb:%.5f,%.5f,%.5f,1.00000" % tuple(
+        int(h[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
 
 
 def bars_svg(heights, bar_w, pitch, max_half, muted_ends=False):
@@ -35,16 +43,27 @@ def bars_svg(heights, bar_w, pitch, max_half, muted_ends=False):
             'viewBox="0 0 1024 1024">\n%s\n</svg>\n' % "\n".join(out))
 
 
-def emit(v, svg_text):
+def emit(v, svg_text, dark=False):
     d = os.path.join(HERE, "AppTape%s.icon" % v)
     shutil.rmtree(d, ignore_errors=True)
     os.makedirs(os.path.join(d, "Assets"))
     open(os.path.join(d, "Assets", "1-bars.svg"), "w").write(svg_text)
-    r, g, b = (int(GROUND_PALE[i:i+2], 16) / 255.0 for i in (1, 3, 5))
+    # fill-specializations REPLACES fill: the entry with no "appearance" is the default.
+    # Without this the system derives a dark variant that keeps the SVG's own #5856D6 over
+    # a near-black grey — measured ~2:1, which is why the dark stop is declared, not derived.
+    ground = [{"value": {"automatic-gradient": srgb(GROUND_PALE)}}]
+    mark = [{"value": {"solid": srgb(SIGNAL)}}]
+    if dark:
+        ground.append({"appearance": "dark",
+                       "value": {"automatic-gradient": srgb(GROUND_DARK)}})
+        mark.append({"appearance": "dark", "value": {"solid": srgb(SIGNAL_HC_DARK)}})
+    layer = {"image-name": "1-bars.svg", "name": "Waveform"}
+    if dark:
+        layer["fill-specializations"] = mark
     open(os.path.join(d, "icon.json"), "w").write(json.dumps({
-        "fill": {"automatic-gradient": "extended-srgb:%.5f,%.5f,%.5f,1.00000" % (r, g, b)},
+        "fill-specializations": ground,
         "groups": [{
-            "layers": [{"image-name": "1-bars.svg", "name": "Waveform"}],
+            "layers": [layer],
             "shadow": {"kind": "neutral", "opacity": 0.5},
             "translucency": {"enabled": True, "value": 0.5},
         }],
@@ -58,6 +77,7 @@ FIVE = [0.44, 0.92, 1.00, 0.62, 0.34]
 
 emit("A", bars_svg(R1, 58, 100, 250))
 emit("F", bars_svg(R2, 66, 102, 236))
+emit("Final", bars_svg(R2, 66, 102, 236), dark=True)  # F, with the dark stop declared
 emit("G", bars_svg(R2, 66, 102, 236, muted_ends=True))
 emit("H", bars_svg(FIVE, 78, 124, 236))
-print("wrote A, F, G, H")
+print("wrote A, F, G, H, Final")

@@ -64,3 +64,38 @@ Trim with colour instead of rails, H drops to five bars.
   Mode. Seeing them rendered needs Icon Composer, which stops on a licence agreement that
   is the human's to accept, so this is the one claim here backed by the catalog rather
   than by a screenshot.
+
+## The dark variant, and the schema that took three probes
+
+The system's *derived* dark variant keeps the SVG's own `#5856D6` over a near-black
+grey gradient (`assetutil` shows `Color-3` 0.192 and `Color-4` 0.078 gray). Measured,
+that is **~2:1** — the bars barely read. So the dark stop is declared, not derived.
+
+`AppTapeFinal.icon` is F with:
+
+- dark ground `#1A1929`, and
+- dark mark `#9694F0` — which is **`Signal`'s High Contrast dark stop**, reused rather
+  than invented. A small indigo mark on a near-black tile needs exactly the lift that
+  Increase Contrast needs: `Signal` dark `#5E5CE6` measures 3.41:1 there, `#9694F0`
+  measures 6.43:1.
+
+**The schema is not guessable and `ictool` will not tell you.** Unknown keys are
+dropped *silently* — four wrong shapes all compiled with zero errors and zero effect,
+which is why every probe here checks `assetutil` for the value rather than trusting
+the exit code. The real shape, from Icon Composer's own fixtures:
+
+```json
+"fill-specializations": [
+  { "value": { "automatic-gradient": "extended-srgb:…" } },
+  { "appearance": "dark", "value": { "automatic-gradient": "extended-srgb:…" } }
+]
+```
+
+`fill-specializations` **replaces** `fill` — the entry with no `appearance` key *is*
+the default. There is no `slot` wrapper, and the appearance is `dark`, not `dark-color`.
+Layers take the same array under the same key with `{"solid": …}` values.
+
+**Neither the dark nor the tinted variant can be rendered from a script.**
+`NSWorkspace.icon(forFile:)` ignores the drawing appearance for this axis, because icon
+style is a separate user setting (Settings → Appearance) rather than Dark Mode. Both are
+present in the compiled catalog and neither has been seen. Icon Composer shows them.
