@@ -361,9 +361,24 @@ struct TrimTimeline: View {
                 Text(Format.time(centre, precise: true))
                     .font(.system(.caption, design: .monospaced))
                     .monospacedDigit()
+                // **A flat label colour at a stated opacity, not a hierarchical rung.** Over the
+                // loupe's vibrant material in Dark, `.tertiary` resolved to within four luminance
+                // units of the material itself — the brightest glyph pixel measured (57,57,57) on a
+                // (53,52,56) panel, **1.07 : 1** — so the caption was a smudge beside the figure,
+                // while the same style was legible in Light and legible again under Reduce
+                // Transparency, where the material goes opaque (issue #103, finding 1).
+                //
+                // The blend is the cause, not the colour. `.secondary` was measured on the running
+                // app first and reached only **2.77 : 1**, still under the 4.5 : 1 floor for text
+                // this size: the hierarchical rungs are *vibrancy* styles, and vibrancy over a dark
+                // material is exactly what collapses here. `Color.primary` composites normally, so
+                // the opacity does the subordinating that `.secondary` was hired for and the
+                // contrast survives. The caption stays — it is the only statement of the loupe's
+                // scale — but it is stated in a style that can be measured on the material rather
+                // than read off the palette.
                 Text("±\(Int(span / 2))s")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color.primary.opacity(0.7))
             }
         }
         .padding(7)

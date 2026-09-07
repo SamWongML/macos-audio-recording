@@ -122,8 +122,21 @@ final class ExportCoordinator {
         let free = DiskSpace.freeBytes(forVolumeContaining: destination)
         guard DiskSpace.hasRoom(estimatedBytes: snapshot.estimatedBytes, freeBytes: free) else {
             let need = ExportSizeEstimate.sizeText(bytes: snapshot.estimatedBytes)
-            let have = free.map { ExportSizeEstimate.sizeText(bytes: Double($0)) } ?? "less"
-            fail(message: "Not enough space to export (needs about \(need), \(have) free).",
+            let have = free.map { "\(ExportSizeEstimate.sizeText(bytes: Double($0))) free" } ?? "less free"
+            // **Two lines, and the two numbers are the payload.** The failed phase renders inside
+            // the Export dock's one declared height beside `Try Again…` (ADR-0025), which leaves
+            // room for two `.caption` lines. `Not enough space to export (needs about 5.41 MB,
+            // 2.96 MB free).` needs three there, so it rendered as `Not enough space to / export
+            // (needs about…` and lost both figures — the whole point of the sentence — while
+            // issue #73 had photographed the long form intact and recorded it as correct
+            // (issue #103, finding 2). The sentence was shortened rather than the dock made
+            // taller: a phase the user may never see should not set the height of the three they
+            // see constantly. Measured on the running app twice — the first shortening still lost
+            // the *free* figure, because two `.caption` lines beside `Try Again…` hold about 22
+            // characters each. The button was shortened to `Retry…` to buy the rest, exactly as
+            // #78 shortened `Reveal in Finder` to `Reveal` so the succeeded phase would fit the
+            // same height. Keep any future wording inside two lines at `.caption`.
+            fail(message: "Not enough space: needs \(need), \(have).",
                  name: snapshot.name, for: snapshot.source)
             return
         }
