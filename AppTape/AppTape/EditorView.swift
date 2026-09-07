@@ -266,10 +266,18 @@ struct EditorView: View {
             //
             // `ToolbarItem(placement: .bottomBar)` does not compile on macOS at all, so that
             // route stays closed. The other two, `safeAreaInset(edge: .bottom)` and macOS 26's
-            // `safeAreaBar(edge: .bottom)`, **aborted the app on open** — but that was
-            // `.inspector` re-entering the layout pass until AppKit threw (issue #85's loop),
-            // and `.inspector` is gone (ADR-0024). They are probably open again; nobody has
-            // measured it, so this stays hand-laid until #85 does.
+            // `safeAreaBar(edge: .bottom)`, used to **abort the app on open** — that was
+            // `.inspector` re-entering the layout pass until AppKit threw (issue #85's loop), and
+            // `.inspector` is gone (ADR-0024).
+            //
+            // **Both were measured against this code, and neither aborts any more — and neither is
+            // usable.** A bottom safe area is resolved against the **window**, not against the view
+            // it is attached to: applied here, the detail lays itself out at the full window width,
+            // runs underneath the trailing column, and the column draws on top of it. The bar spans
+            // the sidebar and the column too. The sidebar's own `.safeAreaInset` a few lines up
+            // works only because a split-view column *is* the window's width there; this pane is
+            // one part of a row and never is. So the transport stays hand-laid, for a new reason:
+            // not that the idiomatic route crashes, but that it docks to the wrong box (issue #85).
             transport(recording)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -283,6 +291,38 @@ struct EditorView: View {
     /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).
     static let laneMinimumHeight: Double = 168
     static let laneMaximumHeight: Double = 340
+
+    /// The playhead clock's face. Named because the reserved-width reference below has to be
+    /// rendered in exactly it, and a face that drifted from the one the clock draws would reserve
+    /// the wrong width silently.
+    static let clockFont = Font.system(.largeTitle, design: .monospaced)
+
+    /// **The transport reserves the width of its widest readout instead of sizing to the Recording
+    /// in front of it** (issue #85). It is the same move the bar already made for `Reset`, which is
+    /// kept in the layout when there is nothing to reset so the row does not reflow the moment a
+    /// Trim is set — and the same one #78 made for the sidebar's fixed-width glyph rail and the
+    /// Export dock's four same-height phases.
+    ///
+    /// Two things were wrong without it. The bar **reflowed under the pointer**: arrowing down the
+    /// Library moved `Reset` by the width of the difference between `0:07` and `20:00`, and playing
+    /// a long Recording moved it again the moment the clock crossed `10:00` and gained a digit. And
+    /// the window's width floor became **content-dependent** — the number below could not be one
+    /// number while the row it protects changed width with the file.
+    ///
+    /// The references are strings, not point values, so the widths stay in the font: a face change
+    /// moves them and nothing has to be re-measured by hand.
+    ///
+    /// `Format.time(_, precise: true)` is `m:ss.ff` below an hour and `h:mm:ss` at or above one, so
+    /// it is eight glyphs at its widest either way (`59:59.99`, `99:59:59`) — and the face is
+    /// monospaced, so any eight-glyph string reserves the same width.
+    static let widestClock = "00:00.00"
+
+    /// The Trim readout's two rows. `trimRangeText` is two `Format.time` figures around an en dash,
+    /// so a Recording that ran into hours is the widest it gets. Past ten hours it grows a glyph and
+    /// the reservation is one character short — a disclosed limit, not an oversight: reserving for
+    /// a capture nobody will make would spend the bar's width on air.
+    static let widestTrimRange = "9:59:59 – 9:59:59"
+    static let widestTrimCaption = "Whole Recording"
 
     /// The transport, pinned to the bottom of the detail pane rather than sitting under the lane.
     /// Its position no longer depends on how much the pane above it holds — the reasoning that
@@ -323,9 +363,22 @@ struct EditorView: View {
             // The space shortcut goes inert with the button (ADR-0021).
             .disabled(isStillArriving)
 
-            Text(Format.time(model.player.position, precise: true))
-                .font(.system(.largeTitle, design: .monospaced)).monospacedDigit()
-                .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+            // Reserved rather than sized to the number in front of it: see `widestClock`.
+            Text(Self.widestClock)
+                .font(Self.clockFont).monospacedDigit()
+                // The reservation only holds if the reference cannot itself be squeezed: a bare
+                // `Text` is compressible, and an `HStack` short of room shrinks it and then
+                // truncates the overlay inside the width it was shrunk to.
+                .fixedSize()
+                .hidden()
+                .overlay(alignment: .leading) {
+                    Text(Format.time(model.player.position, precise: true))
+                        .font(Self.clockFont).monospacedDigit()
+                        .lineLimit(1)
+                        .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary)
+                                                         : AnyShapeStyle(.primary))
+                }
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Playhead")
                 .accessibilityValue(Format.time(model.player.position, precise: true))
 
@@ -335,13 +388,26 @@ struct EditorView: View {
             // already says why, and a Trim over a length that has not been read yet is a
             // confident statement of a number nobody has (issue #80).
             if !isStillArriving {
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(recording.isTrimmed ? recording.trimRangeText
-                                             : Format.time(recording.duration))
-                        .font(Metrics.readout)
-                    Text(recording.isTrimmed ? "Trim" : "Whole Recording")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                // Reserved the same way as the clock, and for the same reason. The two rows carry
+                // different fonts, so the reference is a `ZStack` of both — it takes the width of
+                // whichever is wider, which for a short Recording is the caption, not the figure.
+                ZStack {
+                    Text(Self.widestTrimRange).font(Metrics.readout)
+                    Text(Self.widestTrimCaption).font(.caption2)
+                }
+                .fixedSize()
+                .hidden()
+                .overlay(alignment: .trailing) {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(recording.isTrimmed ? recording.trimRangeText
+                                                 : Format.time(recording.duration))
+                            .font(Metrics.readout)
+                            .lineLimit(1)
+                        Text(recording.isTrimmed ? "Trim" : "Whole Recording")
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(recording.isTrimmed ? "Trim" : "Length")
