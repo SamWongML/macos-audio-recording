@@ -193,33 +193,29 @@ private struct TopEdge: ViewModifier {
 
 // MARK: - The switcher
 
-/// A title-bar picker rather than a docked strip — see the file header. It shows the key, the
-/// title and the thesis, so a screenshot argues for itself.
+/// A title-bar picker rather than a docked strip — see the file header.
+///
+/// **It has to be small and it has to claim priority.** The first attempt was a segmented picker
+/// beside the variant's title and its one-line thesis, ~700 pt of toolbar content: macOS 27 moved
+/// the whole item into the overflow menu, so the item took its space (the window subtitle
+/// truncated to `Sep 4, 2…`) and drew nothing at all. One `.menu` picker, plus
+/// `visibilityPriority(.high)` on the item so it is the last thing to overflow rather than the
+/// first. The thesis lives in the issue and the README instead.
 struct EmptyColumnVariantPicker: View {
     @Binding var variant: EmptyColumnVariant
 
     var body: some View {
-        HStack(spacing: Metrics.sm) {
-            Picker("Variant", selection: $variant) {
-                ForEach(EmptyColumnVariant.allCases) { v in
-                    Text(v.key).tag(v)
-                }
+        Picker("Variant", selection: $variant) {
+            ForEach(EmptyColumnVariant.allCases) { v in
+                Text(v.title).tag(v)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 220)
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(variant.title).font(.caption).bold()
-                Text(variant.thesis).font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(width: 420, alignment: .leading)
-
-            Text("PROTOTYPE · ⌃⌥←/→").font(.caption2).foregroundStyle(.tertiary)
         }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .frame(width: 250)
         .background {
-            // Invisible buttons: the shortcuts have to live somewhere, and a segmented picker
-            // does not take them.
+            // Invisible buttons: the shortcuts have to live somewhere, and a picker does not
+            // take them.
             Group {
                 Button("") { cycle(-1) }.keyboardShortcut(.leftArrow, modifiers: [.control, .option])
                 Button("") { cycle(1) }.keyboardShortcut(.rightArrow, modifiers: [.control, .option])

@@ -75,6 +75,7 @@ struct EditorView: View {
                                 get: { columnVariant },
                                 set: { columnVariantRaw = $0.rawValue }))
                         }
+                        .visibilityPriority(.high)
                     }
                 }
         }
