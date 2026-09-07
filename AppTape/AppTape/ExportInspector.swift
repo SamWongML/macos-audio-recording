@@ -121,6 +121,11 @@ struct ExportInspector: View {
         // this is only about the primary action being on screen at all.
         .safeAreaInset(edge: .bottom) {
             exportControl
+                // Idle ⇄ running ⇄ succeeded is the state change the user most needs to notice and
+                // least directly causes — the encode finishing is the app's news, not theirs. The
+                // four phases already share one declared height (ADR-0025), so this cross-fades
+                // content inside a fixed frame rather than resizing the dock.
+                .motion(Metrics.motionState, value: coordinator.phase)
                 .frame(height: Self.exportControlHeight)
                 .padding(.horizontal, Metrics.lg)
                 .padding(.vertical, Metrics.md)
@@ -130,12 +135,19 @@ struct ExportInspector: View {
                 // bar over it is the decorative chrome ADR-0019 spends its budget avoiding. The
                 // dock separates by air and by alignment (ADR-0025).
         }
-        // Through the token set's helper, not `.animation` directly, so Reduce Motion degrades
-        // to a fade rather than an instant cut (ADR-0019).
-        .motion(value: recording.trimmedDuration)
-        .motion(value: coordinator.phase)
-        .motion(value: preference.normalizeLoudness)
-        .motion(value: editor.correction.state)
+        // **No `.motion` here.** Four of them used to sit on this `Form`, and that is why the
+        // trailing column travelled in from the top-left of the detail pane and took seconds to
+        // arrive (issue #88). `.animation(_:value:)` animates its subtree's own resolved geometry,
+        // and this column's x-position is not stated anywhere — it is whatever the detail pane's
+        // `maxWidth: .infinity` leaves over — so an animation scope here means "animate where this
+        // pane is", and two of the four values changed while the window was still laying out. Each
+        // now sits on the smallest view that contains its change: the size estimate, the correction
+        // readout, the Export control (ADR-0028).
+        //
+        // `preference.normalizeLoudness` is deliberately not among them. What it changes is the
+        // *presence* of the Correction row, and an insertion can only be animated from the parent —
+        // here the `Section`, whose height is derived exactly as this column's position was. The
+        // toggle is already its own feedback; the row does not need to slide as well.
         // A new selection drops any per-file display-over, so the sticky preset shows through again
         // on the next Recording (ADR-0015).
         .onChange(of: recording.url) { perFilePreset = nil }
@@ -189,6 +201,12 @@ struct ExportInspector: View {
                                              duration: recording.trimmedDuration))
                     .font(.caption).monospacedDigit()
                     .foregroundStyle(.secondary)
+                    // The estimate re-reckons as the Trim moves: a figure that ticks, which is
+                    // what `.numericText()` is for. `.interpolate` used to be applied here from
+                    // the `Form` and did nothing at all — it interpolates symbol and shape states,
+                    // never digits (ADR-0028).
+                    .textTransition(.numericText())
+                    .motion(Metrics.motionState, value: recording.trimmedDuration)
             }
             .contentShape(Rectangle())
         }
@@ -275,6 +293,16 @@ struct ExportInspector: View {
     /// pass resolves, then the number, with the one land-short caption beneath it when it fell short.
     @ViewBuilder
     private var correctionReadout: some View {
+        correctionReadoutContent
+            // `Measuring…` resolving into a figure is the one thing in this pane that arrives on
+            // its own clock — a BS.1770 pass landing seconds later — so it is exactly ADR-0028's
+            // "a state change they must notice and did not cause". Scoped to the readout, which is
+            // the smallest view containing the change.
+            .motion(Metrics.motionState, value: editor.correction.state)
+    }
+
+    @ViewBuilder
+    private var correctionReadoutContent: some View {
         switch editor.correction.state {
         case .off, .measuring:
             Text("Measuring…").foregroundStyle(.secondary)

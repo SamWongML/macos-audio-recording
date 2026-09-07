@@ -137,6 +137,14 @@ struct TrimTimeline: View {
     /// **colour, not brightness**, which states *still there, just not Exported* directly, needs no
     /// per-appearance magic number, and survives Increase Contrast as an alpha overlay does not.
     /// It also leaves the Trim as the only indigo on the lane, which is the point of the ADR.
+    ///
+    /// **The lane must cut, never cross-fade, when the selection changes** — the first entry on
+    /// ADR-0028's forbid-list, and a correctness matter rather than a taste one. Interpolating one
+    /// Recording's peaks into another's animates a relationship between two files that does not
+    /// exist; it is the same class of untruth as the 0.5 px silence floor issue #76 deleted. Note
+    /// what this costs: no `.motion` may be attached at or above this view keyed on the selection.
+    /// The Trim's own redraw is exempt because it is direct manipulation — the grayscale mask
+    /// tracks the drag continuously, which is why it needs no animation of its own.
     private func waveform(x: @escaping (Double) -> Double, width: Double) -> some View {
         let shape = WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
                                   peakStyle: AnyShapeStyle(Palette.signal),
@@ -257,9 +265,11 @@ struct TrimTimeline: View {
             }
             .offset(x: x - (active ? 2.5 : 1.5))
             .shadow(radius: active ? 3 : 0)
-            // Through the token set's helper, not `.animation` directly, so Reduce Motion degrades
-            // to a cross-fade rather than travelling (ADR-0019, issue #73 finding 15).
-            .motion(.easeOut(duration: 0.12), value: active)
+            // The handle answering the cursor: `motionQuick`, AppTape's direct-manipulation stop
+            // and the value this token was seeded from. Through the helper, not `.animation`
+            // directly, so Reduce Motion degrades to a cross-fade rather than travelling
+            // (ADR-0028, ADR-0019, issue #73 finding 15).
+            .motion(Metrics.motionQuick, value: active)
             .accessibilityElement()
             .accessibilityLabel(which == .start ? "Trim start" : "Trim end")
             .accessibilityValue(Format.time(time, precise: true))

@@ -59,23 +59,62 @@ enum Metrics {
 
     // MARK: - Motion
 
+    /// **Motion is feedback** (ADR-0028): something moves only to confirm an action the user just
+    /// took, or to mark a state change they must notice. There are two stops because those are two
+    /// different jobs, and a single duration gets one of them wrong — 0.25 s on a Trim handle feels
+    /// like drag, 0.12 s on an Export phase is a flicker you miss.
+
+    /// Direct manipulation: the thing under the cursor answering the cursor. Short enough to read
+    /// as the control being *stiff* rather than as an animation playing.
+    static let motionQuick = Animation.easeOut(duration: 0.12)
+
+    /// A change the user should notice but did not directly cause — an Export phase arriving, a
+    /// loudness measurement landing, a size estimate re-reckoned after a Trim.
+    static let motionState = Animation.easeInOut(duration: 0.25)
+
     /// What a suppressed animation degrades *to*. Apple's stated replacement for a movement is a
     /// **fade**, not an instant cut, so Reduce Motion still gets a transition — it just stops
     /// travelling.
     static let reducedMotionFade = Animation.easeInOut(duration: 0.2)
 }
 
+// MARK: - The two motion helpers
+
+// ADR-0028 supersedes ADR-0019's "Reduce Motion gets one helper, not four call sites". The
+// principle it stated is untouched and is why both of these exist: only Liquid Glass's own morph
+// honours Reduce Motion automatically, so every animation the app writes must honour it itself,
+// and a contract that has to be remembered at each call site is one that will be forgotten. What
+// changed is the *count*. One helper owned two contracts — which animation plays, and how changing
+// text redraws — and bundling them is what let a wrong content transition sit unnoticed at all five
+// sites in the app: `.interpolate` interpolates between symbol and shape states, it does not roll
+// digits, so the digit rolling `.motion` documented had never once happened. Two helpers, one
+// contract each, and each degrades itself.
+
 extension View {
-    /// Every animation AppTape writes goes through here (ADR-0019). Only Liquid Glass's own morph
-    /// honours Reduce Motion automatically; every `withAnimation` and `.animation` the app writes
-    /// is the app's job. One helper rather than a check at each call site, so the next animation
-    /// anyone adds inherits the behaviour instead of forgetting it.
+    /// Swaps the animation, and honours Reduce Motion. Reads as `.animation(_:value:)` and behaves
+    /// as it normally does.
     ///
-    /// Reads as `.animation(_:value:)` and behaves as it normally. Under Reduce Motion the
-    /// intended animation is swapped for `Metrics.reducedMotionFade` and changing text
-    /// cross-fades instead of rolling its digits.
-    func motion<V: Equatable>(_ intended: Animation? = .default, value: V) -> some View {
+    /// **Attach it to the smallest view that contains the change, never to a container** — the
+    /// operative half of ADR-0028, and not a style preference. `.animation(_:value:)` animates
+    /// every property of its subtree *including that subtree's own resolved geometry*, so on a pane
+    /// whose position is derived rather than stated it means "animate where this pane is". Four of
+    /// these on the Export inspector's `Form` are why the trailing column used to travel in from
+    /// the top-left of the detail pane and take seconds to arrive (issue #88).
+    ///
+    /// There is deliberately **no default animation**: `.default` is a framework spring, and four
+    /// call sites took it without choosing it. Pick `Metrics.motionQuick` or `Metrics.motionState`.
+    func motion<V: Equatable>(_ intended: Animation?, value: V) -> some View {
         modifier(ReducedMotionAnimation(intended: intended, value: value))
+    }
+
+    /// Swaps the content transition, and honours Reduce Motion. Use it where a `Text`'s *value*
+    /// changes and the redraw should say so — `.numericText()` on a figure that ticks.
+    ///
+    /// Separate from `motion(_:value:)` because what a row's text does when it changes is an
+    /// editorial choice per row, while honouring Reduce Motion is one rule for the whole app. Under
+    /// Reduce Motion this resolves to `.opacity`: rolling digits are motion too.
+    func textTransition(_ intended: ContentTransition) -> some View {
+        modifier(ReducedMotionTextTransition(intended: intended))
     }
 }
 
@@ -86,8 +125,16 @@ private struct ReducedMotionAnimation<V: Equatable>: ViewModifier {
     var value: V
 
     func body(content: Content) -> some View {
-        content
-            .contentTransition(reduceMotion ? .opacity : .interpolate)
-            .animation(reduceMotion ? Metrics.reducedMotionFade : intended, value: value)
+        content.animation(reduceMotion ? Metrics.reducedMotionFade : intended, value: value)
+    }
+}
+
+private struct ReducedMotionTextTransition: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var intended: ContentTransition
+
+    func body(content: Content) -> some View {
+        content.contentTransition(reduceMotion ? .opacity : intended)
     }
 }

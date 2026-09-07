@@ -60,6 +60,10 @@ struct EditorView: View {
 
     // MARK: - Sidebar (the Library)
 
+    /// **No animation scope here, deliberately** (ADR-0028). A Recording arriving in the Library
+    /// does not slide in: the Library is a view of a folder (ADR-0006), and a row animating its own
+    /// arrival claims the app did something when the folder merely changed. The same reasoning
+    /// covers a row leaving on a Move to Trash and a row re-sorting after a rename.
     private var sidebar: some View {
         List(selection: selectionBinding) {
             ForEach(days) { day in
