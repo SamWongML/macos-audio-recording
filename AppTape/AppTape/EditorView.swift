@@ -20,6 +20,9 @@ struct EditorView: View {
     @State private var recorder = RecordingController.shared
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
+    /// Whether the Library list holds the window's keyboard focus. Written, not just read:
+    /// picking a row is what puts focus here (issue #95).
+    @FocusState private var isSidebarFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
     /// The editor honours these itself; only `PanelView` used to (issue #73, finding 15). Reduce
@@ -75,6 +78,10 @@ struct EditorView: View {
                 }
             }
         }
+        // The two selection fills are **macOS's, and both are correct**: the accent while this
+        // list is the key window's first responder, a mid grey when it is not (ADR-0029). What
+        // was wrong was the focus, not the fill — see `selectionBinding`.
+        .focused($isSidebarFocused)
         // A `List` with nothing in it simply renders nothing, so both empty states were a blank
         // grey column with only the footer's "0 Recordings" to explain them (issue #73, findings
         // 16 and 17). Two different silences, told apart: a Library with no Recordings yet points
@@ -128,9 +135,22 @@ struct EditorView: View {
         }
     }
 
+    /// Picking a row **moves the keyboard focus into the list**, which macOS would do for you in
+    /// an `NSTableView` and SwiftUI's `List` does not: with the sidebar search field focused, a
+    /// click selected the row but left first responder in the field, so the row the user was
+    /// looking straight at wore the unemphasized grey and ↑/↓ and Return still belonged to the
+    /// search (issue #95, ADR-0029). Nothing else in the window released the field — not the
+    /// waveform, not the inspector — only Tab or Escape.
+    ///
+    /// This setter is the right place because it is only ever driven by the list's own selection
+    /// UI: a click or an arrow key. It is not called when a query filters the selected row out of
+    /// view, so typing in the search field keeps its focus.
     private var selectionBinding: Binding<URL?> {
         Binding(get: { model.selection?.url },
-                set: { url in model.select(url.flatMap(model.recording(for:))) })
+                set: { url in
+                    model.select(url.flatMap(model.recording(for:)))
+                    isSidebarFocused = true
+                })
     }
 
     // MARK: - Detail (waveform, Trim, transport) + permanent inspector
