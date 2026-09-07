@@ -27,4 +27,43 @@ enum LevelMeter {
         guard db > floorDB else { return 0 }
         return min(1, (db - floorDB) / -floorDB)
     }
+
+    /// How long a published peak stands before a drain that produced nothing is allowed to zero
+    /// it. Longer than the ~170 ms a real chunk carries, so an ordinary gap between chunks is
+    /// never mistaken for silence; short enough that a tap which stops delivering reads zero
+    /// within a meter frame or two.
+    static let holdSeconds: TimeInterval = 0.25
+
+    /// What a drain should do with the published level.
+    enum Publication: Equatable {
+        /// Store this value: a real peak, or an explicit zero once the hold has expired.
+        case publish(Float)
+        /// Leave the last published value standing.
+        case hold
+    }
+
+    /// The publish-or-hold decision, taken per drain (issue #100).
+    ///
+    /// **An empty drain does not publish zero, and that is the whole point.** The engine used to
+    /// store `produced > 0 ? peak : 0` unconditionally, but its writer loop naps 5 ms when the ring
+    /// is empty while a real chunk carries ~170 ms of audio — so roughly thirty empty drains
+    /// stamped 0 over every real peak, and the published value was true for the sub-millisecond it
+    /// took to write the chunk. Sampled at 20 Hz against a master whose last four seconds peaked at
+    /// −2.0 dBFS, a 54-second capture caught **two** real samples out of 1080. The meter's
+    /// documented contract was honoured so precisely that a *live* tap read zero too, because an
+    /// empty drain and a dead tap published the identical value.
+    ///
+    /// **A dead tap still reads exactly zero**, by both routes that actually produce one:
+    ///
+    /// - a **soft-fault** tap delivers all-zero chunks, which are `producedSamples > 0` carrying a
+    ///   zero peak, and publish immediately;
+    /// - a **famine** delivers nothing at all, and falls to the hold, reading zero a quarter-second
+    ///   later.
+    ///
+    /// What no longer reads as a dead tap is a live one between chunks.
+    static func publication(producedSamples: Int, peak: Float,
+                            now: TimeInterval, lastPublishedAt: TimeInterval) -> Publication {
+        guard producedSamples <= 0 else { return .publish(peak) }
+        return now - lastPublishedAt >= holdSeconds ? .publish(0) : .hold
+    }
 }

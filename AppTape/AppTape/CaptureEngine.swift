@@ -92,6 +92,10 @@ final class CaptureEngine: @unchecked Sendable {
     private let publishedLevelBits = Atomic<UInt32>(0)
     var currentLevel: Float { Float(bitPattern: publishedLevelBits.load(ordering: .acquiring)) }
 
+    /// When the level was last published. Writer-thread only, like `lastProducedAt` beside it;
+    /// `LevelMeter.publication` turns it into the publish-or-hold decision (issue #100).
+    private var lastLevelPublishedAt: TimeInterval = 0
+
     /// The master's on-disk byte rate, the divisor in the Runway guard's `(free − 2 GB) ÷ rate`
     /// (ADR-0009). The master is interleaved Float32 (`CAFMasterWriter`), so the rate is
     /// `channels × 4 bytes × sampleRate` — fixed at creation but not a constant across Recordings,
@@ -281,10 +285,19 @@ final class CaptureEngine: @unchecked Sendable {
     /// samples drained.
     private func drainOnce(into scratch: inout [Float]) -> Int {
         let produced = scratch.withUnsafeMutableBufferPointer { tap.ring.read(into: $0) }
-        // Publish the chunk's peak for the live meter — 0 for an empty drain (a famine) or an
-        // all-zero chunk (a soft-fault dead tap), so the meter reads exactly zero (issue #59).
+        // Publish the chunk's peak for the live meter (issue #59), or hold the last one. The
+        // decision is `LevelMeter`'s, not this loop's: it is the meter's contract that is at stake,
+        // and it is the only part of this that can be tested without a tap (issue #100).
+        let now = ProcessInfo.processInfo.systemUptime
         let peak = produced > 0 ? Self.peakMagnitude(in: scratch, sampleCount: produced) : 0
-        publishedLevelBits.store(peak.bitPattern, ordering: .releasing)
+        switch LevelMeter.publication(producedSamples: produced, peak: peak,
+                                      now: now, lastPublishedAt: lastLevelPublishedAt) {
+        case .publish(let value):
+            publishedLevelBits.store(value.bitPattern, ordering: .releasing)
+            if produced > 0 { lastLevelPublishedAt = now }
+        case .hold:
+            break
+        }
         guard produced > 0 else { return 0 }
         let frames = produced / channels
         let firstNonSilent = Self.firstNonSilentFrame(in: scratch, sampleCount: produced, channels: channels)
