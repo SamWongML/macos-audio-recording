@@ -80,7 +80,10 @@ from prominent to plain, because a failure the user has just read is not the mom
 control in the pane. Issue #76 settled where the Export control sits; this settles that it stops
 moving.
 
-**The trailing column separates by material, not a hairline.** The `Divider()` started below the
+**The trailing column separates by material, not a hairline.** *(Amended by
+[ADR-0032](0032-a-treatment-is-measured-on-the-surface-it-lands-on.md): `controlBackgroundColor` and
+`windowBackgroundColor` are the same value in both appearances, so in Light this step measured zero.
+The mechanism stands; the step is now manufactured with a measured scrim.)* The `Divider()` started below the
 title bar and ran to the window's bottom edge, and that asymmetry is what read as wrong. Research
 report 0006 (`research/trailing-pane-separator`) found the hairline is not the norm: Xcode's
 inspector boundary is a material shift reaching the literal top edge, and Finder's preview column

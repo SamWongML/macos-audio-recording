@@ -191,20 +191,64 @@ struct EditorView: View {
             // column takes `.controlBackgroundColor`, one step off the window's own background, and
             // where a line should start and stop stops being a question (#78).
             // `.toolbarBackgroundVisibility(.hidden)` is untouched by this.
+            //
+            // **The step needed a scrim, because macOS ships the same value for both roles.**
+            // `.controlBackgroundColor` and `.windowBackgroundColor` are *identical* — (255,255,255)
+            // in Light, (30,30,30) in Dark — so "one step off the window's background" was true only
+            // by accident of what the detail pane actually draws. In Dark it draws (43,42,42) and the
+            // column read (28,28,28): a clean step. In Light both resolve to pure white and the step
+            // measured **zero**, so the three-column editor read as two with cards floating at the
+            // right (issue #103, finding 6). The decision was sound and was verified in one
+            // appearance only.
+            //
+            // The scrim is deliberately *not* appearance-adaptive: the column wants to be **darker**
+            // than the detail in both appearances, so it is flat black at a low alpha rather than
+            // `.quaternary`, which is white on dark and would invert the step. In Dark it moves the
+            // column two units it does not need; in Light it makes the step exist. No new colour is
+            // owned by the app — ADR-0019 keeps chrome on system colours, and this is a system colour
+            // with a measured correction, not a third entry in `Palette`.
             inspectorColumn
                 .frame(width: Self.inspectorWidth)
-                .background(Color(nsColor: .controlBackgroundColor))
+                // Width only, before this. `ExportInspector` stretches so the fill covered the
+                // column; `ContentUnavailableView` does not, so with nothing selected the fill
+                // collapsed to its intrinsic ~171 pt and the `HStack` centred it — a hard-edged slab
+                // in the right-hand third and no column at all. Three states shared the cause: no
+                // selection, can't-open, and the empty Library (issue #103, finding 3).
+                .frame(maxHeight: .infinity)
+                .background {
+                    Color(nsColor: .controlBackgroundColor)
+                    Color.black.opacity(Self.inspectorColumnScrim)
+                }
         }
     }
 
     @ViewBuilder
     private var detailContent: some View {
         if let recording = model.selection {
-            if recording.isOpenable {
-                editorDetail(recording)
-            } else {
-                cantOpenDetail(recording)
+            // **The title lives here, above the branch, and that is the fix.** The Library's own
+            // name for the Recording, not the filename. The title bar used to read
+            // `Google Chrome 2026-09-04 at 21.52.43` over the subtitle `Google Chrome` — the Source
+            // stated twice, once wrapped in the on-disk naming scheme — and for a hand-adopted file
+            // with no date and no Source xattr both lines were the same string (issue #73, findings
+            // 2 and 32). `windowSubtitle` says *when* instead, and adds the Source back only once
+            // the title has stopped being it.
+            //
+            // Issue #76 (`a46c49b`) put these on `editorDetail` and `cantOpenDetail` separately;
+            // `e19c1c4` then deleted them from the editor path along with this comment while #77
+            // was reopened, so every Recording the app could actually open left the window titled
+            // `AppTape` and only the undecodable ones were named — the state nobody wants to be in
+            // was the only one with a title (issue #103, finding 4). Two copies of a modifier is
+            // what let one of them be deleted, so there is one copy now, on the branch that knows a
+            // Recording exists. Nothing selected keeps the app's own name, which is correct.
+            Group {
+                if recording.isOpenable {
+                    editorDetail(recording)
+                } else {
+                    cantOpenDetail(recording)
+                }
             }
+            .navigationTitle(recording.displayName)
+            .navigationSubtitle(recording.windowSubtitle)
         } else {
             // A bare `ContentUnavailableView(_:systemImage:)` — title and glyph, no second line.
             // Report 0002 found no premium comparison app with a bespoke empty state and Apple's
@@ -249,8 +293,6 @@ struct EditorView: View {
                 model.trash(recording)
             }
         }
-        .navigationTitle(recording.displayName)
-        .navigationSubtitle(recording.windowSubtitle)
     }
 
     /// Top to bottom: the ruled lane, the **brief**, then air, with the transport in the bottom
@@ -310,6 +352,11 @@ struct EditorView: View {
     /// The trailing pane's width — one number, because the pane neither hides nor resizes. 276 was
     /// the ideal the resizable version defaulted to and the width every screenshot was judged at.
     static let inspectorWidth: Double = 276
+
+    /// How much black is laid over the trailing column's `.controlBackgroundColor` so the column
+    /// steps away from the detail pane in **both** appearances. Tuned by measuring the boundary on
+    /// screen, not chosen from the palette — see the comment in `detail`.
+    static let inspectorColumnScrim: Double = 0.05
 
     /// The lane's height, floor and cap. The floor keeps a short window from crushing the waveform
     /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).

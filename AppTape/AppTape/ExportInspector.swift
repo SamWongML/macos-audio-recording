@@ -64,8 +64,11 @@ struct ExportInspector: View {
 
     /// Re-measure whenever the Recording, its Trim, or the toggle changes (ADR-0013). The model
     /// dedupes an unchanged key, so binding this to observed state is cheap.
+    /// `isStillArriving` is part of the key, not just a guard on the readout: the measurement is
+    /// *skipped* while the audio arrives (ADR-0031 — the Trim bounds it would measure are undefined),
+    /// so Stop has to be a key change or the figure would never arrive at all.
     private var correctionKey: String {
-        "\(recording.url.path)|\(recording.trim.lowerBound)|\(recording.trim.upperBound)|\(preference.normalizeLoudness)"
+        "\(recording.url.path)|\(recording.trim.lowerBound)|\(recording.trim.upperBound)|\(preference.normalizeLoudness)|\(isStillArriving)"
     }
 
     /// The one dB scalar playback applies (Play == Export, ADR-0013): the correction when normalizing
@@ -156,6 +159,8 @@ struct ExportInspector: View {
         // on the next Recording (ADR-0015).
         .onChange(of: recording.url) { perFilePreset = nil }
         .onChange(of: correctionKey, initial: true) {
+            // Nothing to measure from a Trim whose end has not happened yet (ADR-0031).
+            guard !isStillArriving else { return }
             editor.correction.update(recording: recording, normalize: preference.normalizeLoudness)
         }
         .onChange(of: playbackGainDB, initial: true) {
@@ -295,7 +300,10 @@ struct ExportInspector: View {
     /// caption, which accessibility would otherwise publish as two loose `AXStaticText`s beside the
     /// label instead of one row that reads as a sentence.
     private var correctionSpokenValue: String {
-        switch editor.correction.state {
+        // Matches the rungs' `size not yet known` while the audio arrives: what the dash means,
+        // spoken (ADR-0031).
+        guard !isStillArriving else { return "not yet known" }
+        return switch editor.correction.state {
         case .off, .measuring: "Measuring"
         case .measured(let correction):
             [correction.figureText, correction.caption].compactMap { $0 }.joined(separator: ", ")
@@ -316,20 +324,35 @@ struct ExportInspector: View {
 
     @ViewBuilder
     private var correctionReadoutContent: some View {
-        switch editor.correction.state {
-        case .off, .measuring:
-            Text("Measuring…").foregroundStyle(.secondary)
-        case .measured(let correction):
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(correction.figureText)
-                    .monospacedDigit()
-                    .foregroundStyle(correction.landing == .undefined ? AnyShapeStyle(.secondary)
-                                                                        : AnyShapeStyle(.primary))
-                if let caption = correction.caption {
-                    Text(caption)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
+        // **No verdict while the audio is still arriving** (ADR-0031), the same em dash the rungs'
+        // size estimates draw for the same reason. Ungated, this row re-measured on a `correctionKey`
+        // built from `recording.trim` — bounds that are undefined until Stop — landed on `.undefined`
+        // and printed `No correction · range too quiet to measure` over audio that measured
+        // −14.5 LUFS integrated with a −3.1 dBFS peak (issue #103, finding 5). That is worse than the
+        // five stale surfaces #98 found: those went out of date, this one made a claim about the
+        // audio the engine had no basis for.
+        //
+        // A dash rather than no row, because `No correction` was long enough that `LabeledContent`
+        // dropped the value under its label, so the card was three rows tall during capture and two
+        // after — and a row that vanishes at Stop moves the card just as much as one that reflows.
+        if isStillArriving {
+            Text(verbatim: "—").foregroundStyle(.secondary)
+        } else {
+            switch editor.correction.state {
+            case .off, .measuring:
+                Text("Measuring…").foregroundStyle(.secondary)
+            case .measured(let correction):
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(correction.figureText)
+                        .monospacedDigit()
+                        .foregroundStyle(correction.landing == .undefined ? AnyShapeStyle(.secondary)
+                                                                          : AnyShapeStyle(.primary))
+                    if let caption = correction.caption {
+                        Text(caption)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
             }
         }
@@ -407,9 +430,19 @@ struct ExportInspector: View {
     }
 
     /// The tallest phase, and so the one that sets `exportControlHeight`: two lines of reason beside
-    /// a retry. `Try Again…` steps down from prominent to plain — a failure the user has just read
+    /// a retry. The retry steps down from prominent to plain — a failure the user has just read
     /// is not the moment for the loudest control in the pane, and the prominent button here made
     /// the failed phase taller than every other.
+    ///
+    /// **`Retry…`, not `Try Again…`, and the four characters are the fix.** This phase is the one
+    /// whose text *is* the payload: the message names both figures, and at 276 pt the wider button
+    /// left it about 22 characters a line, so `Not enough space to export (needs about 5.41 MB,
+    /// 2.96 MB free).` rendered as `Not enough space to / export (needs about…` and lost both
+    /// numbers — the whole point of the sentence (issue #103, finding 2). Shortening the sentence
+    /// alone was measured and still lost the *free* figure. So the verb gives up its width to the
+    /// numbers, which is the same trade #78 made one phase up, where `Reveal in Finder` became
+    /// `Reveal` so the succeeded phase would fit the shared height. The ellipsis stays: retrying
+    /// re-presents the save panel.
     private func failedControl(_ message: String) -> some View {
         HStack(spacing: Metrics.sm) {
             Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -417,7 +450,7 @@ struct ExportInspector: View {
                 .foregroundStyle(.orange)
                 .lineLimit(2)
             Spacer(minLength: Metrics.xs)
-            Button("Try Again…") {
+            Button("Retry…") {
                 coordinator.cancel()   // clear the failure, then re-present the save panel
                 coordinator.export(recording: recording, preset: effectivePreset)
             }
