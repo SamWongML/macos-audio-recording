@@ -59,6 +59,53 @@ This is not [ADR-0019](0019-content-is-the-colour.md) territory. The accent in t
 ([#81](https://github.com/SamWongML/macos-audio-recording/issues/81)) — not `Signal`, and chrome
 drawn by macOS is chrome AppTape does not colour.
 
+## Amended by issue [#113](https://github.com/SamWongML/macos-audio-recording/issues/113): the first row of that table was true at every size but the shipped one
+
+The table above says *Editor just opened → `AXOutline` → accent*. That was measured at whatever
+window size the session happened to use, and it is true at 960 × 552, 1040 × 560, 1120 × 620,
+1160 × 680, 1200 × 640, 1200 × 681 and 1201 × 680. At **1200 × 680 — the frame `.defaultSize`
+declares, and the one every first run gets** — the freshly-opened editor had `AXFocusedUIElement` =
+the `AXWindow`, the selected row wore the inactive grey `(72, 72, 73)` in Dark and `(214, 214, 216)`
+in Light, and ↓ changed nothing (the before and after screenshots were byte-identical).
+
+**The mechanism is a race, and the window's restored frame is what decides it.** Read off a
+swizzled `makeFirstResponder` with a stack trace: `-[NSWindow _setUpFirstResponder]` →
+`_selectFirstKeyView` runs from inside `-[NSWindow _doOrderWindow:]` — the moment the window is
+first ordered on screen, **exactly once** — walks the key view loop and makes the first focusable
+view the first responder. Whether SwiftUI has installed the sidebar list by then is the race:
+
+| | 1200 × 680 | 1201 × 680 |
+| --- | --- | --- |
+| restored frame vs. the frame the window was created at | same **size**, a pure move | size differs |
+| `setFrame` → `makeKeyAndOrderFront` | **1 ms** | 48 ms |
+| the list, at order-in | **absent** | `SwiftUIOutlineListView` present |
+| `_selectFirstKeyView` | finds nothing; the window stays its own first responder | `makeFirstResponder(SwiftUIOutlineListView) -> true` |
+
+A restored frame whose *size* differs from `.defaultSize` forces a layout pass before the order-in,
+and SwiftUI builds the content inside it. A frame of the same size is a pure move, which forces
+nothing — so the window is ordered in one millisecond later with an empty content tree, and the
+keyboard lands nowhere. **`_setUpFirstResponder` never runs again**, which is why deactivating and
+re-activating the app does not repair it: measured, and the focus stayed on the window.
+
+So `.defaultSize` is not a magic number here — **any** saved frame matching the size the window was
+created at reproduces it. That happens to be every install that has never been resized, which is
+why this defect sat on the path nobody has to do anything to reach while five sessions photographed
+the editor at other sizes and saw the accent.
+
+**The fix is one `.onAppear` on the sidebar list**, setting the same `@FocusState` this ADR already
+introduced. The list's own appearance is the one place that knows the list exists;
+[#96](https://github.com/SamWongML/macos-audio-recording/pull/96)'s `selectionBinding` setter cannot
+cover it, because it only fires on a click or an arrow key — after the user has already found the
+keyboard missing. It is guarded on the search field, so a reopened window cannot pull focus off a
+field being typed into.
+
+**This is not the rejected alternative below.** It does not force the emphasized *fill*; it moves
+the *keyboard*, and the fill then tells the truth about where the keyboard is, which is what this
+ADR asks of it. Verified on screen at 1200 × 680 and at the 960 × 552 floor, in both appearances:
+the row opens on the accent — `(47, 108, 248)` Dark, `(43, 98, 236)` Light — ↓ moves the selection,
+and Tab into the search field then typing (including a query that matches nothing) leaves
+`AXFocusedUIElement` an `AXSearchField` throughout.
+
 ## What stays
 
 **The grey when AppTape is not frontmost stays, untouched.** Every macOS sidebar does it, it is the
