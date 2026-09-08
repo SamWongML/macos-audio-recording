@@ -86,6 +86,27 @@ struct EditorView: View {
         // list is the key window's first responder, a mid grey when it is not (ADR-0029). What
         // was wrong was the focus, not the fill — see `selectionBinding`.
         .focused($isSidebarFocused)
+        // **AppKit chooses the window's first key view exactly once, and at the shipped size it
+        // chooses before this list exists** (issue #113, ADR-0029). `-[NSWindow
+        // _setUpFirstResponder]` runs from inside `_doOrderWindow:` — the moment the window is
+        // first ordered on screen — walks the key view loop and makes the first focusable view the
+        // first responder. Whether the sidebar is in that loop yet is a race against SwiftUI
+        // installing it, and the restored window frame is what settles it: a frame whose *size*
+        // differs from the one the window was created at forces a layout pass before the order-in
+        // (measured: 48 ms between `setFrame` and `makeKeyAndOrderFront`, list present, focus
+        // lands here), and a frame of the same size is a pure move that forces nothing (1 ms, list
+        // absent, the window stays its own first responder). `.defaultSize` is 1200 × 680, so the
+        // second case is the shipped one — and `_setUpFirstResponder` never runs again, which is
+        // why re-activating the app does not repair it.
+        //
+        // So the sidebar claims the focus AppKit meant it to have, from the one place that knows
+        // the list exists: the list's own appearance. This is not the rejected fix — it does not
+        // force the emphasized *fill*; it moves the keyboard, and the fill then tells the truth,
+        // exactly as ADR-0029 requires. Guarded on the search field so a reopened window cannot
+        // pull focus off a field the user is typing in.
+        .onAppear {
+            if !isSearchFocused { isSidebarFocused = true }
+        }
         // **The query's silence is the sidebar's to explain; the Library's is not** (ADR-0034).
         // Issue #73's finding 16 put a `No Recordings` state here, and it was true, but it made
         // the empty Library the third of three statements in one window. It is superseded, not
