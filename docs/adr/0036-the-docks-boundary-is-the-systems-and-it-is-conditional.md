@@ -10,7 +10,7 @@ by alignment"*, because a darkening bar over a column that already reads as sepa
 decorative chrome [ADR-0019](0019-content-is-the-colour.md) spends its budget avoiding.
 
 That was a bet that the column never scrolls, and at `1200 × 680` it does not — which is the only
-size the dock had ever been shot at. At **960 × 552, the window's own floor**, the column overflows
+size the dock had ever been shot at. At **960 × 552, the window's floor as it then stood**, the column overflows
 by 93–118 pt ([ADR-0030](0030-the-trailing-column-sets-the-default-height.md)'s numbers: the column
 stops drawing a scroller at 645, and needs 670 for the longest Correction caption). The `Level`
 group then scrolled straight through the transparent dock — the Gain slider's track and thumb drawn
@@ -71,13 +71,27 @@ content continues, at exactly the size where content is in fact hidden. If the 8
 reads as a collision rather than an overlay, the answer is to inset the content margins, not to hide
 the indicator.
 
-**`minHeight` is declared **552**, not 500.** The two numbers were never alternatives: asked for 500
-the window has always resolved to 552, because the content's own minimum is higher and wins. The old
+**`minHeight` is declared **604**, and the number moved twice inside this one change.** The old
 comment called the declared 500 *"honest about never being the number you hit"*, which is the one
 thing a declared minimum must not be — a constant nothing can reach is a second, wrong answer to
-"how short can this window get", sitting in the file a reader checks first. ADR-0030's table already
-recorded 552 as the real floor; the code now says it too. **This is not the floor raise rejected
-above** — nothing about the window's behaviour changes, only what the file claims.
+"how short can this window get", sitting in the file a reader checks first. It was corrected to
+ADR-0030's measured **552** — **and 552 went stale in the same commit that wrote it.**
+`safeAreaBar` reserves height for the scroll edge effect it carries, so swapping the dock off
+`safeAreaInset` grew the column's own minimum by **52 pt**. `spacing: 0` was tried and reclaims none
+of it: the space is the effect's, not the bar's padding. Re-measured the same two independent ways
+as the 552 — saved-frame launch, and live interactive resize on a fresh install with no defaults —
+both clamping to exactly **960 × 604**, with 605 holding.
+
+**This is not the floor raise rejected above.** That one was a deliberate 672 chosen to put the
+column's overflow out of reach; this is 52 pt the treatment costs, and at 604 the column still
+scrolls, which is the whole point. But it is worth naming what happened: the fix for a stale
+declared minimum shipped a stale declared minimum, because the number was written before the change
+that moved it was measured. **Declare the floor last.**
+
+**Every "at the 960 floor" figure in this repo now means one of two heights.** Everything measured
+before this ADR was measured at **960 × 552**; everything after is at **960 × 604**. ADR-0029's
+verification, ADR-0030's table, research reports 0008 and earlier, and issues #97, #103, #104, #108
+and #113 all mean 552. This ADR and everything after it mean 604.
 
 Every figure here is sampled from `screencapture -x -o -l` of the Release build at both sizes in both
 appearances, not computed from the asset catalogue (ADR-0032).
