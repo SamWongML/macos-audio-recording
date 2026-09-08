@@ -95,7 +95,7 @@ own background so it does not paint over that, and the Export dock gives up its 
 reason — a darkening bar over a column that already reads as separate is the decorative chrome
 ADR-0019 spends its budget avoiding. *(Amended by
 [ADR-0036](0036-the-docks-boundary-is-the-systems-and-it-is-conditional.md): the dock still takes no
-fill, but at the 960 floor the column scrolls beneath it, and the boundary there is the system's
+fill, but at the 960 × 604 floor the column scrolls beneath it, and the boundary there is the system's
 **conditional** scroll edge effect, reached by pinning with `safeAreaBar` rather than
 `safeAreaInset`. "No fill and no rule" stands; it was written against the older of two modifiers.)*
 
