@@ -20,7 +20,7 @@ Measured against the running Release build with the real 39-Recording Library (i
 | the lane reaches its 340 pt cap | **620** |
 | the trailing column stops drawing a scroller | **645** |
 | …and with the longest Correction caption | **670** |
-| the window's real height floor | **552** — the content's, not the declared 500 |
+| the window's real height floor | **552** — the content's, not the declared 500 *(**552 until [#114](https://github.com/SamWongML/macos-audio-recording/issues/114); 604 after it, and declared. See below.**)* |
 | the window's real width floor | **960** — the declared one |
 
 Above 620 the lane has all the height [ADR-0023](0023-the-detail-pane-is-ruler-lane-brief-dock.md)
@@ -37,6 +37,21 @@ scroller that is wrong, not the content.
 So there is no height that satisfies both panes, and **the tie goes to the column**: air is a
 sanctioned outcome of ADR-0023, and a scroller is a defect an earlier ticket already went to some
 trouble to get rid of.
+
+*(Amended by [ADR-0036](0036-the-docks-boundary-is-the-systems-and-it-is-conditional.md) in two
+places. The **645 / 670** figures were re-read as an argument for raising `minHeight` above them, so
+that the column could never scroll and the Export dock could stay bare by construction; that was
+rejected, and the column is now allowed to scroll with the boundary treated.
+
+And **the height floor in this table is no longer the current one.** It was 552 — the content's
+minimum against a declared 500 — right up until #114 swapped the Export dock from `safeAreaInset`
+to `safeAreaBar`, which reserves height for the scroll edge effect it carries and grew the column's
+minimum by **52 pt**. The floor is now **604**, and the code declares it rather than declaring a
+number nothing can reach. So **every figure on this page, and every "at the 960 floor" measurement
+in any ticket up to and including #113, means 960 × 552**; anything from #114 onward means 960 × 604.
+The scroller this ADR calls "wrong" is, at that floor, accepted: it appears only when the content
+genuinely does not fit, and it was measured stopping ~27 pt clear of the dock rather than
+overlapping it by 8.)*
 
 ## The size that shipped was wrong twice
 

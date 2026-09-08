@@ -45,28 +45,44 @@ struct AppTapeApp: App {
                 // column, and the transport's ~405 pt. Measured, with the longest Recording in the
                 // Library selected: **940 overflows** — the sidebar's names and the trailing
                 // column are both clipped by the window's edges — and **960 is clean**.
-                // The **height** floor was always a layout number, and it stays 500. The 460/480
-                // bracket behind it was measured when an over-constrained `NavigationSplitView` +
-                // permanent `.inspector` answered a squeeze by *aborting*; re-measured against
-                // this code, **960 × 460 no longer aborts** and the detail pane still resolves
-                // ruler, lane, brief and transport at that height (issue #85). So 500 is now
-                // comfort rather than a boundary, and it was left where it was rather than
-                // lowered on one screenshot.
-                //
-                // Below roughly 600 the *trailing column* starts to scroll, and its pinned Export
-                // control overlaps the Level rows at rest. That is the ordinary behaviour of the
-                // `.safeAreaInset` the control is pinned with — the rows scroll clear of it — not
-                // a reason to raise this floor by a hundred points.
+                // The **height** floor was always a layout number. The 460/480 bracket behind it
+                // was measured when an over-constrained `NavigationSplitView` + permanent
+                // `.inspector` answered a squeeze by *aborting*; re-measured against this code,
+                // **960 × 460 no longer aborts** and the detail pane still resolves ruler, lane,
+                // brief and transport at that height (issue #85). So the number is comfort rather
+                // than a boundary.
                 //
                 // **The width floor binds and the height floor does not.** Re-measured against
                 // this code (issue #97): asked for 900 the window resolves to 960, so `minWidth`
                 // is the number in force; asked for 500 it resolves to **552**, because the
-                // content's own minimum is higher and always wins. So 552 is alive after all —
-                // the note that used to stand here had it as a stale figure from a four-row brief
-                // and expected the five-row brief (ADR-0023) to have moved it. It did not. The
-                // declared 500 is kept as the backstop it was, and it is honest about never being
-                // the number you hit.
-                .frame(minWidth: 960, minHeight: 500)
+                // content's own minimum is higher and always wins.
+                //
+                // **So the declared number is 604, not 500** (#114). It used to be 500 with a
+                // note calling it "honest about never being the number you hit" — which is the
+                // one thing a declared minimum must not be. A constant nothing can reach is not a
+                // backstop, it is a second, wrong answer to "how short can this window get",
+                // sitting in the file a reader checks first.
+                //
+                // **604, not the 552 this ticket first wrote.** The number moved *inside* this
+                // change: `safeAreaBar` reserves height for the scroll edge effect it carries, so
+                // the column's own minimum grew 52 pt the moment the dock stopped being a plain
+                // inset. `spacing: 0` was tried and reclaims none of it — the space is the
+                // effect's, not the bar's padding. Re-measured the same two ways as the 552:
+                // saved-frame launch and live interactive resize on a fresh install with no
+                // defaults, both clamping to exactly **960 × 604**, with 605 holding. Writing 552
+                // here would have re-created, in the same commit, the stale-declared-minimum bug
+                // this line exists to kill.
+                //
+                // **The floor was deliberately *not* raised to 672** to stop the trailing column
+                // scrolling (#114). That was the live alternative: ADR-0030 measured 645 as where
+                // the column stops drawing a scroller and 670 with the longest Correction
+                // caption, so a floor just above that would make the column's overflow
+                // unreachable and let the Export dock stay bare by construction. It was rejected
+                // because it forbids a state the app now handles — and because a treatment that
+                // renders at no size any machine can produce is a treatment nobody will ever see
+                // fail. That is exactly how the dock got here: ADR-0025's bare dock was correct
+                // at every size anyone shot.
+                .frame(minWidth: 960, minHeight: 604)
         }
         // **The trailing column sets this height, not the waveform** (ADR-0030). The lane reaches
         // its 340 pt cap at 620 pt of window, so height above that is air below the brief; the

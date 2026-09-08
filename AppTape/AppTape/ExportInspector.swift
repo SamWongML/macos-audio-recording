@@ -126,7 +126,15 @@ struct ExportInspector: View {
         // overlap of the group's trailing edge — with it (finding 4). Its *treatment* across the
         // four phases is [#78](https://github.com/SamWongML/macos-audio-recording/issues/78)'s;
         // this is only about the primary action being on screen at all.
-        .safeAreaInset(edge: .bottom) {
+        //
+        // **`safeAreaBar`, not `safeAreaInset`, and that one word is the whole fix for #114**
+        // (ADR-0036). The two lay out identically; only `safeAreaBar` *extends the scroll edge
+        // effect* of the scroll view it insets. Under `safeAreaInset` the column's content drew
+        // straight through the dock at the 960 × 552 floor — the Gain slider's track and thumb
+        // below the `Export…` button, the failed phase's sentence over the slider's thumb — and
+        // the comment below was written in a release where the modifier that fixes it did not
+        // exist yet.
+        .safeAreaBar(edge: .bottom) {
             exportControl
                 // Idle ⇄ running ⇄ succeeded is the state change the user most needs to notice and
                 // least directly causes — the encode finishing is the app's news, not theirs. The
@@ -137,10 +145,19 @@ struct ExportInspector: View {
                 .padding(.horizontal, Metrics.lg)
                 .padding(.vertical, Metrics.md)
                 .frame(maxWidth: .infinity)
-                // No fill and no rule. The `.bar` here was separating the dock from a `Form` that
-                // painted the window background; now that the column carries its own, a darkening
-                // bar over it is the decorative chrome ADR-0019 spends its budget avoiding. The
-                // dock separates by air and by alignment (ADR-0025).
+                // **Still no fill and no rule** (ADR-0025, unreversed). The `.bar` here was
+                // separating the dock from a `Form` that painted the window background; now that
+                // the column carries its own, a darkening bar over it is the decorative chrome
+                // ADR-0019 spends its budget avoiding. The dock separates by air and by alignment
+                // — and, where content actually passes beneath it, by the system's own
+                // **conditional** boundary, which `safeAreaBar` above turns on.
+                //
+                // **`.scrollEdgeEffectStyle(.hard, …)` was measured and rejected** (ADR-0036):
+                // it paints an unconditional band at *every* size — 27 → 35 in Dark, 242 → 250 in
+                // Light at the 1200 × 680 default, where nothing scrolls at all — which is the
+                // `.bar` this comment deleted, under a system name. The default `.automatic`
+                // measured 0/0/0 there: it draws only where content overlaps. Nothing is set
+                // here on purpose; `.automatic` is what `safeAreaBar` already gives.
         }
         // **No `.motion` here.** Four of them used to sit on this `Form`, and that is why the
         // trailing column travelled in from the top-left of the detail pane and took seconds to
@@ -247,12 +264,19 @@ struct ExportInspector: View {
 
     /// The rate and channel count Export carries through untouched, said **once**: they are the
     /// source's, identical on every rung, and issue #9 asks for them to be visible, not repeated.
+    ///
+    /// **`.tertiary` is gone** (#114). It measured **2.27 : 1 in Dark and 1.86 : 1 in Light** —
+    /// the twin of the loupe caption #104 deleted two hundred lines up this same file, and the
+    /// last `.tertiary` left on text a user is meant to read. Unlike the loupe's this sits on an
+    /// **opaque** scrim, so it was never a vibrancy blend (ADR-0032's first consequence); it was
+    /// simply too faint. The size stays `.caption2`: 11 pt is the floor ADR-0019's type scale
+    /// allows, and a bigger footnote would compete with the rungs it annotates.
     private var sourceFormatLine: some View {
         Text(effectivePreset.subtitle(for: format)
             .replacingOccurrences(of: "\(effectivePreset.codecLabel) · ", with: "")
             + " · carried through unchanged")
             .font(.caption2)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Color.primary.opacity(0.7))
     }
 
     // MARK: - Loudness & Gain (normalize toggle, correction read-out, Gain slider)
@@ -417,8 +441,16 @@ struct ExportInspector: View {
     /// occupy the same height as the idle button.
     private func succeededControl(_ url: URL) -> some View {
         HStack(spacing: Metrics.sm) {
-            Label("Exported", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+            // Split for the same reason as the failed phase below (ADR-0037): one
+            // `.foregroundStyle(.green)` used to colour the checkmark *and* the word, and the word
+            // measured **2.13 : 1 in Light**. The check keeps the colour, `Exported` takes ink.
+            Label {
+                Text("Exported")
+                    .foregroundStyle(.primary)
+            } icon: {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            }
                 .font(.callout)
                 .labelStyle(.titleAndIcon)
             Spacer(minLength: Metrics.xs)
@@ -445,9 +477,21 @@ struct ExportInspector: View {
     /// re-presents the save panel.
     private func failedControl(_ message: String) -> some View {
         HStack(spacing: Metrics.sm) {
-            Label(message, systemImage: "exclamationmark.triangle.fill")
+            // **The warning's colour belongs to its mark, not to its sentence** (ADR-0037). One
+            // `.foregroundStyle(.orange)` used to cover the glyph *and* the message, which put the
+            // payload of this phase at **2.33 : 1 in Light** on the column's own scrim — and that
+            // figure is measured at 1200 × 680 with nothing scrolled under the dock, so it was
+            // never the scroll that made it unreadable. #104 verified this phase at that size and
+            // checked that both figures fit the line; nobody measured whether they could be read.
+            // The ⚠ keeps the alarm, the sentence takes ink.
+            Label {
+                Text(message)
+                    .foregroundStyle(.primary)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
                 .font(.caption)
-                .foregroundStyle(.orange)
                 .lineLimit(2)
             Spacer(minLength: Metrics.xs)
             Button("Retry…") {
