@@ -73,7 +73,9 @@ would be, so every unusable rung says why, not just the effective one (ADR-0015)
 fact, and it wrapped every rung onto two lines in a 276 pt pane. Issue #9's "codec, bitrate, rate and
 channels, visible and never editable" still holds — it is simply said once rather than four times.
 
-**All four Export phases share one height.** Idle, running, succeeded and failed each laid out to
+**All four Export phases share one height.** *(Unchanged by ADR-0036 and re-verified at the 960
+floor in all four phases: the scroll edge effect draws inside the declared 34 pt, it does not resize
+the dock.)* Idle, running, succeeded and failed each laid out to
 their own intrinsic height, so the dock moved twice during a two-second job. They now share a single
 declared height sized to the tallest phase, which is a two-line failure; `Try Again…` steps down
 from prominent to plain, because a failure the user has just read is not the moment for the loudest
@@ -91,7 +93,11 @@ draws no boundary at all. The column takes `.controlBackgroundColor`, one step o
 background, and where a line should start and stop stops being a question. The `Form` gives up its
 own background so it does not paint over that, and the Export dock gives up its `.bar` for the same
 reason — a darkening bar over a column that already reads as separate is the decorative chrome
-ADR-0019 spends its budget avoiding.
+ADR-0019 spends its budget avoiding. *(Amended by
+[ADR-0036](0036-the-docks-boundary-is-the-systems-and-it-is-conditional.md): the dock still takes no
+fill, but at the 960 floor the column scrolls beneath it, and the boundary there is the system's
+**conditional** scroll edge effect, reached by pinning with `safeAreaBar` rather than
+`safeAreaInset`. "No fill and no rule" stands; it was written against the older of two modifiers.)*
 
 ## Consequences
 
