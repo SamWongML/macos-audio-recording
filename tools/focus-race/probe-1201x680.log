@@ -1,0 +1,26 @@
+ -0.000  swizzles installed
+  7.379  setFrame({{0, 74}, {1200, 680}}) BEFORE [AppKitWindow] frame={{0, 74}, {1200, 680}} key=false first=AppKitWindow initial=nil outline=absent
+  7.382  setFrame({{359, 185}, {1201, 680}}) BEFORE [AppKitWindow] frame={{360, 222}, {1200, 680}} key=false first=AppKitWindow initial=nil outline=absent
+  7.393  probe attached: frame={{359, 185}, {1201, 680}} key=false first=AppKitWindow initial=nil outline=false
+  7.430  makeKeyAndOrderFront BEFORE [AppKitWindow] frame={{359, 185}, {1201, 680}} key=false first=AppKitWindow initial=nil outline=SwiftUIOutlineListView
+  7.432  becomeKey BEFORE [AppKitWindow] frame={{359, 185}, {1201, 680}} key=false first=AppKitWindow initial=nil outline=SwiftUIOutlineListView
+  7.432  becomeKey AFTER [AppKitWindow] frame={{359, 185}, {1201, 680}} key=true first=AppKitWindow initial=nil outline=SwiftUIOutlineListView
+  7.494  makeFirstResponder(SwiftUIOutlineListView) -> true now=SwiftUIOutlineListView key=true outline=true
+            1   AppTape                             0x00000001005c36dc $sSo8NSWindowC7AppTapeE24probe_makeFirstResponder33_1CBE627B54B15E020E74A0FA5AAB0E19LLySbSo11NSResponderCSgFTo + 56
+            2   AppKit                              0x000000018cd50d48 -[NSWindow _selectFirstKeyView] + 552
+            3   AppKit                              0x000000018cd50378 -[NSWindow _setUpFirstResponder] + 200
+            4   AppKit                              0x000000018cd4d91c -[NSWindow _doWindowWillBeVisibleAsSheet:] + 112
+            5   AppKit                              0x000000018d69b7d8 -[NSWindow _reallyDoOrderWindowAboveOrBelow:] + 1104
+            6   AppKit                              0x000000018d69c3a0 -[NSWindow _reallyDoOrderWindow:] + 64
+            7   AppKit                              0x000000018d69d0e4 __27-[NSWindow _doOrderWindow:]_block_invoke.768 + 44
+            8   AppKit                              0x000000018cc94b5c NSPerformVisuallyAtomicChange + 128
+            9   AppKit                              0x000000018d69c8c8 -[NSWindow _doOrderWindow:] + 976
+  7.496  makeKeyAndOrderFront AFTER [AppKitWindow] frame={{359, 185}, {1201, 680}} key=true first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=SwiftUIOutlineListView
+  7.686  poll+0.1s: first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  7.775  poll+0.3s: first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  7.939  poll+0.5s: first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  8.422  poll+1.0s: first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  9.489  poll+2.0s: first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+ 11.588  poll+4.0s: first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+ 13.151  makeKeyAndOrderFront BEFORE [AppKitWindow] frame={{359, 185}, {1201, 680}} key=true first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=SwiftUIOutlineListView
+ 13.152  makeKeyAndOrderFront AFTER [AppKitWindow] frame={{359, 185}, {1201, 680}} key=true first=SwiftUIOutlineListView initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=SwiftUIOutlineListView

@@ -1,0 +1,16 @@
+ -0.000  swizzles installed
+  7.323  setFrame({{0, 74}, {1200, 680}}) BEFORE [AppKitWindow] frame={{0, 74}, {1200, 680}} key=false first=AppKitWindow initial=nil outline=absent
+  7.323  setFrame({{360, 185}, {1200, 680}}) BEFORE [AppKitWindow] frame={{360, 222}, {1200, 680}} key=false first=AppKitWindow initial=nil outline=absent
+  7.324  makeKeyAndOrderFront BEFORE [AppKitWindow] frame={{360, 185}, {1200, 680}} key=false first=AppKitWindow initial=nil outline=absent
+  7.324  becomeKey BEFORE [AppKitWindow] frame={{360, 185}, {1200, 680}} key=false first=AppKitWindow initial=nil outline=absent
+  7.325  becomeKey AFTER [AppKitWindow] frame={{360, 185}, {1200, 680}} key=true first=AppKitWindow initial=nil outline=absent
+  7.333  makeKeyAndOrderFront AFTER [AppKitWindow] frame={{360, 185}, {1200, 680}} key=true first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=absent
+  7.434  probe attached: frame={{360, 185}, {1200, 680}} key=true first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=false
+  7.675  poll+0.1s: first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  7.839  poll+0.3s: first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  7.972  poll+0.5s: first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  8.463  poll+1.0s: first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+  9.530  poll+2.0s: first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+ 11.634  poll+4.0s: first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=present
+ 13.110  makeKeyAndOrderFront BEFORE [AppKitWindow] frame={{360, 185}, {1200, 680}} key=true first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=SwiftUIOutlineListView
+ 13.111  makeKeyAndOrderFront AFTER [AppKitWindow] frame={{360, 185}, {1200, 680}} key=true first=AppKitWindow initial=AppKitWindowHostingView<ModifiedContent<ModifiedContent<EditorView, _FlexFrameLayout>, RootModifier>> outline=SwiftUIOutlineListView
