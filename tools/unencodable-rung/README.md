@@ -45,3 +45,9 @@ it lands in ADR-0037's own 11–14 : 1 band.
 
 Inherited unchanged from the sidebar-boundary fork, except `launch.sh`, which now threads
 `APPTAPE_RUNG` instead of `APPTAPE_BOUNDARY`.
+
+## After-pictures
+
+`shots/after-*.png` are the **shipped** shape (PR #124), shot from the same Release product:
+`after-{dark,light}-{1200,960}.png` and `after-sticky-{dark,light}.png` (a tick on a rung that
+cannot encode). The reason holds at **11.71 : 1 Dark / 13.02 : 1 Light** in all six.
