@@ -465,21 +465,66 @@ struct ExportInspector: View {
         }
     }
 
+    /// Blocked while the effective preset can't encode this file, until a working rung is chosen
+    /// (ADR-0015), while the Trim holds nothing, and while an Export of this Recording runs.
+    private var isBlocked: Bool {
+        recording.trimmedDuration <= 0 || coordinator.isExporting
+            || !effectiveEncodability.isAvailable
+    }
+
+    /// PROTOTYPE (#125). The shipped shape is `a`; the others are the measured ladder.
+    @ViewBuilder
     private var exportButton: some View {
-        // The width is asked for on the **label**, not on the `Button`. `.frame(maxWidth: .infinity)`
-        // on a `Button` widens the layout slot and leaves the control hugging its title inside it,
-        // which is why the old `Export…` centred itself and the code's intent and the render
-        // disagreed (issue #73, finding 37). Widening the label widens the button.
+        switch ExportButtonVariant.current {
+        case .a: baseButton(prominent: true)
+        case .b: baseButton(prominent: !isBlocked)
+        case .c: liftedLabelButton
+        case .d:
+            if isBlocked { blockedSentence(.secondary) } else { baseButton(prominent: true) }
+        case .e:
+            if isBlocked { blockedSentence(.primary) } else { baseButton(prominent: true) }
+        }
+    }
+
+    // The width is asked for on the **label**, not on the `Button`. `.frame(maxWidth: .infinity)`
+    // on a `Button` widens the layout slot and leaves the control hugging its title inside it,
+    // which is why the old `Export…` centred itself and the code's intent and the render
+    // disagreed (issue #73, finding 37). Widening the label widens the button.
+    private var rawButton: some View {
         Button {
             coordinator.export(recording: recording, preset: effectivePreset)
         } label: {
             Text("Export…").frame(maxWidth: .infinity)
         }
+        .disabled(isBlocked)
+    }
+
+    @ViewBuilder
+    private func baseButton(prominent: Bool) -> some View {
+        if prominent { rawButton.buttonStyle(.borderedProminent) }
+        else { rawButton.buttonStyle(.bordered) }
+    }
+
+    /// `c` — the label drawn *outside* the disabled Button, so `.disabled()`'s text dimming never
+    /// reaches it. The Button keeps its prominent fill and its own (empty) label.
+    private var liftedLabelButton: some View {
+        Button {
+            coordinator.export(recording: recording, preset: effectivePreset)
+        } label: {
+            Text(" ").frame(maxWidth: .infinity)
+        }
         .buttonStyle(.borderedProminent)
-        // Blocked while the effective preset can't encode this file, until a working rung is chosen
-        // (ADR-0015).
-        .disabled(recording.trimmedDuration <= 0 || coordinator.isExporting
-                  || !effectiveEncodability.isAvailable)
+        .disabled(isBlocked)
+        .overlay { if isBlocked { Text("Export…").foregroundStyle(.white) } }
+    }
+
+    /// `d` — no control at all while blocked, in the idiom `exportControl` already uses for a
+    /// Recording that is still capturing.
+    private func blockedSentence(_ style: HierarchicalShapeStyle) -> some View {
+        Label("Nothing to export yet.", systemImage: "square.and.arrow.up")
+            .font(.callout)
+            .foregroundStyle(style)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func runningControl(_ fraction: Double) -> some View {
