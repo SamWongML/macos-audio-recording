@@ -144,6 +144,16 @@ struct TrimTimeline: View {
     /// per-appearance magic number, and survives Increase Contrast as an alpha overlay does not.
     /// It also leaves the Trim as the only indigo on the lane, which is the point of the ADR.
     ///
+    /// **The under-copy is `Palette.signalQuiet` / `signalMutedQuiet`, not `.grayscale(1)`, and
+    /// ADR-0040 amends that "colour, not brightness" clause rather than repeating it.** The filter
+    /// moved brightness ~13% in both appearances — the correct direction in Dark, the wrong one in
+    /// Light, where the Trimmed-away half rendered *louder* than the kept half and the playhead
+    /// measured 2.82 : 1 over its peaks. The stops are the two Dark greys the filter itself
+    /// produced and the two Light greys that recede by the same proportions, so Dark is unchanged
+    /// and Light now says what the comment above always claimed. The magic number ADR-0019 refused
+    /// is still refused: these are named per-appearance stops in the asset catalogue, not an alpha
+    /// tuned by eye, and they survive Increase Contrast for the reason `Palette` states.
+    ///
     /// **The lane must cut, never cross-fade, when the selection changes** — the first entry on
     /// ADR-0028's forbid-list, and a correctness matter rather than a taste one. Interpolating one
     /// Recording's peaks into another's animates a relationship between two files that does not
@@ -152,13 +162,17 @@ struct TrimTimeline: View {
     /// The Trim's own redraw is exempt because it is direct manipulation — the grayscale mask
     /// tracks the drag continuously, which is why it needs no animation of its own.
     private func waveform(x: @escaping (Double) -> Double, width: Double) -> some View {
-        let shape = WaveformShape(columns: envelope.columns(over: visible, count: Int(width)),
+        let columns = envelope.columns(over: visible, count: Int(width))
+        let shape = WaveformShape(columns: columns,
                                   peakStyle: AnyShapeStyle(Palette.signal),
                                   bodyStyle: AnyShapeStyle(Palette.signalMuted))
+        let quiet = WaveformShape(columns: columns,
+                                  peakStyle: AnyShapeStyle(Palette.signalQuiet),
+                                  bodyStyle: AnyShapeStyle(Palette.signalMutedQuiet))
         let keptStart = x(recording.trim.lowerBound)
         let keptWidth = max(0, x(recording.trim.upperBound) - keptStart)
         return ZStack(alignment: .topLeading) {
-            shape.grayscale(1)
+            quiet
             shape.mask(alignment: .topLeading) {
                 Rectangle().frame(width: keptWidth).offset(x: keptStart)
             }

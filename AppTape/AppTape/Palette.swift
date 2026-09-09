@@ -53,4 +53,39 @@ enum Palette {
     /// No High Contrast variant, deliberately: raising a *field's* contrast makes the lane louder
     /// without making anything more legible, and fights the anti-halation reason it exists.
     static let signalMuted = Color(.signalMuted)
+
+    /// The Trimmed-away audio's peaks — `signal`'s counterpart outside the Trim.
+    ///
+    /// The lane used to make this colour by drawing the waveform a second time under
+    /// `.grayscale(1)`, on the stated grounds that what changes outside the Trim is *colour, not
+    /// brightness* (ADR-0019). **Measured, that was never true** (ADR-0040): `grayscale(1)`
+    /// preserves luminance only approximately, and it moved the Trimmed-away half ~13% — down in
+    /// Dark, which recedes and reads correctly, and **up in Light**, where the Trimmed-away half
+    /// came out *louder* than the kept half and the black playhead measured **2.82 : 1** over
+    /// these peaks, under ADR-0033's 3 : 1 floor.
+    ///
+    /// So the quiet half is authored rather than filtered. Dark `#666666` **renders `(91,91,91)`**,
+    /// exactly what `grayscale(1)` rendered — Dark measured correctly and stays a control. Light
+    /// `#707070` **renders `(101,101,101)`**, receding from `signal`'s rendered peaks by the same
+    /// **19%** of luminance Dark already receded by, which is what puts the playhead at
+    /// **3.60 : 1** — the floor is cleared by the relationship, not by a number chosen to clear it.
+    ///
+    /// **The authored value is not the rendered one**, which cost a calibration pass: the capture
+    /// path drops every colour ~10 encoded levels (`signal`'s own `#5E5CE6` renders `(83,81,220)`),
+    /// so these stops are chosen to make the *render* land on its target. Both numbers are given
+    /// above for that reason — the second is the one that was measured.
+    ///
+    /// No High Contrast variant, and not by omission: Increase Contrast moves `signal` *away*
+    /// from the lane ground in both appearances, so a fixed grey recedes further in both
+    /// directions, which is the relationship this stop is for.
+    static let signalQuiet = Color(.signalQuiet)
+
+    /// The Trimmed-away audio's body — `signalMuted`'s counterpart outside the Trim, and the same
+    /// story as `signalQuiet`. Dark `#505050` **renders `(70,70,70)`**, what `grayscale(1)`
+    /// rendered; light `#7C7C7C` **renders `(113,113,113)`**, receding by the **13%** Dark's body
+    /// already receded by.
+    ///
+    /// It stays darker than its ground and lighter than `signalQuiet` in Light, so the Trimmed-away
+    /// half keeps the peak-against-body structure that says it is still audio.
+    static let signalMutedQuiet = Color(.signalMutedQuiet)
 }
