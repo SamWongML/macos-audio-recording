@@ -24,6 +24,10 @@ _Avoid_: Archive, history, gallery
 The start and end points that select which part of a Recording is Exported. Choosing them never alters the Recording, so a Trim can be widened, narrowed, or undone at any time.
 _Avoid_: Cut, crop, edit, splice
 
+**Trimmed-away**:
+The part of a Recording that falls outside its Trim. It is still audio and still there — only its exclusion from the Export distinguishes it — so it is always shown, quieter than the kept part rather than removed from the picture.
+_Avoid_: Cut, removed, deleted, greyed, desaturated
+
 **Export**:
 Producing a finished audio file from a Recording at a chosen Quality Preset.
 _Avoid_: Save, render, bounce, share
