@@ -140,7 +140,7 @@ pane's content stops fitting between 460 and 480 pt of window height, and an ove
 `NavigationSplitView` plus permanent `.inspector` does not clip, it aborts. Measured on this
 layout: 960 × 460 aborts, 960 × 480 does not; the shorter pane this replaces was fine at 420. The
 floor is 500 as a backstop, though the content's own minimum usually resolves higher — a Recording
-with a Seam line and four brief rows clamps the window at 552. *(Still the detail pane's own minimum, but it stopped being the binding one: since [#114](https://github.com/SamWongML/macos-audio-recording/issues/114) the trailing column asks for **604**, so the window floor is the column's, not this pane's.)*
+with a Seam line and four brief rows clamps the window at 552. *(Still the detail pane's own minimum, but it stopped being the binding one: since [#114](https://github.com/SamWongML/macos-audio-recording/issues/114) the declared `minHeight` is **604**, so the floor is that declaration's, not this pane's — and the window it produces is **960 × 656**, 604 plus the 52 pt title bar ([ADR-0038](0038-the-dock-has-a-fill-and-it-is-the-bars-own.md)).)*
 
 **Issue #85 is untouched and stays open.** Probed on this layout with the width floor temporarily
 lowered: the editor still aborts at 800 pt wide. The loop lives in the trailing pane, not in the

@@ -101,7 +101,7 @@ field being typed into.
 
 **This is not the rejected alternative below.** It does not force the emphasized *fill*; it moves
 the *keyboard*, and the fill then tells the truth about where the keyboard is, which is what this
-ADR asks of it. Verified on screen at 1200 × 680 and at the 960 × 552 floor, in both appearances: *(That floor was **552**; [#114](https://github.com/SamWongML/macos-audio-recording/issues/114) moved it to **604** — `safeAreaBar` reserves height for the scroll edge effect it carries. The verification stands as taken; the number it names is historical.)*
+ADR asks of it. Verified on screen at 1200 × 680 and at the 960 × 552 floor, in both appearances: *(That floor was **552**; [#114](https://github.com/SamWongML/macos-audio-recording/issues/114) moved it to **656** — the code declares a content height of 604 and the window adds the 52 pt title bar ([ADR-0038](0038-the-dock-has-a-fill-and-it-is-the-bars-own.md); `safeAreaBar` itself costs nothing). The verification stands as taken; the number it names is historical.)*
 the row opens on the accent — `(47, 108, 248)` Dark, `(43, 98, 236)` Light — ↓ moves the selection,
 and Tab into the search field then typing (including a query that matches nothing) leaves
 `AXFocusedUIElement` an `AXSearchField` throughout.
