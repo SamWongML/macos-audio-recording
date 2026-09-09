@@ -133,6 +133,9 @@ struct EditorView: View {
         // Trash, so ⌘⌫ cannot fire out of the search field or a Trim drag (ADR-0020).
         .focusedValue(\.librarySidebarRecording, model.selection?.url)
         .navigationSplitViewColumnWidth(min: 232, ideal: 268, max: 360)
+        // PROTOTYPE (#115) — never merged. See `BoundaryVariant`. Variants d/e take the
+        // sidebar's fill off the system so a scrim has something opaque to sit on.
+        .scrollContentBackground(BoundaryVariant.current.wantsOpaqueSidebar ? .hidden : .automatic)
         .safeAreaInset(edge: .bottom) {
             // Nothing critical lives down here: the HIG's Sidebars page warns that people
             // relocate windows in ways that hide the bottom edge.
@@ -151,6 +154,19 @@ struct EditorView: View {
             // editor was honouring neither of the two (issue #73, finding 15).
             .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
                                            : AnyShapeStyle(.bar))
+        }
+        // PROTOTYPE (#115) — never merged. The trailing column's instrument, on the other
+        // boundary: flat black at the same alpha, deliberately not appearance-adaptive.
+        .background {
+            if BoundaryVariant.current.wantsScrim {
+                ZStack {
+                    if BoundaryVariant.current.wantsOpaqueSidebar {
+                        Color(nsColor: .windowBackgroundColor)
+                    }
+                    Color.black.opacity(BoundaryVariant.scrim)
+                }
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -262,6 +278,20 @@ struct EditorView: View {
                     }
                     .ignoresSafeArea(edges: .top)
                 }
+        }
+        // PROTOTYPE (#115) — never merged. On the `HStack`, not on `detailContent`: the detail
+        // has no intrinsic height in the three empty states, so an overlay there drew **169 pt**
+        // of hairline in a 680 pt window — issue #103's finding 3, on this boundary. The line
+        // runs to the window's *top* edge, which is what issue #7 hid the toolbar background for
+        // and what ADR-0035 then used for the trailing column. Finder draws one at x = 202-205
+        // (research 0008, finding 3).
+        .overlay(alignment: .leading) {
+            if BoundaryVariant.current.wantsDivider {
+                Color(nsColor: .separatorColor)
+                    .frame(width: 1)
+                    .frame(maxHeight: .infinity)
+                    .ignoresSafeArea(edges: .top)
+            }
         }
     }
 
