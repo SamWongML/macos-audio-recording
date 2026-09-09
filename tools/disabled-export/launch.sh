@@ -29,7 +29,7 @@ else
 fi
 sleep 1.2
 
-APPTAPE_SWEEP_A11Y=$A11Y APPTAPE_XBTN=${APPTAPE_XBTN:-a} "$APP/Contents/MacOS/AppTape" >/dev/null 2>&1 &
+APPTAPE_SWEEP_A11Y=$A11Y APPTAPE_XBTN=${APPTAPE_XBTN:-a} APPTAPE_XTEXT=${APPTAPE_XTEXT:-} "$APP/Contents/MacOS/AppTape" >/dev/null 2>&1 &
 sleep 4.5
 PID=$(pgrep -f "Release/AppTape.app/Contents/MacOS/AppTape" | tail -1)
 osascript "$HERE/statusclick.applescript" $PID >/dev/null; sleep 1.6

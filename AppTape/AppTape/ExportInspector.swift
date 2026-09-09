@@ -521,7 +521,8 @@ struct ExportInspector: View {
     /// `d` — no control at all while blocked, in the idiom `exportControl` already uses for a
     /// Recording that is still capturing.
     private func blockedSentence(_ style: HierarchicalShapeStyle) -> some View {
-        Label("Nothing to export yet.", systemImage: "square.and.arrow.up")
+        Label(ProcessInfo.processInfo.environment["APPTAPE_XTEXT"] ?? "Nothing to export yet.",
+              systemImage: "square.and.arrow.up")
             .font(.callout)
             .foregroundStyle(style)
             .frame(maxWidth: .infinity, alignment: .leading)
