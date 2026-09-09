@@ -450,19 +450,54 @@ struct ExportInspector: View {
     private var exportControl: some View {
         if recorder.isCapturing(recording) {
             // Its `.caf` is still growing and its Trim end is undefined until Stop (ADR-0012).
-            Label("This Recording is still capturing.", systemImage: "record.circle")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            // In ink, like every other sentence in this slot: `.secondary` here measured
+            // **3.89 : 1 in Light** (issue #125), the same figure #119 rejected for the rungs.
+            dockSentence("This Recording is still capturing.", icon: "record.circle")
         } else if coordinator.subjectURL == recording.url {
             switch coordinator.phase {
-            case .idle: exportButton
+            case .idle: exportControlOrRefusal
             case .running(let fraction): runningControl(fraction)
             case .succeeded(let url): succeededControl(url)
             case .failed(let message): failedControl(message)
             }
         } else {
-            exportButton
+            exportControlOrRefusal
         }
+    }
+
+    /// Why an Export cannot be started right now, or `nil` when it can (ADR-0042).
+    ///
+    /// The three are ordered by what the user can do about them. A Trim that holds nothing is the
+    /// only one nothing else on screen explains; an unavailable Quality Preset is already stated on
+    /// its own rung at full strength (ADR-0041), so the dock names the situation and leaves the
+    /// specifics there; a running Export is reachable here only when the Recording was renamed
+    /// out from under it, which moves `recording.url` while `subjectURL` keeps the old one.
+    private var refusal: String? {
+        if recording.trimmedDuration <= 0 { return "Nothing in the Trim to export." }
+        if !effectiveEncodability.isAvailable { return "This quality can't encode this file." }
+        if coordinator.isExporting { return "An Export is already running." }
+        return nil
+    }
+
+    /// **The dock states a refusal; it does not wear one** (ADR-0042). A disabled
+    /// `.borderedProminent` button is dimmed twice — the control at α ≈ 0.69 over the column's
+    /// ground and its label at a further α = 0.50 over that — which put `Export…` at
+    /// **1.75 : 1 in Light** and under 3 : 1 in all four measured cells. So there is no disabled
+    /// button: when an Export cannot start, the button is replaced by the sentence that says why,
+    /// which measures **12.66 / 13.87** and does not move when the window loses key.
+    @ViewBuilder
+    private var exportControlOrRefusal: some View {
+        if let refusal { dockSentence(refusal, icon: "square.and.arrow.up") }
+        else { exportButton }
+    }
+
+    /// The dock's one sentence shape. Holds the button's own box, so the dock keeps the single
+    /// declared height ADR-0025 pinned and nothing above it moves.
+    private func dockSentence(_ text: String, icon: String) -> some View {
+        Label(text, systemImage: icon)
+            .font(.callout)
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var exportButton: some View {
@@ -476,10 +511,6 @@ struct ExportInspector: View {
             Text("Export…").frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        // Blocked while the effective preset can't encode this file, until a working rung is chosen
-        // (ADR-0015).
-        .disabled(recording.trimmedDuration <= 0 || coordinator.isExporting
-                  || !effectiveEncodability.isAvailable)
     }
 
     private func runningControl(_ fraction: Double) -> some View {
