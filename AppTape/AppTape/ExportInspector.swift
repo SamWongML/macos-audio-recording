@@ -194,16 +194,29 @@ struct ExportInspector: View {
         }
     }
 
-    /// One Quality Preset rung: checkmark, name, codec, and its **own** size estimate.
+    /// One Quality Preset rung: checkmark, name, codec, and its **own** size estimate — and, on a
+    /// rung that cannot encode, the plain reason why, *below* the control rather than inside it.
     ///
     /// A rung the source's format can't encode faithfully is disabled and dimmed, and states its
-    /// plain reason where its codec would be — so every unusable rung says why, not just the
-    /// effective one (ADR-0015). With all four reasons on screen, the disabled Export button below
-    /// reads as "pick a rung that fits" without a separate sentence saying so.
+    /// plain reason in place of its codec — so every unusable rung says why, not just the effective
+    /// one (ADR-0015). With all four reasons on screen, the disabled Export button below reads as
+    /// "pick a rung that fits" without a separate sentence saying so.
+    ///
+    /// **The reason is not part of the control, so it is not inside it** (ADR-0041). It used to be
+    /// the second `Text` of the button's label, in `Color.orange`, on a row carrying both
+    /// `.disabled(true)` and an explicit `.opacity(0.5)` — and it measured **1.58 : 1 in Dark and
+    /// 1.22 : 1 in Light**, the worst figures this app has recorded, for the one sentence on the row
+    /// that has to be read. Three multiplications stacked: an alarm colour that is unreadable as
+    /// words in Light (ADR-0037), the explicit halving, and — the one that is invisible in the
+    /// source — **`.disabled()`'s own dimming of its subtree's text**. Exempting the sentence from
+    /// the explicit `.opacity` alone recovers only 4.03 / 3.01, because the system's half is still
+    /// applied. Lifting it clear of the `Button` recovers **11.71 / 13.02**, which is where
+    /// ADR-0037 put the dock's sentences.
     private func rung(_ preset: QualityPreset) -> some View {
         let encodability = preset.encodability(for: format)
         let isSelected = preset == effectivePreset
-        return Button {
+        return VStack(alignment: .leading, spacing: 1) {
+        Button {
             pick(preset)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
@@ -212,7 +225,7 @@ struct ExportInspector: View {
                 Image(systemName: "checkmark")
                     .font(.caption.weight(.semibold))
                     .opacity(isSelected ? 1 : 0)
-                    .frame(width: 12)
+                    .frame(width: Self.checkmarkSlotWidth)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(preset.displayName)
@@ -223,11 +236,14 @@ struct ExportInspector: View {
                     // wrapped every rung onto two lines in a 276 pt pane. Stated once beneath the
                     // rungs instead. Issue #9's "codec, bitrate, rate and channels, visible and
                     // never editable" still holds; it is simply said once rather than four times.
-                    Text(encodability.reason ?? preset.codecLabel)
-                        .font(.caption)
-                        .foregroundStyle(encodability.isAvailable ? AnyShapeStyle(.secondary)
-                                                                  : AnyShapeStyle(Color.orange))
-                        .lineLimit(2)
+                    // Only on a rung that *can* encode: the unencodable rung's second line is its
+                    // reason, and that is drawn below, outside this button.
+                    if encodability.isAvailable {
+                        Text(preset.codecLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
 
                 Spacer(minLength: Metrics.xs)
@@ -239,6 +255,14 @@ struct ExportInspector: View {
                 // dock below already says the Recording is still capturing and refuses the export
                 // (ADR-0012); a confident size for an export that cannot happen is the inspector
                 // disagreeing with itself two rows down.
+                //
+                // **And no estimate on a rung that cannot encode at all**, which is the same rule
+                // reaching a second cause (ADR-0041). `≈ 457 KB` beside `AAC can't encode above
+                // 48 kHz` is the inspector disagreeing with itself on one row rather than two, and
+                // the figure is also what reserved the width that truncated the reason: every one
+                // of the three reasons `ZZ Probe 96k` renders was cut short at `1200 × 680`, not
+                // only at the 276 pt floor. Dropping it is what lets the sentence finish.
+                if encodability.isAvailable {
                 Text(isStillArriving ? "—"
                                      : ExportSizeEstimate.text(preset: preset, format: format,
                                                                duration: recording.trimmedDuration))
@@ -250,6 +274,7 @@ struct ExportInspector: View {
                     // never digits (ADR-0028).
                     .textTransition(.numericText())
                     .motion(Metrics.motionState, value: recording.trimmedDuration)
+                }
             }
             .contentShape(Rectangle())
         }
@@ -269,7 +294,35 @@ struct ExportInspector: View {
                                                                        duration: recording.trimmedDuration)]
                                 .joined(separator: ", "))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+
+            // The refusal, at full strength, outside everything that dims. Indented to the name's
+            // own left edge — 12 pt of checkmark slot plus the `HStack`'s spacing — so it still
+            // reads as this rung's second line and not as a note about the section.
+            //
+            // **No ⚠, deliberately.** ADR-0037's split hands the alarm to a mark and the meaning to
+            // the words; here there is no mark to hand it to, and adding one costs width in a 276 pt
+            // pane where this sentence was already truncating — measured: the glyph pushed `this
+            // file is 96 kHz.` off the end. What separates a refusal from a codec label instead is
+            // that the name above it is dimmed and the sentence is not, and that the rung states no
+            // size. ADR-0037 asks for a *test* before a fourth mark, not a habit; this fails it.
+            //
+            // `.accessibilityHidden` because the button above already carries this string in its
+            // `accessibilityValue`: the rung speaks once (ADR-0025), and a VoiceOver user should not
+            // hear the reason twice for moving through one row.
+            if let reason = encodability.reason {
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .padding(.leading, Self.checkmarkSlotWidth + Metrics.sm)
+                    .accessibilityHidden(true)
+            }
+        }
     }
+
+    /// The leading slot every rung reserves for its checkmark, shared by the mark and by the
+    /// indent that keeps an unencodable rung's reason aligned under the preset's name.
+    private static let checkmarkSlotWidth: CGFloat = 12
 
     /// The rate and channel count Export carries through untouched, said **once**: they are the
     /// source's, identical on every rung, and issue #9 asks for them to be visible, not repeated.
