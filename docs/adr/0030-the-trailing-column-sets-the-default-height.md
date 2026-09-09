@@ -20,7 +20,7 @@ Measured against the running Release build with the real 39-Recording Library (i
 | the lane reaches its 340 pt cap | **620** |
 | the trailing column stops drawing a scroller | **645** |
 | …and with the longest Correction caption | **670** |
-| the window's real height floor | **552** — the content's, not the declared 500 *(**552 until [#114](https://github.com/SamWongML/macos-audio-recording/issues/114); 604 after it, and declared. See below.**)* |
+| the window's real height floor | **552** — the content's, not the declared 500 *(**552 until [#114](https://github.com/SamWongML/macos-audio-recording/issues/114); 656 after it. 604 is what the code declares, and it is a content height — ADR-0038.**)* |
 | the window's real width floor | **960** — the declared one |
 
 Above 620 the lane has all the height [ADR-0023](0023-the-detail-pane-is-ruler-lane-brief-dock.md)
@@ -49,6 +49,10 @@ to `safeAreaBar`, which reserves height for the scroll edge effect it carries an
 minimum by **52 pt**. The floor is now **604**, and the code declares it rather than declaring a
 number nothing can reach. So **every figure on this page, and every "at the 960 floor" measurement
 in any ticket up to and including #113, means 960 × 552**; anything from #114 onward means 960 × 604.
+*(Corrected by [ADR-0038](0038-the-dock-has-a-fill-and-it-is-the-bars-own.md): **read that second
+number as 960 × 656.** `safeAreaBar` costs 0 pt of minimum — the 52 pt is the title bar, which 552
+already contained, added a second time. 604 is the declared *content* height; the window it produces
+is 656.)*
 The scroller this ADR calls "wrong" is, at that floor, accepted: it appears only when the content
 genuinely does not fit, and it was measured stopping ~27 pt clear of the dock rather than
 overlapping it by 8.)*

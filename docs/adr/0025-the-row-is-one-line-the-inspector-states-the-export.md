@@ -73,9 +73,9 @@ would be, so every unusable rung says why, not just the effective one (ADR-0015)
 fact, and it wrapped every rung onto two lines in a 276 pt pane. Issue #9's "codec, bitrate, rate and
 channels, visible and never editable" still holds — it is simply said once rather than four times.
 
-**All four Export phases share one height.** *(Unchanged by ADR-0036 and re-verified at the 960
-floor in all four phases: the scroll edge effect draws inside the declared 34 pt, it does not resize
-the dock.)* Idle, running, succeeded and failed each laid out to
+**All four Export phases share one height.** *(Unchanged by ADR-0036 and re-verified at the 960 ×
+656 floor in all four phases: the bar's fill draws inside the declared 34 pt, it does not resize the
+dock — ADR-0038 for the fill's provenance and the floor's arithmetic.)* Idle, running, succeeded and failed each laid out to
 their own intrinsic height, so the dock moved twice during a two-second job. They now share a single
 declared height sized to the tallest phase, which is a two-line failure; `Try Again…` steps down
 from prominent to plain, because a failure the user has just read is not the moment for the loudest
@@ -94,10 +94,16 @@ background, and where a line should start and stop stops being a question. The `
 own background so it does not paint over that, and the Export dock gives up its `.bar` for the same
 reason — a darkening bar over a column that already reads as separate is the decorative chrome
 ADR-0019 spends its budget avoiding. *(Amended by
-[ADR-0036](0036-the-docks-boundary-is-the-systems-and-it-is-conditional.md): the dock still takes no
-fill, but at the 960 × 604 floor the column scrolls beneath it, and the boundary there is the system's
-**conditional** scroll edge effect, reached by pinning with `safeAreaBar` rather than
-`safeAreaInset`. "No fill and no rule" stands; it was written against the older of two modifiers.)*
+[ADR-0036](0036-the-docks-boundary-is-the-systems-and-it-is-conditional.md) and corrected by
+[ADR-0038](0038-the-dock-has-a-fill-and-it-is-the-bars-own.md): the dock is pinned with
+`safeAreaBar` rather than `safeAreaInset`, which is what stops the column drawing through it — and
+**that modifier brings a fill of its own**, 27 → 35 in Dark and 242 → 250 in Light with a 0.5 pt
+hairline, unconditionally and at every size, not only where content passes beneath. **"No fill and
+no rule" no longer holds for this control.** It is retired here rather than defended, because that
+band is exactly what dims the content, and Apple Music's sidebar dock draws its own. The `.bar` this
+paragraph deleted is still deleted: what remains is the system's, not ours, and there is no way to
+switch it off. Everywhere else in the editor — the transport above all — "no fill and no rule"
+stands.)*
 
 ## Consequences
 

@@ -57,6 +57,12 @@ struct AppTapeApp: App {
                 // is the number in force; asked for 500 it resolves to **552**, because the
                 // content's own minimum is higher and always wins.
                 //
+                // **That last clause is wrong, and it is why the number below is misread**
+                // (#120, ADR-0038). 552 is not the content winning: `.frame(minHeight:)` constrains the
+                // *content*, and the window frame adds the 52 pt title bar on top of it. The
+                // declared minimum then was 500, and 500 + 52 = 552. Height binds exactly as
+                // width does — it just reports itself 52 pt higher.
+                //
                 // **So the declared number is 604, not 500** (#114). It used to be 500 with a
                 // note calling it "honest about never being the number you hit" — which is the
                 // one thing a declared minimum must not be. A constant nothing can reach is not a
@@ -72,6 +78,16 @@ struct AppTapeApp: App {
                 // defaults, both clamping to exactly **960 × 604**, with 605 holding. Writing 552
                 // here would have re-created, in the same commit, the stale-declared-minimum bug
                 // this line exists to kill.
+                //
+                // **604 is right and the reason above is not** (#120, ADR-0038). `safeAreaBar` costs
+                // **0 pt** of minimum height: with the same declared `minHeight` of 380,
+                // `safeAreaInset` and `safeAreaBar` both clamp to 960 × 432. The 52 pt is the
+                // title bar, added a second time — 552 already contained it. So this number is a
+                // **content** height, which is what `.frame(minHeight:)` means and the right thing
+                // to constrain, and **the shortest window it produces is 960 × 656**: asked for
+                // 400, 500, 600, 620, 640, 650 and 655 the window resolves to 656 every time, and
+                // 660 holds. "960 × 604" is not a window any machine can produce, so no screenshot
+                // was ever taken at one.
                 //
                 // **The floor was deliberately *not* raised to 672** to stop the trailing column
                 // scrolling (#114). That was the live alternative: ADR-0030 measured 645 as where

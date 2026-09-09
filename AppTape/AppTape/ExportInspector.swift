@@ -145,19 +145,28 @@ struct ExportInspector: View {
                 .padding(.horizontal, Metrics.lg)
                 .padding(.vertical, Metrics.md)
                 .frame(maxWidth: .infinity)
-                // **Still no fill and no rule** (ADR-0025, unreversed). The `.bar` here was
-                // separating the dock from a `Form` that painted the window background; now that
-                // the column carries its own, a darkening bar over it is the decorative chrome
-                // ADR-0019 spends its budget avoiding. The dock separates by air and by alignment
-                // — and, where content actually passes beneath it, by the system's own
-                // **conditional** boundary, which `safeAreaBar` above turns on.
+                // **No fill of ours, and the bar brings one of its own** (#120, ADR-0038,
+                // amending ADR-0025's "no fill and no rule" for this one control). The `Material.bar` that
+                // used to be written here is gone and stays gone. What replaced it is
+                // `safeAreaBar`'s own background: **27 → 35 in Dark, 242 → 250 in Light, with a
+                // 0.5 pt hairline at 43 and 218**, over the bottom 58.5 pt of the column —
+                // measured at 960 × 900, where the column has 200 pt of slack, draws no scroller,
+                // and has nothing passing beneath it at all. `safeAreaInset` at that same size
+                // paints neither.
                 //
-                // **`.scrollEdgeEffectStyle(.hard, …)` was measured and rejected** (ADR-0036):
-                // it paints an unconditional band at *every* size — 27 → 35 in Dark, 242 → 250 in
-                // Light at the 1200 × 680 default, where nothing scrolls at all — which is the
-                // `.bar` this comment deleted, under a system name. The default `.automatic`
-                // measured 0/0/0 there: it draws only where content overlaps. Nothing is set
-                // here on purpose; `.automatic` is what `safeAreaBar` already gives.
+                // **That band is what does the work**, so it is kept rather than fought. A/B on
+                // identical pixels at 960 × 460: under `safeAreaInset` the `Normalize loudness`
+                // row draws over the `Export…` button at full strength (issue #114); under
+                // `safeAreaBar` it keeps **13% of its contrast** — which is what Apple Music's
+                // sidebar dock does to the playlist row travelling under it, measured at 14%.
+                //
+                // **Nothing is set here on purpose, and there is nothing to set.**
+                // `.scrollEdgeEffectStyle` with `.automatic`, `.soft` or `nil`, and
+                // `.scrollEdgeEffectHidden(true, for: .bottom)`, are all pixel-identical to
+                // writing nothing. `.hard` is the only value that changes anything: it *erases*
+                // content passing beneath instead of dimming it. ADR-0036 read the band above as
+                // `.hard`'s and `.automatic` as conditional; both styles paint it, to within
+                // 4/255, wherever nothing is passing under the dock.
         }
         // **No `.motion` here.** Four of them used to sit on this `Form`, and that is why the
         // trailing column travelled in from the top-left of the detail pane and took seconds to
