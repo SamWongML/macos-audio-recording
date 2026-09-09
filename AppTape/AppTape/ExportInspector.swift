@@ -194,6 +194,33 @@ struct ExportInspector: View {
         }
     }
 
+    /// Prototype only (#119): the rung's second line — the codec label, or the plain reason a rung
+    /// that cannot encode states in its place (ADR-0015).
+    @ViewBuilder
+    private func reasonLine(_ encodability: QualityPreset.Encodability, preset: QualityPreset,
+                            variant: RungVariant, partOpacity: Double) -> some View {
+        if let reason = encodability.reason {
+            switch variant {
+            case .a:
+                Text(reason).font(.caption).foregroundStyle(Color.orange).lineLimit(2)
+            case .b:
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2).foregroundStyle(Color.orange)
+                    Text(reason).foregroundStyle(.primary)
+                }
+                .font(.caption).lineLimit(2)
+            case .c:
+                Text(reason).font(.caption).foregroundStyle(.primary).lineLimit(2)
+            case .d, .e, .f:
+                Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+        } else {
+            Text(preset.codecLabel).font(.caption).foregroundStyle(.secondary)
+                .lineLimit(2).opacity(partOpacity)
+        }
+    }
+
     /// One Quality Preset rung: checkmark, name, codec, and its **own** size estimate.
     ///
     /// A rung the source's format can't encode faithfully is disabled and dimmed, and states its
@@ -203,7 +230,12 @@ struct ExportInspector: View {
     private func rung(_ preset: QualityPreset) -> some View {
         let encodability = preset.encodability(for: format)
         let isSelected = preset == effectivePreset
-        return Button {
+        let variant = RungVariant.current
+        let dim = encodability.isAvailable ? 1.0 : 0.5
+        let rowOpacity = variant.dimsWholeRow ? dim : 1.0
+        let partOpacity = variant.dimsWholeRow ? 1.0 : dim
+        return VStack(alignment: .leading, spacing: 1) {
+        Button {
             pick(preset)
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
@@ -213,21 +245,22 @@ struct ExportInspector: View {
                     .font(.caption.weight(.semibold))
                     .opacity(isSelected ? 1 : 0)
                     .frame(width: 12)
+                    .opacity(partOpacity)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(preset.displayName)
                         .foregroundStyle(.primary)
+                        .opacity(partOpacity)
                     // The **codec and bitrate only**, not the whole `subtitle(for:)`. The rate and
                     // channel count in that string come from the *source*, so all four rungs would
                     // print the same "· 48 kHz stereo" — four copies of one fact, and the thing that
                     // wrapped every rung onto two lines in a 276 pt pane. Stated once beneath the
                     // rungs instead. Issue #9's "codec, bitrate, rate and channels, visible and
                     // never editable" still holds; it is simply said once rather than four times.
-                    Text(encodability.reason ?? preset.codecLabel)
-                        .font(.caption)
-                        .foregroundStyle(encodability.isAvailable ? AnyShapeStyle(.secondary)
-                                                                  : AnyShapeStyle(Color.orange))
-                        .lineLimit(2)
+                    if !(variant.reasonOutsideButton && encodability.reason != nil) {
+                        reasonLine(encodability, preset: preset, variant: variant,
+                                   partOpacity: partOpacity)
+                    }
                 }
 
                 Spacer(minLength: Metrics.xs)
@@ -239,23 +272,26 @@ struct ExportInspector: View {
                 // dock below already says the Recording is still capturing and refuses the export
                 // (ADR-0012); a confident size for an export that cannot happen is the inspector
                 // disagreeing with itself two rows down.
+                if encodability.isAvailable || !variant.dropsEstimate {
                 Text(isStillArriving ? "—"
                                      : ExportSizeEstimate.text(preset: preset, format: format,
                                                                duration: recording.trimmedDuration))
                     .font(.caption).monospacedDigit()
                     .foregroundStyle(.secondary)
+                    .opacity(partOpacity)
                     // The estimate re-reckons as the Trim moves: a figure that ticks, which is
                     // what `.numericText()` is for. `.interpolate` used to be applied here from
                     // the `Form` and did nothing at all — it interpolates symbol and shape states,
                     // never digits (ADR-0028).
                     .textTransition(.numericText())
                     .motion(Metrics.motionState, value: recording.trimmedDuration)
+                }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!encodability.isAvailable)
-        .opacity(encodability.isAvailable ? 1 : 0.5)
+        .opacity(rowOpacity)
         .help(encodability.reason ?? "")
         // Not `readAloud`: this is a button, and collapsing it to a label/value pair the way an
         // inspector *row* wants would cost the button trait. The rung keeps its trait, states the
@@ -269,6 +305,16 @@ struct ExportInspector: View {
                                                                        duration: recording.trimmedDuration)]
                                 .joined(separator: ", "))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+
+        if variant.reasonOutsideButton, let reason = encodability.reason {
+            Text(reason)
+                .font(.caption)
+                .foregroundStyle(variant == .f ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                .lineLimit(2)
+                .padding(.leading, 12 + Metrics.sm)
+                .accessibilityHidden(true)
+        }
+        }
     }
 
     /// The rate and channel count Export carries through untouched, said **once**: they are the
