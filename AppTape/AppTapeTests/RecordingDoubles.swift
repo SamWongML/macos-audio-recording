@@ -1,0 +1,150 @@
+//
+//  RecordingDoubles.swift
+//  AppTapeTests
+//
+
+import AVFoundation
+import Foundation
+import Testing
+@testable import AppTape
+
+/// A Recording with no file behind it. This is what the memberwise init bought: before it, every
+/// one of these cost a 440 Hz CAF on disk, which is why nothing that *consumes* a Recording had
+/// tests. The default name is one of capture's own (ADR-0006), so `displayName` and
+/// `windowSubtitle` have something real to read.
+extension Recording {
+    /// Stands for *unstated* in `stub(byteCount:)`, so `nil` there can mean what it means on a real
+    /// file — the length could not be read (ADR-0021) — rather than "give me the default".
+    static let lengthFromFrameCount: Int64 = -1
+
+    static func stub(_ name: String = "Google Chrome 2026-09-13 at 21.51.03",
+                     seconds: Double = 90,
+                     sampleRate: Double = 48_000,
+                     storedSource: String? = "Google Chrome",
+                     recordedAt: Date? = nil,
+                     byteCount: Int64? = Recording.lengthFromFrameCount,
+                     identity: FileIdentity? = nil,
+                     storedTrim: Trim? = nil,
+                     gain: Double = 0,
+                     seams: [Seam] = [],
+                     isOpenable: Bool = true,
+                     in directory: URL = URL(filePath: "/Library")) -> Recording {
+        let frameCount = AVAudioFramePosition((seconds * sampleRate).rounded())
+        return Recording(url: directory.appendingPathComponent("\(name).caf"),
+                         frameCount: frameCount,
+                         sampleRate: sampleRate,
+                         isOpenable: isOpenable,
+                         // Unstated means the master's own 8 bytes a frame: interleaved
+                         // stereo Float32 (ADR-0003).
+                         openedByteCount: byteCount == Recording.lengthFromFrameCount
+                             ? frameCount * 8 : byteCount,
+                         fileIdentity: identity,
+                         storedSource: storedSource,
+                         recordedAt: recordedAt,
+                         storedTrim: storedTrim,
+                         gain: gain,
+                         seams: seams)
+    }
+}
+
+/// A reader over an in-memory Library: the test says what the folder holds and what each file
+/// reads as, and reads back how often it was asked. The second conformance of `RecordingReading`,
+/// and the reason that protocol exists — the store's whole job is reconciling a rename, a
+/// re-adoption and a vanish, none of which needs a real file to express.
+@MainActor
+final class StubRecordingReader: RecordingReading {
+    /// The folder's contents, in listing order. `RecordingReader` returns them unordered, so a
+    /// test that cares about order is testing the store's sort, not this.
+    var files: [URL] = []
+    /// What each file reads as. A url listed but absent here is one the gate declines (ADR-0015).
+    var adopted: [URL: Recording] = [:]
+    /// What each file's length reads as *now* — the number ADR-0021's staleness check turns on.
+    /// `place` keeps it agreeing with the Recording; `grow` is what makes them disagree.
+    var byteCounts: [URL: Int64] = [:]
+    var identities: [URL: FileIdentity] = [:]
+
+    private(set) var adoptCount = 0
+    private(set) var probeCount = 0
+
+    /// Every file in the folder is a settled Recording: it lists, it adopts, and its length and
+    /// identity agree with what it read. The state every case starts from.
+    @discardableResult
+    func place(_ name: String = "Google Chrome 2026-09-13 at 21.51.03",
+               seconds: Double = 90,
+               source: String? = "Google Chrome",
+               recordedAt: Date? = nil,
+               storedTrim: Trim? = nil,
+               seams: [Seam] = [],
+               isOpenable: Bool = true) -> Recording {
+        nextInode += 1
+        let recording = Recording.stub(name, seconds: seconds, storedSource: source,
+                                       recordedAt: recordedAt,
+                                       identity: FileIdentity(device: 1, inode: nextInode),
+                                       storedTrim: storedTrim, seams: seams, isOpenable: isOpenable)
+        register(recording)
+        return recording
+    }
+
+    /// Register a Recording as the settled reading of its own url, listing it if it is new.
+    func register(_ recording: Recording) {
+        if !files.contains(recording.url) { files.append(recording.url) }
+        adopted[recording.url] = recording
+        byteCounts[recording.url] = recording.openedByteCount
+        if let identity = recording.fileIdentity { identities[recording.url] = identity }
+    }
+
+    /// The file grew, and a fresh read of it is `replacement` — a master mid-capture, or a large
+    /// file still being copied in (ADR-0021). The url keeps its identity: it is the same file.
+    func grow(_ recording: Recording, to replacement: Recording) {
+        byteCounts[recording.url] = (recording.openedByteCount ?? 0) + 1
+        adopted[recording.url] = replacement
+    }
+
+    /// Move a file to a new path without changing what it is — what Finder does, and what the
+    /// store must follow rather than treat as one Recording vanishing and another appearing.
+    func move(_ recording: Recording, to newURL: URL) {
+        files = files.map { $0 == recording.url ? newURL : $0 }
+        let identity = identities.removeValue(forKey: recording.url)
+        let length = byteCounts.removeValue(forKey: recording.url)
+        adopted.removeValue(forKey: recording.url)
+        identities[newURL] = identity
+        byteCounts[newURL] = length
+        // A re-adopt of the new path reads the same file, so it reads the same facts.
+        adopted[newURL] = Recording.stub(newURL.deletingPathExtension().lastPathComponent,
+                                         seconds: recording.duration,
+                                         storedSource: recording.storedSource,
+                                         recordedAt: recording.recordedAt,
+                                         byteCount: recording.openedByteCount,
+                                         identity: identity,
+                                         in: newURL.deletingLastPathComponent())
+    }
+
+    /// The file is gone.
+    func remove(_ recording: Recording) {
+        files.removeAll { $0 == recording.url }
+        adopted.removeValue(forKey: recording.url)
+        byteCounts.removeValue(forKey: recording.url)
+        identities.removeValue(forKey: recording.url)
+    }
+
+    // MARK: - RecordingReading
+
+    func audioFiles(in directory: URL) -> [URL] { files }
+
+    func adopt(_ url: URL) -> Recording? {
+        adoptCount += 1
+        return adopted[url]
+    }
+
+    func byteCount(of url: URL) -> Int64? {
+        probeCount += 1
+        return byteCounts[url]
+    }
+
+    func identity(of url: URL) -> FileIdentity? {
+        probeCount += 1
+        return identities[url]
+    }
+
+    private var nextInode: ino_t = 0
+}

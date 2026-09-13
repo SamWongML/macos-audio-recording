@@ -90,6 +90,34 @@ this diff did not make it worse.
 
 ---
 
+## As built — Phase 4
+
+The suite went from 251 cases to 283. `RecordingReading` is back, with
+`StubRecordingReader` as the second conformance that justifies it, and `LibraryStore` holds it as
+`any RecordingReading` again — five lines, as predicted.
+
+Three things differ from the plan below:
+
+- **The split is not "four real-file cases".** Nine survive on disk, and each earns it: the
+  `st_size`-versus-xattr claim ADR-0021 names, a real file growing in place, the `public.audio`
+  gate, `AVAudioFile` refusing a broken CAF, the folder listing and its missing-directory case,
+  and the two rename cases, whose impure half is `FileManager.moveItem`. What left the disk is the
+  bookkeeping: which object survives, which is re-read, which drops out.
+- **`Recording.stub` needs a sentinel for an unreadable length.** `byteCount: Int64? = nil` cannot
+  tell *unstated* from *could not be stat'd*, and a bare `nil` argument binds to the outer optional
+  of an `Int64??`, so `lengthFromFrameCount` stands for unstated and `nil` means what it means on a
+  real file.
+- **`RecordingSeamsTests` and `CaptureRunTests` lost their fixtures too.** The seam-surfacing rule
+  is about Seams a Recording already has, and candidate 1's §5 test 26 said in as many words to
+  delete its CAF when this landed. `writeCAF` call sites fell from 26 to 23, all in suites where
+  real audio is the subject.
+
+New coverage, by file: `RecordingDayTests` (9 cases, over a type that had none),
+`RecordingFactsTests` (19), `RecordingSeamsTests` (+2 scale cases), `LibraryStoreTests` (+3
+bookkeeping cases the stub made expressible).
+
+---
+
 ## 0 · Three decisions to take before any code
 
 ### `Recording` stays a class, and "plain value" means "does no I/O"

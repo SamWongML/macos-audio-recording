@@ -37,7 +37,7 @@ final class LibraryStore {
     /// The one thing that reads a file. Accepted rather than created, so the reconcile below is a
     /// pure function of what the reader says the folder holds — which is what lets the suite drive
     /// a rename, a re-adoption and a vanish with no disk at all.
-    @ObservationIgnored let reader: RecordingReader
+    @ObservationIgnored let reader: any RecordingReading
 
     @ObservationIgnored private var source: DispatchSourceFileSystemObject?
     @ObservationIgnored private var watchedFD: Int32 = -1
@@ -51,8 +51,8 @@ final class LibraryStore {
         self.init(directory: LibraryLocation.directory, reader: RecordingReader())
     }
 
-    /// For a test: a scratch folder.
-    init(directory: URL, reader: RecordingReader) {
+    /// For a test: a scratch folder, or a reader with no disk behind it at all.
+    init(directory: URL, reader: any RecordingReading) {
         self.directory = directory
         self.reader = reader
     }
@@ -142,7 +142,7 @@ final class LibraryStore {
     /// (ADR-0021). Extended attributes sit outside the data length, so persisting a Trim, a Gain
     /// or the Seams never trips this.
     static func reconcile(existing: [Recording], urls: [URL],
-                          reader: RecordingReader) -> [Recording] {
+                          reader: any RecordingReading) -> [Recording] {
         let byURL = Dictionary(existing.map { ($0.url, $0) }, uniquingKeysWith: { first, _ in first })
         var byIdentity: [FileIdentity: Recording] = [:]
         for recording in existing {

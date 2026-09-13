@@ -8,14 +8,25 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// Everything that reads a Recording's facts off the disk. `Recording` itself reads nothing, so
-/// this is the only module in the app that opens a file to answer a question about one.
+/// this is the only thing in the app that opens a file to answer a question about one.
 ///
 /// **A file is read once, completely.** There is deliberately no `refreshSource(of:)` or
 /// `rereadDate(of:)` here: ADR-0021 rejected re-reading a Recording field by field ("re-adoption
 /// with extra steps"), so the only way a Recording's facts change is a fresh `adopt`. The two
 /// probes below exist to decide *whether* to re-adopt, never to patch an object in place.
 @MainActor
-struct RecordingReader {
+protocol RecordingReading {
+    func audioFiles(in directory: URL) -> [URL]
+    func adopt(_ url: URL) -> Recording?
+    func byteCount(of url: URL) -> Int64?
+    func identity(of url: URL) -> FileIdentity?
+}
+
+/// The production reader: the real file system. `StubRecordingReader` in the suite is the second
+/// conformance, and the two of them are why the protocol above exists — a store reconciling a
+/// rename, a re-adoption and a vanish needs none of those to be real files.
+@MainActor
+struct RecordingReader: RecordingReading {
     /// Every playable-looking file directly in `directory`, in whatever order the folder hands
     /// them over. Hidden files and subdirectories are skipped (ADR-0006 lists the folder, not a
     /// tree), and a hidden name is why `LibraryLocation.rename` refuses a leading dot (ADR-0020).

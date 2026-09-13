@@ -9,48 +9,46 @@ import Foundation
 
 /// The Library/Recording store seam (ADR-0006): listing the folder and reconciling a fresh scan
 /// against what is already held. The `DispatchSource` watch and the activation re-read are thin
-/// wrappers over these two pure functions, which are what the tests pin.
+/// wrappers over these two functions, which are what the tests pin.
+///
+/// Reconciling is **bookkeeping**, not audio — which Recording object survives a refresh, which is
+/// re-read, which drops out — so most of it runs against `StubRecordingReader` and never touches a
+/// file. What is left on disk below is the handful of cases where the file genuinely is the subject.
 @MainActor
 struct LibraryStoreTests {
-    private let reader = RecordingReader()
 
-    @Test func aSurvivingURLKeepsItsSameRecordingObject() throws {
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let a = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("A.caf"))
-        let b = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("B.caf"))
-        let c = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("C.caf"))
+    // MARK: - Reconciling, over a Library that is not on disk
 
-        let recA = try #require(reader.adopt(a))
-        let recB = try #require(reader.adopt(b))
+    @Test func aSurvivingURLKeepsItsSameRecordingObject() {
+        let reader = StubRecordingReader()
+        let a = reader.place("A")
+        let b = reader.place("B")
         // A live Trim on the object that survives must not be discarded by a refresh.
-        recB.trim.setStart(0.5)
+        b.trim.setStart(0.5)
+        reader.remove(a)
+        let c = reader.place("C")
 
-        let reconciled = LibraryStore.reconcile(existing: [recA, recB], urls: [b, c], reader: reader)
+        let reconciled = LibraryStore.reconcile(existing: [a, b], urls: reader.files, reader: reader)
 
         #expect(reconciled.count == 2)
-        #expect(reconciled[0] === recB)                 // same object, not a fresh read
-        #expect(abs(reconciled[0].trim.start - 0.5) < 1e-9)   // its live Trim survived
-        #expect(reconciled[1].url == c)                 // the new file was adopted
-        #expect(!reconciled.contains { $0.url == a })   // the vanished file dropped out
+        #expect(reconciled.contains { $0 === b })                 // same object, not a fresh read
+        #expect(abs(b.trim.start - 0.5) < 1e-9)                   // its live Trim survived
+        #expect(reconciled.contains { $0.url == c.url })          // the new file was adopted
+        #expect(!reconciled.contains { $0.url == a.url })         // the vanished file dropped out
     }
 
-    @Test func aRenamedFileIsFollowedSilentlyNotDroppedAndReadded() throws {
-        // ADR-0006 / issue #53: a rename is followed silently, so the open Recording is not
-        // closed. The file is the same (same inode) at a new path — reconcile must relocate the
-        // existing object, keeping its live Trim, rather than drop it and adopt a stranger.
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let original = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("Google Chrome.caf"), seconds: 5)
+    @Test func aRenamedFileIsFollowedSilentlyNotDroppedAndReadded() {
+        // ADR-0006 / issue #53: a rename is followed silently, so the open Recording is not closed.
+        // The file is the same (same inode) at a new path — reconcile must relocate the existing
+        // object, keeping its live Trim, rather than drop it and adopt a stranger.
+        let reader = StubRecordingReader()
+        let recording = reader.place("Google Chrome", seconds: 5)
+        recording.trim.setStart(1.0)
 
-        let recording = try #require(reader.adopt(original))
-        recording.trim.setStart(1.0)   // an in-memory Trim (valid on a 5 s file) that must survive the rename
+        let renamed = recording.url.deletingLastPathComponent().appendingPathComponent("Kettle noises.caf")
+        reader.move(recording, to: renamed)
 
-        // Rename in place, as Finder would — same file, new path.
-        let renamed = dir.appendingPathComponent("Kettle noises.caf")
-        try FileManager.default.moveItem(at: original, to: renamed)
-
-        let reconciled = LibraryStore.reconcile(existing: [recording], urls: [renamed], reader: reader)
+        let reconciled = LibraryStore.reconcile(existing: [recording], urls: reader.files, reader: reader)
         #expect(reconciled.count == 1)
         #expect(reconciled[0] === recording)                  // same object, not a re-adopt
         #expect(reconciled[0].url == renamed)                 // relocated to the new path
@@ -58,126 +56,117 @@ struct LibraryStoreTests {
         #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)   // its live Trim survived
     }
 
-    @Test func renamingFromInsideTheAppKeepsTheOpenRecording() throws {
-        // The other half of ADR-0006's rename story: the app doing what Finder does. The object
-        // must survive — same envelope, same live Trim — or the editor closes on its own rename.
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        _ = try AudioFixtures.writeCAF(
-            at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"), seconds: 5)
+    @Test func aFileThatChangedLengthIsReAdoptedNotFollowed() {
+        // ADR-0021: keeping the object preserved a *reading*, and a reading of a file still being
+        // written is not worth keeping. The length is the whole condition.
+        let reader = StubRecordingReader()
+        let adoptedEarly = reader.place("growing", seconds: 1)
+        let freshRead = Recording.stub("growing", seconds: 5)
+        reader.grow(adoptedEarly, to: freshRead)
 
-        let store = LibraryStore(directory: dir, reader: reader)
-        store.refresh()
-        let recording = try #require(store.recordings.first)
-        recording.trim.setStart(1.0)
-        // While the filename is the one capture generated, the Library shows the Source — which
-        // rides in the xattr the fixture writes, not in the filename.
-        #expect(recording.displayName == "Test Source")
-
-        let outcome = store.rename(recording, to: "Interview")
-
-        #expect(outcome == .rename(to: "Interview.caf"))
-        #expect(store.recordings.count == 1)
-        #expect(store.recordings[0] === recording)             // same object, not a drop-and-re-add
-        #expect(recording.name == "Interview")
-        #expect(abs(recording.trim.start - 1.0) < 1e-9)        // its live Trim survived
-        #expect(recording.displayName == "Interview")          // and the row now shows the new name
-        #expect(recording.source == "Test Source")             // the Source xattr is never rewritten
-        #expect(FileManager.default.fileExists(
-            atPath: dir.appendingPathComponent("Interview.caf").path))
-    }
-
-    /// The title bar shows `displayName` over `windowSubtitle`, and the subtitle never repeats the
-    /// title. It used to read the raw filename over the Source — the Source twice, once wrapped in
-    /// the on-disk naming scheme — and for a hand-adopted file with neither a date nor a Source
-    /// xattr both lines were the same string (issue #73, findings 2 and 32).
-    @Test func theWindowSubtitleNeverRepeatsTheTitle() throws {
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        _ = try AudioFixtures.writeCAF(
-            at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"), seconds: 5)
-
-        let store = LibraryStore(directory: dir, reader: reader)
-        store.refresh()
-        let recording = try #require(store.recordings.first)
-
-        // Generated name: the title *is* the Source, so the subtitle says when instead.
-        #expect(recording.displayName == "Test Source")
-        #expect(!recording.windowSubtitle.contains("Test Source"))
-        #expect(!recording.windowSubtitle.isEmpty)
-
-        // Renamed: the title is the user's name, so the Source is worth saying again.
-        #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
-        #expect(recording.displayName == "Interview")
-        #expect(recording.windowSubtitle.hasPrefix("Test Source · "))
-    }
-
-    @Test func aRefusedRenameLeavesTheFileExactlyWhereItWas() throws {
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("A.caf"))
-        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("B.caf"))
-
-        let store = LibraryStore(directory: dir, reader: reader)
-        store.refresh()
-        let a = try #require(store.recordings.first { $0.name == "A" })
-
-        #expect(store.rename(a, to: "B") == .refused(.alreadyTaken("B.caf")))
-        #expect(a.name == "A")
-        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("A.caf").path))
-        #expect(store.recordings.count == 2)
-    }
-
-    @Test func aFileThatHasGrownSinceItWasOpenedIsReAdoptedNotFollowed() throws {
-        // ADR-0021 / issue #80. A master adopted while capture was still writing it reads a
-        // `frameCount` that is already wrong, and ADR-0006's same-object rule would preserve that
-        // wrong reading forever — which is exactly what left a just-made Recording showing 0:00
-        // with an empty lane until the app was relaunched.
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("growing.caf"), seconds: 1)
-
-        let adoptedEarly = try #require(reader.adopt(url))
-        #expect(abs(adoptedEarly.duration - 1) < 0.05)
-
-        // Grow the file **in place** — same device+inode, more audio — as capture does.
-        try growInPlace(url, toSeconds: 5, in: dir)
-
-        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: [url], reader: reader)
+        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: reader.files, reader: reader)
         #expect(reconciled.count == 1)
-        #expect(reconciled[0] !== adoptedEarly)                  // re-adopted, not followed
-        #expect(abs(reconciled[0].duration - 5) < 0.05)          // and it reads the audio now there
+        #expect(reconciled[0] !== adoptedEarly)               // re-adopted, not followed
         #expect(reconciled[0].frameCount > adoptedEarly.frameCount)
     }
 
-    @Test func aGrownFileIsReAdoptedEvenWhenItHasAlsoBeenRenamed() throws {
-        // The rename path takes the same condition. It asks the question about the *new* path,
-        // because the surviving object still holds the old one (ADR-0021).
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let original = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("growing.caf"), seconds: 1)
+    @Test func aGrownFileIsReAdoptedEvenWhenItHasAlsoBeenRenamed() {
+        // The rename path carries the same condition, and asks it about the *new* path — the
+        // surviving object still holds the old one (ADR-0021).
+        let reader = StubRecordingReader()
+        let adoptedEarly = reader.place("growing", seconds: 1)
+        let renamed = adoptedEarly.url.deletingLastPathComponent().appendingPathComponent("Interview.caf")
+        reader.move(adoptedEarly, to: renamed)
+        reader.byteCounts[renamed] = (adoptedEarly.openedByteCount ?? 0) + 1
+        reader.adopted[renamed] = Recording.stub("Interview", seconds: 5)
 
-        let adoptedEarly = try #require(reader.adopt(original))
-        try growInPlace(original, toSeconds: 5, in: dir)
-        let renamed = dir.appendingPathComponent("Interview.caf")
-        try FileManager.default.moveItem(at: original, to: renamed)
-
-        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: [renamed], reader: reader)
+        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: reader.files, reader: reader)
         #expect(reconciled.count == 1)
         #expect(reconciled[0] !== adoptedEarly)
         #expect(reconciled[0].url == renamed)
-        #expect(abs(reconciled[0].duration - 5) < 0.05)
     }
+
+    @Test func oneRecordingCannotBeFollowedByTwoURLs() {
+        // Two names for one inode — a hard link. The first url follows the held object; the second
+        // cannot follow it too, so it is adopted in its own right rather than aliasing the first.
+        let reader = StubRecordingReader()
+        let recording = reader.place("A")
+        let identity = recording.fileIdentity   // `place` always gives one
+        let first = recording.url.deletingLastPathComponent().appendingPathComponent("first.caf")
+        let second = recording.url.deletingLastPathComponent().appendingPathComponent("second.caf")
+        reader.remove(recording)
+        for url in [first, second] {
+            reader.files.append(url)
+            reader.identities[url] = identity
+            reader.byteCounts[url] = recording.openedByteCount
+            reader.adopted[url] = Recording.stub(url.deletingPathExtension().lastPathComponent,
+                                                 byteCount: recording.openedByteCount)
+        }
+
+        let reconciled = LibraryStore.reconcile(existing: [recording], urls: [first, second], reader: reader)
+        #expect(reconciled.count == 2)
+        #expect(reconciled.filter { $0 === recording }.count == 1)   // followed exactly once
+        #expect(reconciled[0] === recording)
+        #expect(reconciled[1] !== recording)
+    }
+
+    @Test func aURLTheGateDeclinesYieldsNoRow() {
+        // A url the reader will not adopt — not audio at all (ADR-0015) — simply does not list.
+        let reader = StubRecordingReader()
+        let good = reader.place("good")
+        let notes = good.url.deletingLastPathComponent().appendingPathComponent("notes.txt")
+        reader.files.append(notes)          // listed by the folder, but nothing reads it as a Recording
+
+        let reconciled = LibraryStore.reconcile(existing: [], urls: reader.files, reader: reader)
+        #expect(reconciled.map(\.url) == [good.url])
+    }
+
+    @Test func reconcileOrderFollowsTheProvidedURLs() {
+        let reader = StubRecordingReader()
+        let a = reader.place("A")
+        let b = reader.place("B")
+
+        let reconciled = LibraryStore.reconcile(existing: [], urls: [b.url, a.url], reader: reader)
+        #expect(reconciled.map(\.url) == [b.url, a.url])
+    }
+
+    /// The sidebar's order and `RecordingDay`'s grouping are one notion of a Recording's date
+    /// (ADR-0031) — so the store sorts the Recordings it read, not the urls it listed. The reader
+    /// hands them over oldest-first here, which is what makes the sort visible.
+    @Test func theStoreOrdersRecordingsNewestFirst() {
+        let reader = StubRecordingReader()
+        reader.place("older", recordedAt: Date(timeIntervalSince1970: 1_000))
+        reader.place("newer", recordedAt: Date(timeIntervalSince1970: 2_000))
+
+        let store = LibraryStore(directory: URL(filePath: "/Library"), reader: reader)
+        store.refresh()
+        #expect(store.recordings.map(\.name) == ["newer", "older"])
+    }
+
+    /// A Recording whose date could not be read sorts last rather than first, and never traps.
+    @Test func aRecordingWithNoDateSortsLast() {
+        let reader = StubRecordingReader()
+        reader.place("undated", recordedAt: nil)
+        reader.place("dated", recordedAt: Date(timeIntervalSince1970: 1_000))
+
+        let store = LibraryStore(directory: URL(filePath: "/Library"), reader: reader)
+        store.refresh()
+        #expect(store.recordings.map(\.name) == ["dated", "undated"])
+    }
+
+    // MARK: - On disk, where the file is the subject
 
     @Test func persistingTheTrimAndGainDoesNotCostTheRecordingItsObject() throws {
         // The other side of ADR-0021: re-adoption keys on the file's **data length**, and Trim,
         // Gain and Seams all ride in extended attributes, which sit outside it. If they did not,
         // every gesture-end would silently drop the open Recording's object — and with it the very
-        // live Trim and built envelope ADR-0006's same-object rule exists to protect.
+        // live Trim and built envelope ADR-0006's same-object rule exists to protect. This one is
+        // measured against the real file system on purpose: it is a claim about `st_size`.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("settled.caf"), seconds: 5)
 
+        let reader = RecordingReader()
         let recording = try #require(reader.adopt(url))
         recording.trim.setStart(1.0)
         recording.persistTrim()
@@ -190,68 +179,58 @@ struct LibraryStoreTests {
         #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)     // and its live Trim survived
     }
 
-    @Test func reconcileOrderFollowsTheProvidedURLs() throws {
+    @Test func aRealFileThatGrewInPlaceIsReAdopted() throws {
+        // ADR-0021 / issue #80, against a real growing file: a master adopted while capture was
+        // still writing it reads a `frameCount` that is already wrong, and the same-object rule
+        // would preserve that wrong reading forever. The stub pins the bookkeeping; this pins that
+        // a `stat` of a file growing under us actually reports the change.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let a = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("A.caf"))
-        let b = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("B.caf"))
+        let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("growing.caf"), seconds: 1)
 
-        let reconciled = LibraryStore.reconcile(existing: [], urls: [b, a], reader: reader)
-        #expect(reconciled.map(\.url) == [b, a])
+        let reader = RecordingReader()
+        let adoptedEarly = try #require(reader.adopt(url))
+        #expect(abs(adoptedEarly.duration - 1) < 0.05)
+
+        try growInPlace(url, toSeconds: 5, in: dir)
+
+        let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: [url], reader: reader)
+        #expect(reconciled.count == 1)
+        #expect(reconciled[0] !== adoptedEarly)
+        #expect(abs(reconciled[0].duration - 5) < 0.05)          // it reads the audio now there
     }
 
     @Test func aNonAudioFileIsNotAdopted() throws {
         // The adoption gate lists only files whose UTType conforms to public.audio (ADR-0015). A
-        // plain-text file types as text, not audio, so it is never a Recording.
+        // plain-text file types as text, not audio, so it is never a Recording — and only a real
+        // file has a real content type to be read from.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let good = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("good.caf"))
         let notes = dir.appendingPathComponent("notes.txt")
         try Data("not audio".utf8).write(to: notes)
 
-        #expect(reader.adopt(notes) == nil)   // text is not public.audio
-        let reconciled = LibraryStore.reconcile(existing: [], urls: [good, notes], reader: reader)
-        #expect(reconciled.map(\.url) == [good])
+        #expect(RecordingReader().adopt(notes) == nil)
     }
 
     @Test func aTypedButUndecodableFileIsAdoptedInACantOpenState() throws {
         // A `.caf` types as public.audio, so it is adopted and listed — but garbage in it won't
         // decode, so it lists in a "can't open" state rather than vanishing (ADR-0015), and stays
-        // in the folder to be trashed.
+        // in the folder to be trashed. Only `AVAudioFile` can refuse it, so this needs the file.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let good = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("good.caf"))
         let broken = dir.appendingPathComponent("broken.caf")
         try Data("not really a CAF".utf8).write(to: broken)
 
+        let reader = RecordingReader()
         let cantOpen = try #require(reader.adopt(broken))
         #expect(cantOpen.isOpenable == false)
         #expect(cantOpen.duration == 0)
+        #expect(try #require(reader.adopt(good)).isOpenable)
 
-        let decodable = try #require(reader.adopt(good))
-        #expect(decodable.isOpenable == true)
-
-        // Both are listed, newest-first order preserved — the can't-open row is not dropped.
+        // Both are listed — the can't-open row is not dropped.
         let reconciled = LibraryStore.reconcile(existing: [], urls: [good, broken], reader: reader)
-        #expect(reconciled.map(\.url) == [good, broken])
         #expect(reconciled.map(\.isOpenable) == [true, false])
-    }
-
-    @Test func aSubMinimumFileAdoptsWithAFixedWholeTrim() throws {
-        // A file shorter than the Trim minimum (0.2 s) is adopted and listed with Trim fixed to the
-        // whole file — neither handle moves — and Exports whole (ADR-0015, issue #7).
-        let dir = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let short = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("blip.caf"), seconds: 0.1)
-
-        let recording = try #require(reader.adopt(short))
-        #expect(recording.isOpenable)
-        #expect(recording.trim.isFixed)                 // shorter than the minimum: the Trim cannot move
-        #expect(!recording.isTrimmed)                   // the whole file is the Trim
-        let (start, count) = recording.trimmedFrameRange
-        #expect(start == 0)
-        #expect(count == recording.frameCount)          // Exports whole
-        #expect(count > 0)
     }
 
     @Test func audioFilesSkipsSubdirectoriesAndHiddenFiles() throws {
@@ -269,28 +248,56 @@ struct LibraryStoreTests {
         // Compare by name: contentsOfDirectory may normalise the path differently from a
         // hand-built URL, and the point here is the filter, not URL spelling. The listing is
         // deliberately unordered — `refresh` sorts Recordings by `recordedAt` instead.
-        let listed = reader.audioFiles(in: dir).map(\.lastPathComponent).sorted()
+        let listed = RecordingReader().audioFiles(in: dir).map(\.lastPathComponent).sorted()
         #expect(listed == ["newer.caf", "older.caf"])
     }
 
     @Test func audioFilesOfAMissingDirectoryIsEmpty() {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("apptape-nope-\(UUID().uuidString)", isDirectory: true)
-        #expect(reader.audioFiles(in: missing).isEmpty)
+        #expect(RecordingReader().audioFiles(in: missing).isEmpty)
     }
 
-    /// The sidebar's order, and `RecordingDay`'s grouping, are one notion of a Recording's date
-    /// (ADR-0031) — so the store sorts the Recordings it read rather than the urls it listed.
-    @Test func theStoreOrdersRecordingsNewestFirst() throws {
+    @Test func renamingFromInsideTheAppKeepsTheOpenRecording() throws {
+        // The other half of ADR-0006's rename story: the app doing what Finder does. The object
+        // must survive — same envelope, same live Trim — or the editor closes on its own rename.
+        // A real `moveItem`, because that is the half of `rename` that is not pure.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try AudioFixtures.writeCAF(
+            at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"), seconds: 5)
 
-        try AudioFixtures.writeCAF(at: dir.appendingPathComponent("older.caf"))
-        try AudioFixtures.writeCAF(at: dir.appendingPathComponent("newer.caf"))
-
-        let store = LibraryStore(directory: dir, reader: reader)
+        let store = LibraryStore(directory: dir, reader: RecordingReader())
         store.refresh()
-        #expect(store.recordings.map(\.name) == ["newer", "older"])
+        let recording = try #require(store.recordings.first)
+        recording.trim.setStart(1.0)
+        #expect(recording.displayName == "Test Source")   // the Source rides in the xattr
+
+        #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
+        #expect(store.recordings.count == 1)
+        #expect(store.recordings[0] === recording)             // same object, not a drop-and-re-add
+        #expect(recording.name == "Interview")
+        #expect(abs(recording.trim.start - 1.0) < 1e-9)        // its live Trim survived
+        #expect(recording.displayName == "Interview")          // and the row now shows the new name
+        #expect(recording.source == "Test Source")             // the Source xattr is never rewritten
+        #expect(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("Interview.caf").path))
+    }
+
+    @Test func aRefusedRenameLeavesTheFileExactlyWhereItWas() throws {
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("A.caf"))
+        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("B.caf"))
+
+        let store = LibraryStore(directory: dir, reader: RecordingReader())
+        store.refresh()
+        let a = try #require(store.recordings.first { $0.name == "A" })
+
+        #expect(store.rename(a, to: "B") == .refused(.alreadyTaken("B.caf")))
+        #expect(a.name == "A")
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("A.caf").path))
+        #expect(store.recordings.count == 2)
     }
 
     /// Replace a file's contents with a longer Recording **without replacing the file**: same
@@ -306,5 +313,4 @@ struct LibraryStoreTests {
         try handle.write(contentsOf: longer)
         try handle.close()
     }
-
 }

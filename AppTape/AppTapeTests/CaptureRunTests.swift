@@ -431,17 +431,15 @@ struct CaptureRunTests {
 
     // MARK: - The growing master
 
-    @Test func theGrowingMasterIsCapturingAndStillArriving() throws {
-        let directory = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let growing = try AudioFixtures.writeCAF(at: directory.appendingPathComponent("growing.caf"))
-        let settled = try AudioFixtures.writeCAF(at: directory.appendingPathComponent("settled.caf"))
-        let growingRecording = try #require(AudioFixtures.adopt(growing))
-        let settledRecording = try #require(AudioFixtures.adopt(settled))
+    @Test func theGrowingMasterIsCapturingAndStillArriving() {
+        // Two Recordings and no files: this case is about which url the run says it is writing,
+        // which is why it stopped needing a CAF the moment `Recording` gained a memberwise init.
+        let growingRecording = Recording.stub("growing")
+        let settledRecording = Recording.stub("settled")
 
         let rig = Rig()
         rig.startCapturing()
-        rig.builder.hooks(forBuild: 0).onMasterCreated(growing)
+        rig.builder.hooks(forBuild: 0).onMasterCreated(growingRecording.url)
 
         // The one being written is not exportable: its Trim end is undefined until Stop (ADR-0012).
         #expect(rig.run.isCapturing(growingRecording))

@@ -604,7 +604,7 @@ private struct RecordingBrief: View {
     var recording: Recording
     /// The `Master` row's live figure is a `stat` of the growing file (ADR-0031), and a Recording
     /// does not read files — so the row is handed the store's reader to ask.
-    var reader: RecordingReader
+    var reader: any RecordingReading
     @State private var recorder = RecordingController.shared
 
     private var isStillArriving: Bool { recorder.isStillArriving(recording) }
