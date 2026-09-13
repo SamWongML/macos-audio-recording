@@ -26,16 +26,19 @@ nonisolated struct CaptureOutcome: Sendable {
 
 /// The three callbacks a capture makes while it runs, handed over at bring-up so they are set
 /// before the writer thread starts — a denial inferred before the capture is attached is still
-/// delivered. Each hops to the main actor and must not call back synchronously into the capture,
-/// which would deadlock the writer thread against its own finalization.
+/// delivered.
+///
+/// They are **main-actor calls, not hops**: the run does not know that the writer thread is a
+/// different thread, and the adapter that does owns the hop, exactly as it owns the teardown
+/// dispatch. That is also what lets a test play the writer thread's part in a straight line.
 nonisolated struct CaptureHooks: Sendable {
     /// A denied System Audio Recording grant was inferred (ADR-0008).
-    var onDenialInferred: @Sendable () -> Void
+    var onDenialInferred: @Sendable @MainActor () -> Void
     /// The master file was created at the first sound (ADR-0016), so the editor can learn which
     /// Library file is growing and refuse to export it (ADR-0012).
-    var onMasterCreated: @Sendable (URL) -> Void
+    var onMasterCreated: @Sendable @MainActor (URL) -> Void
     /// The Recording ended itself — one of the four unrequested ends (ADR-0010).
-    var onEnded: @Sendable (RecordingEndReason) -> Void
+    var onEnded: @Sendable @MainActor (RecordingEndReason) -> Void
 }
 
 // MARK: - The interfaces
@@ -152,10 +155,14 @@ struct CoreAudioCaptureBuilder: CaptureBuilding {
         let name = source.name
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                let engine = try CaptureEngine(processObjectIDs: ids, sourceName: name,
-                                               onDenialInferred: hooks.onDenialInferred,
-                                               onMasterCreated: hooks.onMasterCreated,
-                                               onEnded: hooks.onEnded)
+                // The hop lives here, not in the run. The engine calls these from its writer
+                // thread; each must not call back synchronously into the engine, which would
+                // deadlock that thread against its own finalization.
+                let engine = try CaptureEngine(
+                    processObjectIDs: ids, sourceName: name,
+                    onDenialInferred: { Task { @MainActor in hooks.onDenialInferred() } },
+                    onMasterCreated: { url in Task { @MainActor in hooks.onMasterCreated(url) } },
+                    onEnded: { reason in Task { @MainActor in hooks.onEnded(reason) } })
                 Task { @MainActor in then(CoreAudioCapture(engine: engine)) }
             } catch {
                 Task { @MainActor in then(nil) }

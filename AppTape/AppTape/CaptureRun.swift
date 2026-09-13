@@ -251,18 +251,9 @@ final class CaptureRun {
         // guard above. The denial hook in particular must not depend on the capture having been
         // attached: the writer thread can infer denial before this callback arrives under load.
         let hooks = CaptureHooks(
-            onDenialInferred: { [weak self] in
-                guard let self else { return }
-                Task { @MainActor in self.handleDenial(attempt) }
-            },
-            onMasterCreated: { [weak self] url in
-                guard let self else { return }
-                Task { @MainActor in self.masterCreated(url, attempt) }
-            },
-            onEnded: { [weak self] reason in
-                guard let self else { return }
-                Task { @MainActor in self.captureEndedItself(reason, attempt) }
-            })
+            onDenialInferred: { [weak self] in self?.handleDenial(attempt) },
+            onMasterCreated: { [weak self] url in self?.masterCreated(url, attempt) },
+            onEnded: { [weak self] reason in self?.captureEndedItself(reason, attempt) })
 
         builder.build(source: source, hooks: hooks) { [weak self] capture in
             guard let self else {
