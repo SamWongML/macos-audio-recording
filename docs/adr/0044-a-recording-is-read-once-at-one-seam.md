@@ -111,8 +111,8 @@ suite — the bar ADR-0043 set for an interface to exist here at all. Eight case
 `AVAudioFile` refusing a broken CAF, the folder listing and its missing-directory case, and the two
 rename cases whose impure half is
 `FileManager.moveItem`. What left the disk is the bookkeeping — which object survives, which is
-re-read, which drops out. `writeCAF` call sites fell from 26 to 23, all of them now in suites where
-real audio is the subject.
+re-read, which drops out. `AudioFixtures.writeCAF` call sites fell from 40 to 23 against `main`, and
+all 23 are now in suites where real audio is the subject.
 
 **ADR-0022's line is not crossed.** `RecordingMetadata` and `LibraryLocation` stay `nonisolated`,
 because the capture writer thread drives them — `CAFMasterWriter` writes the Source xattr and

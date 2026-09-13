@@ -771,7 +771,11 @@ second of 20 Hz ticks, and is the only one that pins *the syscall moved* rather 
 returns — and `aMasterThatCannotBeStattedPublishesNoFigureRatherThanZero`, because `nil` and `0`
 render as different sentences in the `Master` row.
 
-**Not done: the by-hand pass.** §7's real-app checklist — record → stop, and watch the `Master` row
-count up — was not run. It needs the System Audio Recording grant, a Source making noise and a human
-looking at the window. The cadence and the two em-dash cases are pinned by tests; what no test can
-see is whether the figure *reads* right on screen at 4 Hz.
+**The by-hand pass was run, and it holds.** §7's real-app checklist — record → stop, and watch the
+`Master` row count up — needs the System Audio Recording grant, a Source making noise and a human
+looking at the window, so no test can stand there. The figure reads right on screen at 4 Hz.
+
+**One inherited number was wrong.** Phase 4's as-built says `writeCAF` call sites "fell from 26 to
+23". Measured against the branch: `main` has 40, the Phase 2/3 commit 42 — the mechanical
+`Recording(url:)` → `reader.adopt(_:)` rewrite added two — and Phase 4 cut them to 23. ADR-0044
+states 40 → 23; the sentence above is left as it was written.
