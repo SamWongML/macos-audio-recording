@@ -6,280 +6,84 @@
 import AppKit
 import Observation
 
-/// The main-actor coordinator between the panel's Source choice, the Capture Engine, the
-/// status-item transport, and the editor. It is the observation the menu bar renders and
-/// the panel drives; the realtime and file work all live below it in `CaptureEngine`.
+/// The shell around one `CaptureRun`: the record presses, the lifecycle notifications, the one
+/// timer that gives the run its sense of time, and the observation the menu bar and the panel
+/// render.
+///
+/// Everything that *decides* anything lives in `CaptureRun`, which accepts its world instead of
+/// creating it and so can be tested. What is left here is the part that cannot be: `Timer` on the
+/// main run loop, `NSWorkspace`'s notifications, and the single `ProcessInfo` clock read those two
+/// need. Keep it that way — a decision that lands in this file is a decision nothing verifies.
 @MainActor
 @Observable
 final class RecordingController {
     static let shared = RecordingController()
 
-    /// Armed and capturing (from the press, through the armed-waiting window, to stop). What
-    /// the status item keys its recording state off.
-    private(set) var isRecording = false
-    /// The Source being captured, for the status item's tooltip and the panel's row state.
-    private(set) var recordingSourceID: String?
-    /// Master duration in seconds, read off the engine's frame count on a timer — so it sits
-    /// at 0 (menu bar `00:00`) until the first sound (ADR-0016).
-    private(set) var elapsed: TimeInterval = 0
+    /// The run itself. Held rather than hidden, so a test or a preview can build a controller over
+    /// a run with doubles in it.
+    let run: CaptureRun
 
-    /// The active Recording's live meter fill (0...1), sampled off the engine's published peak at
-    /// ~20 Hz through `LevelMeter` (issue #59). A dead tap reads exactly 0, so a soft-faulted
-    /// Recording shows a flat meter. 0 at rest.
-    private(set) var currentLevel: Double = 0
-    /// A short rolling window of recent meter fills, oldest first, that the recording row draws as
-    /// a live waveform. All zeros at rest and reset at each start, so a new Recording never inherits
-    /// the last one's tail.
-    private(set) var meterColumns: [Double] = Array(repeating: 0, count: RecordingController.meterColumnCount)
-    static let meterColumnCount = 48
+    /// The production wiring: a real Core Audio capture, a real `statfs`, a real notification
+    /// centre and the real editor window. Written as its own initializer rather than a default
+    /// argument because a default argument is evaluated in a nonisolated context, and every one of
+    /// these adapters is main-actor isolated.
+    init() {
+        self.run = CaptureRun(builder: CoreAudioCaptureBuilder(),
+                              runway: LibraryVolumeProbe(),
+                              telling: ShellTelling())
+    }
 
-    /// Monotonic uptime of the current record press, for the row's ~500 ms in-flight grace
-    /// (`RowRecordGlyph`). Nil at rest.
-    private var pressedAtUptime: TimeInterval?
+    /// For a test or a preview: a controller over a run with doubles in it.
+    init(run: CaptureRun) {
+        self.run = run
+    }
+
+    // MARK: - What the views read
+    //
+    // Forwards, not copies. Observation tracks through a computed property, so a view reading
+    // `recorder.isRecording` registers on the run's own stored property and nothing re-renders more
+    // often than it did before the run existed.
+
+    var isRecording: Bool { run.isRecording }
+    var recordingSourceID: String? { run.recordingSourceID }
+    var elapsed: TimeInterval { run.elapsed }
+    var elapsedText: String { run.elapsedText }
+    var currentLevel: Double { run.currentLevel }
+    var meterColumns: [Double] { run.meterColumns }
+    var hasFirstSound: Bool { run.hasFirstSound }
+    var permissionRecovery: Bool { run.permissionRecovery }
+    var runwayTier: RunwayGuard.Tier { run.runwayTier }
+    var startRefusal: DiskGuardRefusal? { run.startRefusal }
+    var capturingURL: URL? { run.capturingURL }
+
     /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
+    /// The subtraction happens here because the run reads no clock; it publishes the press time and
+    /// this is the one place that asks what time it is now.
     var sincePress: TimeInterval? {
-        pressedAtUptime.map { ProcessInfo.processInfo.systemUptime - $0 }
-    }
-    /// Whether the current Recording has heard its first sound. The master is created at the first
-    /// sound (ADR-0016), which is exactly when `capturingURL` is set — so this reuses that signal.
-    var hasFirstSound: Bool { capturingURL != nil }
-
-    /// True once a Recording has actually captured audio this launch. It gates the wedge
-    /// timeout: the first bring-up is cancellable-not-timed so a ~90 s TCC prompt cannot abort
-    /// it, and only after a success does a slow bring-up become a wedge worth timing out
-    /// (ADR-0008, ADR-0010). A fact about *capture*, held in memory only — nothing about
-    /// permission is ever persisted (ADR-0008).
-    private(set) var hasCompletedACapture = false
-
-    /// Set when a denied System Audio Recording grant is inferred (ADR-0008); drives the panel's
-    /// recovery banner. Cleared on the next record press — retry is simply pressing record again.
-    private(set) var permissionRecovery = false
-
-    /// The menu bar's disk tier (ADR-0009): amber at 3 hours of Runway, whole item, no glyph. Driven
-    /// by the 5 s guard poll while recording; nominal at rest.
-    private(set) var runwayTier: RunwayGuard.Tier = .nominal
-
-    /// Set when a record press is refused below the 2 GB floor (ADR-0009); drives the panel's one
-    /// blocking-message surface, sharing it with `permissionRecovery` — the panel carries at most one
-    /// blocking reason at a time. Cleared on the next successful start, and by a denial taking the
-    /// surface. Its action opens Finder at the Library.
-    private(set) var startRefusal: DiskGuardRefusal?
-
-    /// The Library file currently being written, once the first sound has created it. The editor
-    /// refuses to export this one: its `.caf` is still growing in place and its Trim end is
-    /// undefined until Stop (ADR-0012). Nil when nothing is capturing, or before the first sound.
-    private(set) var capturingURL: URL?
-
-    /// Whether `recording` is the one being captured right now, and so not exportable (ADR-0012).
-    func isCapturing(_ recording: Recording) -> Bool {
-        isRecording && capturingURL == recording.url
+        run.pressedAt.map { ProcessInfo.processInfo.systemUptime - $0 }
     }
 
-    /// Whether this Recording's audio is **still arriving**: it has no frames at all, or it is the
-    /// one being captured right now. Either way the editor is holding a reading of a file that is
-    /// still being written (ADR-0021), so the lane says so instead of drawing it and the transport
-    /// offers no Play.
-    ///
-    /// The two halves are not redundant, which is the whole point. A master is adopted moments after
-    /// the first sound creates it, so its `frameCount` is not zero, just tiny — and a Recording that
-    /// has captured 51 frames of a two-minute take drew that fraction of a second **stretched across
-    /// the entire lane** as a solid slab (issue #80). Zero frames alone did not catch it.
-    func isStillArriving(_ recording: Recording) -> Bool {
-        recording.isEmpty || isCapturing(recording)
-    }
+    func isCapturing(_ recording: Recording) -> Bool { run.isCapturing(recording) }
+    func isStillArriving(_ recording: Recording) -> Bool { run.isStillArriving(recording) }
 
-    /// The wedge timeout that applies to bring-up *after* the first successful capture, when the
-    /// TCC prompt can no longer appear and a slow start is a hang, not a human reading (ADR-0010).
-    static let wedgeTimeout: TimeInterval = 10
+    // MARK: - The presses
 
-    private var engine: CaptureEngine?
-    private var timer: Timer?
-    /// The ~20 Hz meter sampler, live only while a Recording is attached (issue #59). Off the
-    /// realtime IOProc and the writer thread — it just reads the engine's published peak.
-    private var meterTimer: Timer?
-    /// The post-first-capture wedge timer, armed during bring-up only when `hasCompletedACapture`.
-    private var buildTimeout: Timer?
-    /// The disk guard's 5 s `statfs` poll, live only while a Recording is attached (ADR-0009). Off
-    /// the realtime IOProc and the writer thread — one quick syscall on the main actor.
-    private var guardTimer: Timer?
-    /// The Runway tier/warning reducer for the current Recording, reset at each start so hysteresis
-    /// never carries across Recordings.
-    private var runwayGuard = RunwayGuard()
-    /// Bumped on every start and stop. Guards a slow, cancelled, or timed-out bring-up from
-    /// attaching its engine to a *later* attempt — the blocked Core Audio call cannot be
-    /// interrupted, so whatever it eventually returns is matched against the generation that
-    /// asked for it and discarded if the world has moved on (ADR-0010).
-    private var generation = 0
-
-    /// `01:23`, or `1:02:03` past the hour. Frozen at `00:00` through the armed window.
-    var elapsedText: String {
-        let total = Int(elapsed)
-        let (hours, minutes, seconds) = (total / 3600, (total % 3600) / 60, total % 60)
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
-            : String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    /// Begins capturing a Source. Optimistically flips to the recording state at once so the
-    /// menu bar responds to the press, then builds the engine off the main thread — tap
-    /// creation blocks and can raise the TCC prompt (issue #12).
     func start(_ source: Source) {
-        guard !isRecording, !source.processObjectIDs.isEmpty else { return }
-
-        // The start policy against the disk (ADR-0009). The rate is a pre-tap estimate — no tap
-        // exists yet to report its real format — corrected by the first real poll a few seconds
-        // later; an unverifiable volume (nil) is neither refused nor pre-ambered, matching the
-        // running guard, which never ends on a volume it cannot stat.
-        let free = DiskSpace.freeBytesForLibraryVolume()
-        let startDecision = free.map {
-            RunwayGuard.startDecision(freeBytes: $0, ratePerSecond: RunwayGuard.nominalRatePerSecond)
-        }
-
-        // Refuse below the floor: beginning a Recording the guard kills within a minute leaves junk
-        // in the Library and teaches nothing. The refusal raises the panel's one blocking-message
-        // surface, whose action opens Finder at the Library.
-        if startDecision == .refuse, let free {
-            startRefusal = DiskGuardRefusal(freeBytes: free)
-            permissionRecovery = false
-            return
-        }
-
-        startRefusal = nil
-        permissionRecovery = false   // retry clears the last denial's banner
-        isRecording = true
-        recordingSourceID = source.bundleID
-        elapsed = 0
-        pressedAtUptime = ProcessInfo.processInfo.systemUptime
-        resetMeter()
-        generation += 1
-        let gen = generation
-
-        // Begin amber if already inside the 3-hour tier, so a Recording the guard would paint amber
-        // within seconds does not flash green first (ADR-0009). The first real poll re-decides with
-        // the tap's own byte rate, so an off estimate only ever costs a brief wrong colour.
-        let amberStart = startDecision == .allowAmber
-        runwayGuard = RunwayGuard(tier: amberStart ? .amber : .nominal)
-        runwayTier = amberStart ? .amber : .nominal
-
-        // The wedge timeout is armed only after the first successful capture. On the first
-        // Recording bring-up is cancellable-not-timed, so it can block ~90 s behind the TCC
-        // prompt without aborting; a second click is the only way out then (ADR-0008/0010).
-        if hasCompletedACapture {
-            let timeout = Timer(timeInterval: Self.wedgeTimeout, repeats: false) { [weak self] _ in
-                MainActor.assumeIsolated { self?.abandon(generation: gen) }
-            }
-            RunLoop.main.add(timeout, forMode: .common)
-            buildTimeout = timeout
-        }
-
-        let ids = source.processObjectIDs
-        let name = source.name
-        // Set at init, before the engine's writer thread starts, so a denial inferred before
-        // `attach` runs is still delivered. `handleDenial` in turn does not depend on `attach`
-        // having set `self.engine`, so the signal is never dropped even if the main actor is
-        // slow to pick up `attach` — together they close the gap the 3 s window leaves open.
-        let onDenial: @Sendable () -> Void = { [weak self] in
-            guard let self else { return }
-            Task { @MainActor in self.handleDenial(generation: gen) }
-        }
-        // Learn the growing master's path when the first sound creates it, so the editor can refuse
-        // to export the still-capturing Recording (ADR-0012). Guarded by generation like the rest.
-        let onMasterCreated: @Sendable (URL) -> Void = { [weak self] url in
-            guard let self else { return }
-            Task { @MainActor in
-                guard gen == self.generation, self.isRecording else { return }
-                self.capturingURL = url
-            }
-        }
-        // The Recording ended itself — recovery exhausted, a format mismatch, or a >30 s gap: one of
-        // the four unrequested ends (ADR-0010). The engine has already finalized the file; reclaim it
-        // and tell the user why, naming the reason and opening the editor on the notification's click.
-        let onEnded: @Sendable (RecordingEndReason) -> Void = { [weak self] reason in
-            guard let self else { return }
-            Task { @MainActor in self.finalize(reason: reason, generation: gen) }
-        }
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                let engine = try CaptureEngine(processObjectIDs: ids, sourceName: name,
-                                               onDenialInferred: onDenial,
-                                               onMasterCreated: onMasterCreated,
-                                               onEnded: onEnded)
-                Task { @MainActor in self.attach(engine, generation: gen) }
-            } catch {
-                Task { @MainActor in self.abandon(generation: gen) }
-            }
-        }
+        run.start(source, now: uptime)
+        // A press refused below the disk floor (ADR-0009) never enters a recording state, so there
+        // is nothing to clock.
+        if run.isRecording { startClock() }
     }
 
-    /// The user pressed stop. The UI returns to idle at once, then the engine is torn down off the
-    /// main thread — one of the two *requested* ends (ADR-0007). The editor opens on the Recording
-    /// just made, once finalized — but only if there was one (arm-then-never-play opens nothing).
-    func stop() {
-        finalize(reason: .userStopped, generation: generation)
-    }
+    func stop() { run.stop() }
 
-    /// System sleep or fast user switching (folded together, ADR-0007): end the Recording **on the
-    /// notification**, while the machine is still awake, so the file is finalized at its last real
-    /// sample and there is no gap to reconcile — no Seam. One of the four unrequested ends, so it
-    /// names its reason.
-    func endForSleep() {
-        finalize(reason: .sleep, generation: generation)
-    }
+    /// System sleep or fast user switching, folded together (ADR-0007).
+    func endForSleep() { run.end(.sleep) }
 
-    /// App quit or logout: finalize and save unwarned, as ADR-0004 accepts for a left-click. A
-    /// requested end — no notification, no window. Unlike the other ends this finalizes
-    /// **synchronously on the main thread**, because the process is about to exit: the writer must
-    /// finish draining, close the CAF, and write the Seams xattr before `applicationWillTerminate`
-    /// returns. The CAF is crash-safe even if the OS kills us first (ADR-0003), but a synchronous
-    /// close also secures the Seam mark and the tail. No main hops happen inside a quit finalize
-    /// (`onEnded` fires only on a self-end), so blocking here cannot deadlock.
+    /// App quit or logout. Finalizes synchronously — the process is about to exit (ADR-0003).
     func endForQuit() {
-        guard isRecording else { return }
-        returnToIdle()
-        guard let engine else { return }
-        self.engine = nil
-        _ = engine.stop()
-    }
-
-    /// The one finalization path every end funnels through (ADR-0007). Returns to idle at once, then
-    /// tears the engine down off the main thread — `stop()` drains the ring and closes the file,
-    /// which may block, and the main thread must not (ADR-0003). If the engine had already ended
-    /// itself on a fault, its own reason wins over the caller's.
-    private func finalize(reason: RecordingEndReason, generation gen: Int) {
-        guard gen == generation, isRecording else { return }
-        returnToIdle()
-
-        // Engine may still be building (a second click abandoned the attempt mid-bring-up): `attach`
-        // will orphan-stop it, and the bumped generation makes that certain. Only finalize one we hold.
-        guard let engine else { return }
-        self.engine = nil
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = engine.stop()
-            let effective = engine.endReason ?? reason
-            Task { @MainActor in self.didFinalize(result: result, reason: effective) }
-        }
-    }
-
-    /// Back on the main actor with the finalized file (or nil for arm-then-never-play). Tells the
-    /// user what happened per the end's kind (ADR-0009/0010).
-    private func didFinalize(result: CaptureResult?, reason: RecordingEndReason) {
-        // A Recording that captured audio — even one a fault ended — means the grant is known good,
-        // so a later slow bring-up is a wedge to time out rather than a human at the prompt (ADR-0010).
-        if result != nil { hasCompletedACapture = true }
-        guard let result else { return }   // arm-then-never-play: nothing saved, nothing to tell.
-
-        switch reason {
-        case .userStopped:
-            // The first *completed* Recording is where notification authorization is requested, so a
-            // later unrequested end has a channel — never stacked onto a failure (ADR-0009).
-            FaultNotifier.requestAuthorizationOnce()
-            EditorPresenter.shared.open(selecting: result.url)
-        case .quit:
-            break   // you asked for it; the app is leaving. No window, no notification.
-        case .diskGuard, .recoveryExhausted, .formatMismatch, .sleep:
-            // Name the reason and open the editor on the click — or directly, if auth is absent.
-            FaultNotifier.recordingEnded(reason: reason, recordingURL: result.url)
-        }
+        run.endForQuit()
+        stopClock()
     }
 
     /// Registers the lifecycle ends that arrive as notifications: sleep, fast user switching, and
@@ -304,124 +108,35 @@ final class RecordingController {
 
     private var installedLifecycleObservers = false
 
-    private func attach(_ engine: CaptureEngine, generation gen: Int) {
-        // The attempt may have ended during the (usually brief, but on the first run possibly
-        // ~90 s) build — a second-click cancel, a wedge timeout, or a whole new attempt. If the
-        // world has moved on, this engine is orphaned: tear it down off-main (teardown can block)
-        // rather than leave a tap running.
-        guard gen == generation, isRecording else {
-            DispatchQueue.global(qos: .userInitiated).async { engine.stop() }
-            return
-        }
-        buildTimeout?.invalidate()
-        buildTimeout = nil
-        self.engine = engine
-        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+    // MARK: - The clock
+
+    /// 20 Hz — the meter's cadence, and the fastest thing the run does (issue #59). Every slower
+    /// cadence is arithmetic over `now` inside the run: the menu bar's 4 Hz clock, the Runway's 5 s
+    /// poll, and the wedge timeout. Four timers used to say this.
+    static let tickInterval: TimeInterval = 1.0 / 20.0
+
+    private var clock: Timer?
+
+    private func startClock() {
+        guard clock == nil else { return }
+        let timer = Timer(timeInterval: Self.tickInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, let engine = self.engine else { return }
-                self.elapsed = engine.elapsed
+                guard let self else { return }
+                self.run.tick(now: self.uptime)
+                // The run ends itself on a fault, the disk floor, a denial or the wedge, so the
+                // clock follows its state rather than being stopped by each end's own path.
+                if !self.run.isRecording { self.stopClock() }
             }
         }
         RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
-
-        // The disk guard's 5 s poll (ADR-0009). Run once immediately so amber/end reflect the tap's
-        // real byte rate without waiting a full interval — the pre-seeded amber used a nominal rate.
-        let guardTimer = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.evaluateRunwayGuard() }
-        }
-        RunLoop.main.add(guardTimer, forMode: .common)
-        self.guardTimer = guardTimer
-        evaluateRunwayGuard()
-
-        // The per-row live meter (issue #59). ~20 Hz is standard meter cadence and, unlike the
-        // recording clock, this is not observed by the menu bar — only the open panel reads it — so
-        // it drives no status-item churn while it ticks.
-        let meterTimer = Timer(timeInterval: 1.0 / 20.0, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.sampleLevel() }
-        }
-        RunLoop.main.add(meterTimer, forMode: .common)
-        self.meterTimer = meterTimer
+        clock = timer
     }
 
-    /// One meter sample: fold the engine's published peak through `LevelMeter` and roll it into the
-    /// window. A dead tap reads exactly 0 (LevelMeter), so a soft-faulted Recording flattens the
-    /// meter rather than freezing it at its last live value.
-    private func sampleLevel() {
-        guard let engine else { return }
-        let fill = LevelMeter.fill(forLinearPeak: engine.currentLevel)
-        currentLevel = fill
-        var columns = meterColumns
-        columns.removeFirst()
-        columns.append(fill)
-        meterColumns = columns
+    private func stopClock() {
+        clock?.invalidate()
+        clock = nil
     }
 
-    /// Flatten the meter — at each start (so no tail carries over) and at every return to idle.
-    private func resetMeter() {
-        currentLevel = 0
-        meterColumns = Array(repeating: 0, count: Self.meterColumnCount)
-    }
-
-    /// One Runway reading (ADR-0009): fold current free space and the master's byte rate into the
-    /// guard, then act — paint amber, post the 30-minute warning once, or end at the floor. A volume
-    /// that cannot be stat'd is skipped, never treated as empty, so an unverifiable disk never ends a
-    /// Recording.
-    private func evaluateRunwayGuard() {
-        guard isRecording, let engine else { return }
-        guard let free = DiskSpace.freeBytesForLibraryVolume() else { return }
-        let decision = runwayGuard.receive(freeBytes: free, ratePerSecond: engine.bytesPerSecond)
-        runwayTier = decision.tier
-        if decision.shouldWarn { FaultNotifier.runwayLow() }
-        if decision.shouldEnd { finalize(reason: .diskGuard, generation: generation) }
-    }
-
-    /// A denied grant was inferred (ADR-0008): end the Recording, discard the engine (which
-    /// removes any all-zero file), and raise the panel's recovery banner. No file is opened —
-    /// unlike a fault-stopped Recording, a denial produced no first sound and so no Recording.
-    ///
-    /// It must not depend on `attach` having run: the writer thread can infer denial before the
-    /// main actor picks up `attach` under load, and if it does, `self.engine` is still nil. So we
-    /// return to idle and raise recovery regardless — and if we do not yet hold the engine, the
-    /// in-flight `attach` for this (now stale) generation orphan-stops it, which is equivalent to
-    /// `discard` here since a denied Recording created no file to remove (ADR-0016 head elision).
-    private func handleDenial(generation gen: Int) {
-        guard gen == generation, isRecording else { return }
-        returnToIdle()
-        if let engine {
-            self.engine = nil
-            DispatchQueue.global(qos: .userInitiated).async { engine.discard() }
-        }
-        startRefusal = nil   // the panel carries at most one blocking reason (ADR-0009)
-        permissionRecovery = true
-    }
-
-    /// Bring-up was abandoned before it produced an engine — a build error, or the wedge timeout
-    /// firing after the first capture. Return cleanly to idle; any engine the blocked call later
-    /// hands back attaches against a stale generation and tears itself down.
-    private func abandon(generation gen: Int) {
-        guard gen == generation, isRecording else { return }
-        returnToIdle()
-    }
-
-    /// The common return-to-idle: clears the recording state and both timers, and bumps the
-    /// generation so any in-flight bring-up for the old attempt orphans itself.
-    private func returnToIdle() {
-        isRecording = false
-        recordingSourceID = nil
-        capturingURL = nil
-        pressedAtUptime = nil
-        timer?.invalidate()
-        timer = nil
-        meterTimer?.invalidate()
-        meterTimer = nil
-        buildTimeout?.invalidate()
-        buildTimeout = nil
-        guardTimer?.invalidate()
-        guardTimer = nil
-        runwayTier = .nominal
-        elapsed = 0
-        resetMeter()
-        generation += 1
-    }
+    /// The only clock read in the capture path.
+    private var uptime: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }

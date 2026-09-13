@@ -9,7 +9,7 @@ import Synchronization
 
 /// The result of a Recording that captured something. Nil is the arm-then-never-play case:
 /// no first sound, no file, nothing to open (ADR-0016).
-struct CaptureResult {
+nonisolated struct CaptureResult: Sendable {
     let url: URL
     let frameCount: Int
     let sampleRate: Double
