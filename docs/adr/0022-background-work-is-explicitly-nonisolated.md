@@ -48,3 +48,12 @@ which is what this record is for.
   calls need no hop, so it is silent and harmless to responsiveness — but the annotations describe the
   opposite of what happens. Correcting it means marking the capture spine `nonisolated` throughout,
   which is its own change.
+
+  **Closed by [ADR-0043](0043-one-run-of-capture-accepts-its-world-and-takes-time-as-a-parameter.md).**
+  The audit method above is exactly what did it: marking `CaptureEngine` `nonisolated` made the
+  compiler name every callee it drives, and the twelve it named — `ProcessTap`, `CAFMasterWriter`,
+  `AudioRingBuffer`, `TimestampRing`, `CAProperty`, `LibraryLocation`, `RecordingMetadata`,
+  `LevelMeter`, `CaptureReducer`, `DenialDetector`, `Trim` and `Double.clamped` — each now carries
+  the annotation and its reason. What made it tractable rather than open-ended was the seam ADR-0043
+  put under the controller: `CoreAudioCapture` is a main-actor adapter in front of the engine, so the
+  boundary the annotations describe is a real line in the type system.

@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: delivered
 source: architecture review, 12 Sep 2026 — candidate 1, "Give a Recording session a seam"
+record: docs/adr/0043-one-run-of-capture-accepts-its-world-and-takes-time-as-a-parameter.md
 ---
 
 # Give the Capture Run a seam
@@ -15,6 +16,51 @@ real time for a real tap.
 The change is one seam and one invariant: a `CaptureRun` module that accepts a capture adapter and
 takes time as a parameter, with the generation rule expressed once as a phase transition rather than
 eight guards.
+
+---
+
+## As built
+
+All seven phases landed. The suite went from 230 cases to 261 — 31 of them over the capture path,
+which had none — and the app target still builds with zero warnings.
+
+| file | lines | planned |
+|---|---:|---:|
+| `RecordingController.swift` | 142 | ~95 |
+| `CaptureRun.swift` | 474 | ~250 |
+| `CaptureAdapters.swift` | 193 | ~180 |
+| `CaptureRunTests.swift` | 456 | ~450 |
+| `CaptureDoubles.swift` | 133 | ~120 |
+
+`CaptureRun` is nearly twice its estimate, and the reason is worth recording: the doc comments moved
+with the code rather than being re-derived, which was the right call — they carry the ADR citations
+that make the module readable — and the phase enum's three accessors are lines the plan's sketch did
+not count. The logic itself is close to a move.
+
+Six things differ from the plan below, each because writing the code or the tests showed the plan
+was wrong:
+
+- **`CaptureHooks` carries main-actor calls, not hops.** The plan had the run wrap each hook in a
+  `Task`. That is the adapter's job, not the run's: the run does not know the writer thread is a
+  different thread. `CoreAudioCaptureBuilder` owns the hop, exactly as it already owns the teardown
+  dispatch — and a test can then play the writer thread's part in a straight line, with no `await`.
+- **`stop()` and `end(_:)` take no `now:`.** Finalization reads no clock, so the parameter was
+  decoration. `start(_:now:)` and `tick(now:)` are the only entry points that take time.
+- **`CaptureBuilding`'s callback is `(any Capturing)?`, not `Result<_, any Error>`.** The run
+  abandons the attempt either way and never inspects the error, and `any Error` is not `Sendable`.
+- **`RecordingController` has two initializers, not a default argument.** A default argument is
+  evaluated in a nonisolated context, where a main-actor adapter cannot be constructed. The same
+  bit me twice more, in the doubles and the test rig.
+- **Phase 6 named twelve types, not the seven guessed here** — `Trim` and `Double.clamped` were the
+  two the plan did not see, reached through `RecordingMetadata`.
+- **The warning baseline was misstated below.** The *app* target builds clean, which is what makes
+  Phase 6's audit tractable and which held. The *test* target carries 99 pre-existing
+  isolated-conformance warnings from `#expect` over main-actor `Equatable` conformances; Phase 6
+  took that to 73 and added none.
+
+The behaviour checklist in §6 was reviewed line by line against the diff and holds, including the
+one deliberate change it names: the Runway's first poll moved from synchronous-in-`attach` to the
+next tick, within 50 ms.
 
 ---
 
