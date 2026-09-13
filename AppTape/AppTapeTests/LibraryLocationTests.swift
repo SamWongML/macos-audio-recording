@@ -57,7 +57,7 @@ struct LibraryRenameTests {
     }
 
     @Test func theExtensionIsCarriedOverNotEdited() {
-        // An edited extension fails `Recording.init?`'s adoption gate and vanishes the Recording,
+        // An edited extension fails `RecordingReader.adopt`'s gate and vanishes the Recording,
         // so the user only ever types the base name.
         #expect(rename("Google Chrome 2026-08-27 at 20.05.03.caf", to: "Interview")
                 == .rename(to: "Interview.caf"))
@@ -96,7 +96,7 @@ struct LibraryRenameTests {
     }
 
     @Test func aLeadingDotIsRefusedBecauseItWouldVanishTheRecording() {
-        // `audioFiles(in:)` lists with `.skipsHiddenFiles`, so a dotted name would drop the
+        // `RecordingReader.audioFiles(in:)` lists with `.skipsHiddenFiles`, so a dotted name drops the
         // Recording out of the Library and close the editor on it — a rename that reads as a
         // deletion. This is the reason the case exists at all.
         #expect(rename("A.caf", to: ".hidden") == .refused(.wouldHide))

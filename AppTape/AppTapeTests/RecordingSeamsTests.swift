@@ -9,6 +9,7 @@ import Foundation
 
 /// A Recording reads its Seams from the xattr at open and surfaces them by the 250 ms single-or-total
 /// rule (ADR-0010). The mark describes the master, and a hand-adopted file with no attribute is clean.
+@MainActor
 struct RecordingSeamsTests {
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory
@@ -19,7 +20,7 @@ struct RecordingSeamsTests {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 3)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let recording = try #require(Recording(url: url))
+        let recording = try #require(AudioFixtures.adopt(url))
         #expect(recording.seams.isEmpty)
         #expect(recording.isSurfacedForSeams == false)
         #expect(recording.laneSeams.isEmpty)
@@ -36,7 +37,7 @@ struct RecordingSeamsTests {
             Seam(start: 200_000, frames: 512, cause: .overrun),
         ], to: url)
 
-        let recording = try #require(Recording(url: url))
+        let recording = try #require(AudioFixtures.adopt(url))
         #expect(recording.seams.count == 2)
         #expect(recording.isSurfacedForSeams)
         #expect(recording.laneSeams == [Seam(start: 48_000, frames: 48_000, cause: .rebuild)])
@@ -53,7 +54,7 @@ struct RecordingSeamsTests {
             Seam(start: 90_000, frames: 4_800, cause: .overrun),
         ], to: url)
 
-        let recording = try #require(Recording(url: url))
+        let recording = try #require(AudioFixtures.adopt(url))
         #expect(recording.isSurfacedForSeams == false)   // no glyph
         #expect(recording.laneSeams.isEmpty)             // nothing drawn in the lane
         #expect(recording.seamSummary != nil)            // but told in the one-line summary
@@ -80,7 +81,7 @@ struct RecordingSeamsTests {
             Seam(start: 150_000, frames: 48_000, cause: .rebuild),
         ], to: url)
 
-        let recording = try #require(Recording(url: url))
+        let recording = try #require(AudioFixtures.adopt(url))
         let rendered = resolved(try #require(recording.seamSummary))
         #expect(!rendered.contains("^["))
         #expect(!rendered.contains("inflect"))
@@ -95,7 +96,7 @@ struct RecordingSeamsTests {
         try RecordingMetadata.writeSeams([Seam(start: 48_000, frames: 48_000, cause: .rebuild)],
                                          to: url)
 
-        let recording = try #require(Recording(url: url))
+        let recording = try #require(AudioFixtures.adopt(url))
         let rendered = resolved(try #require(recording.seamSummary))
         #expect(rendered.hasPrefix("1 Seam · "))
     }

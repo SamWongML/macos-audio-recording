@@ -436,8 +436,8 @@ struct CaptureRunTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let growing = try AudioFixtures.writeCAF(at: directory.appendingPathComponent("growing.caf"))
         let settled = try AudioFixtures.writeCAF(at: directory.appendingPathComponent("settled.caf"))
-        let growingRecording = try #require(Recording(url: growing))
-        let settledRecording = try #require(Recording(url: settled))
+        let growingRecording = try #require(AudioFixtures.adopt(growing))
+        let settledRecording = try #require(AudioFixtures.adopt(settled))
 
         let rig = Rig()
         rig.startCapturing()

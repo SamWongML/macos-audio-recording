@@ -72,7 +72,7 @@ extension LibraryLocation {
         case empty
         /// `/` or `:` — the only two characters an APFS filename cannot hold.
         case illegalCharacter(Character)
-        /// A leading dot. Not merely unconventional: `audioFiles(in:)` lists with
+        /// A leading dot. Not merely unconventional: `RecordingReader.audioFiles(in:)` lists with
         /// `.skipsHiddenFiles`, so a dotted name would drop the Recording out of the Library
         /// entirely and close the editor on it — a rename that reads as a deletion.
         case wouldHide
@@ -111,7 +111,7 @@ extension LibraryLocation {
     }
 
     /// Resolve a rename. `proposed` is the **base name** the user typed — the extension is never
-    /// theirs to edit (ADR-0020: an edited extension fails `Recording.init?`'s adoption gate and
+    /// theirs to edit (ADR-0020: an edited extension fails `RecordingReader.adopt`'s gate and
     /// vanishes the Recording, the same failure as a leading dot), so it is carried over from
     /// `currentFileName` unchanged.
     ///

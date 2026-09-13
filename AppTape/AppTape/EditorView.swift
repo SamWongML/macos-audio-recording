@@ -380,7 +380,7 @@ struct EditorView: View {
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.lg)
 
-            RecordingBrief(recording: recording)
+            RecordingBrief(recording: recording, reader: model.store.reader)
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.xl)
 
@@ -602,6 +602,9 @@ struct EditorView: View {
 /// in dB is already an inspector row, so there is nothing left for this block to add.
 private struct RecordingBrief: View {
     var recording: Recording
+    /// The `Master` row's live figure is a `stat` of the growing file (ADR-0031), and a Recording
+    /// does not read files — so the row is handed the store's reader to ask.
+    var reader: RecordingReader
     @State private var recorder = RecordingController.shared
 
     private var isStillArriving: Bool { recorder.isStillArriving(recording) }
@@ -635,14 +638,14 @@ private struct RecordingBrief: View {
 
     /// The master's size, current while it is being written.
     ///
-    /// `Recording.byteCount` is a bare `stat`, which is not observable — so the row is recomputed
+    /// The reader's `byteCount` is a bare `stat`, which is not observable — so the row is recomputed
     /// by reading `recorder.elapsed` first. The 4 Hz clock is what drives it, which is also the
     /// cadence the figure deserves: a byte count that ticked twenty times a second would be
     /// ambient motion (ADR-0028) rather than a fact changing.
     private var masterText: String {
         if recorder.isCapturing(recording) {
             _ = recorder.elapsed
-            let size = Recording.byteCount(of: recording.url)?.formatted(.byteCount(style: .file))
+            let size = reader.byteCount(of: recording.url)?.formatted(.byteCount(style: .file))
             return size.map { "\($0) and growing" } ?? "—"
         }
         if isStillArriving { return "—" }

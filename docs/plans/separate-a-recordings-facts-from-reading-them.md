@@ -49,6 +49,47 @@ CAF with a note to delete the fixture when this lands.
 
 ---
 
+## As built — Phases 2 and 3
+
+They landed as **one** commit, because the code forced it: making `stillDescribes` pure means
+`reconcile` must be handed a byte count, which means the reader must be injected — which was most of
+Phase 3's diff. The suite went from 251 cases to 252, and both targets build with no warning of their
+own.
+
+| file | lines | planned |
+|---|---|---:|
+| `RecordingReader.swift` | 109 | ~150 |
+| `Recording.swift` | 326 (was 339) | smaller |
+| `LibraryStore.swift` | 206 (was 207) | ~±40 |
+
+Four things differ from the plan below, each because writing the code showed the plan was wrong:
+
+- **There is no `RecordingReading` protocol yet.** With only `RecordingReader` conforming, it failed
+  the bar `give-the-capture-run-a-seam.md` §1 set for an interface to exist at all — two
+  conformances, the production adapter and the test double. It comes back in Phase 4, in the same
+  commit as `StubRecordingReader`, which is where the sibling plan put all four of its protocols.
+  `LibraryStore` holds the concrete reader until then; the swap is five lines.
+- **`adopt` builds one `Recording`, not two.** The plan's move-it-verbatim instruction carried the
+  old init's two branches across, and they duplicated five of thirteen arguments. Optional-derived
+  values collapse them, and the undecodable file still reads no metadata — nothing can have written
+  any.
+- **`RecordingBrief` is handed the store's reader.** The plan had `EditorView` untouched until Phase
+  5, but removing `Recording.byteCount(of:)` breaks the `Master` row immediately. It takes
+  `model.store.reader` as a parameter rather than minting a second production reader, so Phase 5
+  deletes a parameter instead of a property that reads as permanent.
+- **`audioFiles(in:)`'s ordering test became a store test.** The listing is unsorted now, so
+  `audioFilesSkipsSubdirectoriesAndHiddenFilesNewestFirst` split: the filter is still the reader's
+  case, and `theStoreOrdersRecordingsNewestFirst` is the new one over `refresh`. Its `setModified`
+  helper went with it — it never affected the order, because creation date wins.
+
+One thing the plan asked for and did not get: `reconcile` still costs up to four `stat`s per url on
+the growing-master path. Every behaviour-preserving way to cut it either adds memoization or moves
+the cost onto first adoption — and gating the rename branch on a `byURL` miss, the obvious fix,
+breaks the case where a *different* Recording is renamed onto a tracked path. Left as it was found;
+this diff did not make it worse.
+
+---
+
 ## 0 · Three decisions to take before any code
 
 ### `Recording` stays a class, and "plain value" means "does no I/O"
