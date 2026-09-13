@@ -380,7 +380,7 @@ struct EditorView: View {
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.lg)
 
-            RecordingBrief(recording: recording, reader: model.store.reader)
+            RecordingBrief(recording: recording)
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.xl)
 
@@ -602,9 +602,6 @@ struct EditorView: View {
 /// in dB is already an inspector row, so there is nothing left for this block to add.
 private struct RecordingBrief: View {
     var recording: Recording
-    /// The `Master` row's live figure is a `stat` of the growing file (ADR-0031), and a Recording
-    /// does not read files — so the row is handed the store's reader to ask.
-    var reader: any RecordingReading
     @State private var recorder = RecordingController.shared
 
     private var isStillArriving: Bool { recorder.isStillArriving(recording) }
@@ -638,14 +635,18 @@ private struct RecordingBrief: View {
 
     /// The master's size, current while it is being written.
     ///
-    /// The reader's `byteCount` is a bare `stat`, which is not observable — so the row is recomputed
-    /// by reading `recorder.elapsed` first. The 4 Hz clock is what drives it, which is also the
-    /// cadence the figure deserves: a byte count that ticked twenty times a second would be
-    /// ambient motion (ADR-0028) rather than a fact changing.
+    /// The `stat` is still ADR-0031's, but the run performs it and publishes the result at 4 Hz
+    /// (ADR-0044), so this is an ordinary observable read. It used to be a `stat` in this body with
+    /// a discarded `recorder.elapsed` above it, whose only job was to make the body recompute
+    /// around a syscall observation cannot see. The cadence is unchanged, and deliberate: a byte
+    /// count ticking twenty times a second is ambient motion (ADR-0028), not a fact changing.
+    ///
+    /// A settled Recording states the length it was read at, not a fresh one — for a finalized
+    /// master they are the same number (ADR-0003), and for one that has grown since, ADR-0021 says
+    /// the answer is a re-adoption rather than a patched figure.
     private var masterText: String {
         if recorder.isCapturing(recording) {
-            _ = recorder.elapsed
-            let size = reader.byteCount(of: recording.url)?.formatted(.byteCount(style: .file))
+            let size = recorder.masterByteCount?.formatted(.byteCount(style: .file))
             return size.map { "\($0) and growing" } ?? "—"
         }
         if isStillArriving { return "—" }

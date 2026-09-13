@@ -16,11 +16,12 @@ nonisolated private struct Attempt: Equatable, Sendable {
 /// One run of capture, start to stop: the coordination that ADR-0007's six ends, ADR-0008's denial
 /// inference, ADR-0009's Runway guard and ADR-0010's generation rule all live in.
 ///
-/// It **accepts** its world rather than creating it — a capture builder, a free-space probe and the
-/// telling — and it **reads no clock**. Time arrives as `tick(now:)`, the way `FaultReducer`
-/// already takes it, so the four `Timer`s this used to carry are one timer in `RecordingController`
-/// and every cadence in here is arithmetic a test can drive. Nothing in this file touches Core
-/// Audio, AppKit, the notification centre or `ProcessInfo`; that is the whole point of it.
+/// It **accepts** its world rather than creating it — a capture builder, a free-space probe, the
+/// telling and the Recording reader — and it **reads no clock**. Time arrives as `tick(now:)`, the
+/// way `FaultReducer` already takes it, so the four `Timer`s this used to carry are one timer in
+/// `RecordingController` and every cadence in here is arithmetic a test can drive. Nothing in this
+/// file touches Core Audio, AppKit, the notification centre or `ProcessInfo`; that is the whole
+/// point of it.
 @MainActor
 @Observable
 final class CaptureRun {
@@ -98,6 +99,16 @@ final class CaptureRun {
     /// Master duration in seconds, read off the capture's frame count on the clock's cadence — so
     /// it sits at 0 (menu bar `00:00`) until the first sound (ADR-0016).
     private(set) var elapsed: TimeInterval = 0
+
+    /// What the master weighs **right now**, on the same 4 Hz cadence as `elapsed` (ADR-0031). The
+    /// editor's `Master` row reads this rather than stat'ing the file from its own body: a bare
+    /// `stat` is not observable, so the row used to discard a read of `elapsed` purely to invalidate
+    /// itself around one.
+    ///
+    /// Nil through the armed window — there is no file until the first sound (ADR-0016) — and nil
+    /// at rest. A file merely *arriving* in the Library is not this one and gets no figure: nothing
+    /// is watching it, so there is nothing to be current about (ADR-0031).
+    private(set) var masterByteCount: Int64?
 
     /// The active Recording's live meter fill (0...1), sampled off the capture's published peak at
     /// ~20 Hz through `LevelMeter` (issue #59). A dead tap reads exactly 0, so a soft-faulted
@@ -184,7 +195,7 @@ final class CaptureRun {
     /// and the writer thread.
     static let runwayPollInterval: TimeInterval = 5
 
-    private var lastElapsedPublishedAt: TimeInterval?
+    private var lastFiguresPublishedAt: TimeInterval?
     private var lastRunwayPollAt: TimeInterval?
 
     /// The Runway tier/warning reducer for the current Recording, reset at each start so hysteresis
@@ -196,11 +207,17 @@ final class CaptureRun {
     private let builder: any CaptureBuilding
     private let runway: any RunwayProbing
     private let telling: any RunTelling
+    /// The one module that reads a Recording's facts off the disk (ADR-0044). The run holds it for
+    /// exactly one read — the growing master's length, below — which is the only file the run has
+    /// any business asking about.
+    private let reader: any RecordingReading
 
-    init(builder: any CaptureBuilding, runway: any RunwayProbing, telling: any RunTelling) {
+    init(builder: any CaptureBuilding, runway: any RunwayProbing, telling: any RunTelling,
+         reader: any RecordingReading) {
         self.builder = builder
         self.runway = runway
         self.telling = telling
+        self.reader = reader
     }
 
     // MARK: - Starting
@@ -233,7 +250,8 @@ final class CaptureRun {
         permissionRecovery = false   // retry clears the last denial's banner
         recordingSourceID = source.bundleID
         elapsed = 0
-        lastElapsedPublishedAt = nil
+        masterByteCount = nil
+        lastFiguresPublishedAt = nil
         lastRunwayPollAt = nil
         resetMeter()
 
@@ -281,7 +299,7 @@ final class CaptureRun {
         // The first clock publish and the first Runway poll both happen on the next tick, within
         // 50 ms — soon enough that the guard's pre-seeded amber is corrected by the tap's real byte
         // rate before anyone reads it.
-        lastElapsedPublishedAt = nil
+        lastFiguresPublishedAt = nil
         lastRunwayPollAt = nil
     }
 
@@ -405,7 +423,8 @@ final class CaptureRun {
         capturingURL = nil
         runwayTier = .nominal
         elapsed = 0
-        lastElapsedPublishedAt = nil
+        masterByteCount = nil
+        lastFiguresPublishedAt = nil
         lastRunwayPollAt = nil
         resetMeter()
     }
@@ -426,16 +445,24 @@ final class CaptureRun {
             if hasCompletedACapture, now - pressedAt >= Self.wedgeTimeout { abandon(attempt) }
         case .capturing(_, let capture, _):
             sampleLevel(from: capture)
-            publishElapsed(from: capture, now: now)
+            publishFigures(from: capture, now: now)
             pollRunway(capture, now: now)
         }
     }
 
-    /// The menu bar's clock, at 4 Hz rather than the tick's 20 — see `clockInterval`.
-    private func publishElapsed(from capture: any Capturing, now: TimeInterval) {
-        if let last = lastElapsedPublishedAt, now - last < Self.clockInterval { return }
-        lastElapsedPublishedAt = now
+    /// The two figures a capture publishes about itself, at 4 Hz rather than the tick's 20 — see
+    /// `clockInterval`. One gate for both, because the reason is the same twice over: the menu bar
+    /// observes `elapsed`, and a byte count ticking twenty times a second is ambient motion rather
+    /// than a fact changing, which ADR-0028 forbids.
+    ///
+    /// The length is a bare `stat` of the file being written (ADR-0031) — the read the `Master` row
+    /// used to perform from its own view body, moved onto something observable. Nil before the
+    /// first sound, because `capturingURL` is nil until the master exists (ADR-0016).
+    private func publishFigures(from capture: any Capturing, now: TimeInterval) {
+        if let last = lastFiguresPublishedAt, now - last < Self.clockInterval { return }
+        lastFiguresPublishedAt = now
         elapsed = capture.elapsed
+        masterByteCount = capturingURL.flatMap { reader.byteCount(of: $0) }
     }
 
     /// One meter sample: fold the capture's published peak through `LevelMeter` and roll it into the

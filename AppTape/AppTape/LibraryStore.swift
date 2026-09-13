@@ -37,7 +37,7 @@ final class LibraryStore {
     /// The one thing that reads a file. Accepted rather than created, so the reconcile below is a
     /// pure function of what the reader says the folder holds — which is what lets the suite drive
     /// a rename, a re-adoption and a vanish with no disk at all.
-    @ObservationIgnored let reader: any RecordingReading
+    @ObservationIgnored private let reader: any RecordingReading
 
     @ObservationIgnored private var source: DispatchSourceFileSystemObject?
     @ObservationIgnored private var watchedFD: Int32 = -1
