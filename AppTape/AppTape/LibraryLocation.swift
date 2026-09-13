@@ -12,7 +12,10 @@ import Foundation
 ///
 /// The naming and collision rules are pure functions over injected inputs so they can be
 /// tested without a clock, a timezone, or the disk.
-enum LibraryLocation {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated enum LibraryLocation {
     /// `~/Music/AppTape/`. Not created here — the directory is made lazily at the first
     /// frame, alongside the file, so an arm-then-never-play leaves no trace (ADR-0016).
     static var directory: URL {

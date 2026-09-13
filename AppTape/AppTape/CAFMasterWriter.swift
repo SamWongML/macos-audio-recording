@@ -17,7 +17,10 @@ import Foundation
 /// So a killed Recording opens as a normal one. `AudioFileWritePackets` is called with
 /// `inUseCache: false` to keep a write-once file from evicting the page cache, and for
 /// uncompressed formats packets == frames, so appending is just advancing the packet index.
-final class CAFMasterWriter {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated final class CAFMasterWriter {
     let url: URL
     private var fileID: AudioFileID?
     private var asbd: AudioStreamBasicDescription

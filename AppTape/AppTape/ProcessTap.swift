@@ -17,7 +17,10 @@ import Foundation
 /// from that format at ~10 s. Aiming by object ID keeps `processRestoreEnabled` (assigned
 /// explicitly; it defaults on), so a Source that quits and relaunches is picked up again
 /// within about a second with no re-aiming (ADR-0001).
-final class ProcessTap {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated final class ProcessTap {
     /// The tap's delivered stream format — interleaved Float32 stereo in practice, but read,
     /// not assumed.
     let format: AudioStreamBasicDescription

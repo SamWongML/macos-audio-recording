@@ -33,7 +33,13 @@ nonisolated struct CaptureResult: Sendable {
 /// the Recording, a hard fault spends one of three attempts, and a rebuild destroys and recreates
 /// the tap, re-resolving the Source's processes. All of it runs *after* the first sound; the
 /// bring-up window (denial inference, head elision) is untouched.
-final class CaptureEngine: @unchecked Sendable {
+///
+/// **Explicitly `nonisolated`.** The target builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
+/// (ADR-0022), so an unannotated type is main-actor isolated — which this one is emphatically not:
+/// its whole life is a real `Thread`. The annotation is load-bearing, not decorative; it is the
+/// inverse hazard ADR-0022 named and deferred, and `CoreAudioCapture` is the main-actor adapter
+/// that now stands between this and the rest of the app.
+nonisolated final class CaptureEngine: @unchecked Sendable {
     let sampleRate: Double
     private let channels: Int
     private let format: AudioStreamBasicDescription

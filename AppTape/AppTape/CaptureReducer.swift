@@ -20,7 +20,10 @@
 /// writes nothing and the master's t=0 is the first sample heard — while
 /// **interior** silence, once the master has begun, is kept as real zero-frames
 /// so Trim points stored against the master never shift.
-struct CaptureReducer {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated struct CaptureReducer {
     /// Audio frames committed to the master so far. Sits at `00:00` through the armed window and
     /// only advances at the first sound (ADR-0016). Once faults can pad silence, the menu-bar timer
     /// reads the engine's `SeamReconciler.masterFrames` instead — that count includes padding Seams,

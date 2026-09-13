@@ -14,7 +14,10 @@ import Foundation
 /// tap — each hands in `nil` or a non-positive peak, and each reads `0`, never a decaying ghost
 /// or a noise-floor smear. Any smoothing belongs to the view's animation, not to the number,
 /// so the number stays honest.
-enum LevelMeter {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated enum LevelMeter {
     /// The quietest peak the meter shows above the floor, in dBFS. A peak at or below reads `0`.
     static let floorDB: Double = -60
 

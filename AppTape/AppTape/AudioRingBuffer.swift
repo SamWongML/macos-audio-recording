@@ -20,7 +20,10 @@ import Synchronization
 /// side's index is read with acquire ordering against the peer's release, which publishes
 /// the sample writes/reads that happened before it. A torn count is impossible because each
 /// index has exactly one writer.
-final class AudioRingBuffer: @unchecked Sendable {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated final class AudioRingBuffer: @unchecked Sendable {
     private let storage: UnsafeMutableBufferPointer<Float>
     private let capacity: Int
 
