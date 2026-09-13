@@ -11,7 +11,10 @@ import Foundation
 /// namespace, so both travel with the file and come back on the next open. Losing the xattrs
 /// degrades gracefully — the audio is the file, so a Recording that round-trips through a FAT
 /// volume or a network share arrives with its Trim reset and its Gain at zero.
-enum RecordingMetadata {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated enum RecordingMetadata {
     /// The Source the Recording was captured from.
     static let sourceKey = "com.apptape.source"
     /// The Trim, as `"start,end"` in seconds.

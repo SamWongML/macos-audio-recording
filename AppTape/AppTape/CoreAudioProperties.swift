@@ -8,7 +8,10 @@ import CoreAudio
 /// Thin typed readers over the `AudioObjectGetPropertyData` C API — the plumbing every
 /// Core Audio touch in the app goes through, so the raw pointer dance lives in exactly
 /// one place. Promoted verbatim from the issue #12 capture spike.
-enum CAProperty {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated enum CAProperty {
     static func address(_ selector: AudioObjectPropertySelector,
                         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal)
         -> AudioObjectPropertyAddress {

@@ -18,7 +18,10 @@ import Synchronization
 /// A mark is pushed **only when the sample write succeeded**, with `ringFrame` counting frames
 /// actually written. So a dropped buffer pushes no mark and leaves a host-time jump the writer reads
 /// as an overrun gap — the sample ring's drop and this ring's silence describe the same event.
-final class TimestampRing: @unchecked Sendable {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated final class TimestampRing: @unchecked Sendable {
     struct Mark: Equatable {
         /// Frames written to the sample ring **before** this buffer — the ring-frame position of the
         /// buffer's first frame, in the same counting as the writer's per-tap consumed-frame index.

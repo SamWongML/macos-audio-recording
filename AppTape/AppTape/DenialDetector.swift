@@ -25,7 +25,10 @@ import Foundation
 /// - **While output runs.** A Source that is paused (`isRunningOutput` false) is the ordinary
 ///   arm-then-never-play case, not a denial; the window resets on any drop of output, so real
 ///   dead air between the press and the first sound never accumulates toward the threshold.
-struct DenialDetector {
+/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
+/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
+/// a piece of the capture spine.
+nonisolated struct DenialDetector {
     /// Seconds of continuous all-zero-since-first-sample, while output runs, after which a denied
     /// grant is inferred. Short because the denied state is unambiguous once output is confirmed
     /// running — the app is producing sound and the tap hears none (ADR-0008).

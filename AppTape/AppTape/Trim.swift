@@ -27,7 +27,9 @@ import Foundation
 /// the xattr, breaking the Recording permanently on the next open. The fix is not a better
 /// pair of clamps: it is to clamp **once**, into an interval that is provably non-empty, and to
 /// have exactly one place that knows how. (Settled in issue #7's prototype; see its README.)
-struct Trim: Equatable {
+/// Explicitly `nonisolated`: the capture spine reads a Trim back off a file on its writer thread,
+/// and the target's default isolation is `MainActor` (ADR-0022).
+nonisolated struct Trim: Equatable {
     /// An Export has to contain something.
     static let minimumLength = 0.2
 
@@ -99,7 +101,7 @@ struct Trim: Equatable {
     }
 }
 
-extension Double {
+nonisolated extension Double {
     func clamped(to limits: ClosedRange<Double>) -> Double {
         Swift.min(Swift.max(self, limits.lowerBound), limits.upperBound)
     }
