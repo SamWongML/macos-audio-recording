@@ -118,6 +118,118 @@ bookkeeping cases the stub made expressible).
 
 ---
 
+## Handoff — Phases 5 and 6
+
+**Start here if you are picking this up fresh.** Branch `refactor/a-recording-is-read-once`, four
+commits on top of `main`, nothing pushed. Phases 1-4 are delivered; 5 and 6 are not. The suite is
+283 cases, green, and both targets build with no warning of their own.
+
+```
+xcodebuild -project AppTape/AppTape.xcodeproj -scheme AppTape -destination 'platform=macOS' test
+```
+
+Read §5's "Phase 5" and "Phase 6" below for intent; this section is what the code actually looks
+like now and where the decisions are.
+
+### Phase 5 — the view body stops stat'ing
+
+One call site is left. `EditorView.swift`, in `RecordingBrief`:
+
+```swift
+var reader: any RecordingReading          // passed in from `RecordingBrief(recording:reader:)`
+
+private var masterText: String {
+    if recorder.isCapturing(recording) {
+        _ = recorder.elapsed                                      // ← the invalidation trick
+        let size = reader.byteCount(of: recording.url)?...        // ← the syscall in a body
+        return size.map { "\($0) and growing" } ?? "—"
+    }
+    ...
+}
+```
+
+ADR-0031 **decided** that this row states a current figure from a bare `stat`, so the read stays;
+what moves is who performs it, onto something observable. `CaptureRun.publishElapsed(from:now:)`
+already gates on `Self.clockInterval` (4 Hz) inside `tick(now:)` — publish the byte count in the
+same place, on the same gate, and the brief reads a published property. Then delete `_ =
+recorder.elapsed`, delete the `reader` parameter, and delete `model.store.reader` from the call
+site at `EditorView.swift`'s `RecordingBrief(recording:reader:)`.
+
+**Two ways to get the number, and the second is the thinner one.**
+
+- **A — inject the reader into `CaptureRun`** as a fourth dependency, calling
+  `reader.byteCount(of: capturingURL)`. Costs a stored property, a change to
+  `CaptureRun.init(builder:runway:telling:)`, the production wiring in `RecordingController.init()`,
+  and a fourth double in `CaptureRunTests.Rig` — though `StubRecordingReader` already exists and
+  would serve.
+- **B — add `var masterByteCount: Int64? { get }` to `Capturing`** (recommended). The capture owns
+  the file it is writing, so it is the honest owner of "what does it weigh right now".
+  `CoreAudioCapture` stats the writer's url; `FakeCapture` gets a settable property. One member on
+  a protocol that already has its two conformances, no new dependency, no change to the run's
+  initializer or the `Rig`. ADR-0031 asks for a bare `stat` — it does not say who calls it.
+
+Either way `capturingURL` (`CaptureRun.swift`, set in the `onMasterCreated` hook) is the url in
+question, and it is nil through the armed window before the first sound (ADR-0016), which is
+already the em-dash case.
+
+**Tests to add**, in `CaptureRunTests`, alongside the cadence cases already there:
+
+- the master's size publishes at 4 Hz when ticked at 20, the same rule
+  `theClockPublishesAtFourHertzEvenWhenTickedAtTwenty` pins for `elapsed`;
+- it is nil before the first sound, and nil again after a return to idle;
+- a Recording that is merely *arriving* in the Library — not the one being captured — still gets
+  nothing, which is ADR-0031's "no figure to be current about".
+
+**Must not change:** the figure is 4 Hz, never 20 — a byte count ticking twenty times a second is
+ambient motion, which ADR-0028 forbids; a file merely arriving in the Library keeps the em dash; and
+the settled case still reads `openedByteCount`, not a fresh `stat`.
+
+### Phase 6 — the record
+
+`docs/adr/0044-a-recording-is-read-once-at-one-seam.md`. **0044 is the next free number** (0043 is
+the capture-run seam). Follow ADR-0043's shape, which is this repo's own precedent for putting a
+seam under a spine: an H1 that is a declarative sentence naming the decision, unlabelled context
+prose, `## Consequences` naming the test that pins each one, `## Considered and rejected`.
+
+What is a decision rather than a refactor, and so belongs in it, is listed in §5's Phase 6. Two
+additions the work surfaced:
+
+- **Writes stayed on `Recording`.** `persistTrim`/`persistGain` still call `RecordingMetadata`.
+  That is deliberate and worth stating: they fire once per gesture-end, never repeat at UI cadence,
+  and never gated construction — none of the three reasons the reads had to move.
+- **The reader reads whole files, never single fields.** ADR-0021 already rejected the per-field
+  version ("re-adoption with extra steps"); 0044 should say that the type can no longer express it,
+  because the next person wanting a live figure will reach for exactly that.
+
+Amend rather than add: ADR-0021 and ADR-0031 each get a one-line pointer to 0044. Editing an ADR in
+place is established here — ADR-0022's last bullet was edited to say "closed by ADR-0043". Also
+update this plan's front-matter `status:` to `delivered` and add the last `As built` section.
+
+### What bit us, so it does not bite you again
+
+- **The test target does not set `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`; the app target does.**
+  Any suite or nested type touching `Recording`, `LibraryStore` or the reader needs an explicit
+  `@MainActor`, and a nested type does not inherit its enclosing suite's isolation.
+- **A default argument is evaluated in a nonisolated context**, so a main-actor value cannot be
+  constructed in one. That is why `LibraryStore` and `RecordingController` each have two
+  initializers rather than one with a default.
+- **`#require` warns when it can prove the value is never nil**, and the warning is an error in
+  review. Prefer indexing a known-count array over `#require(...first)`.
+- **`try` cannot appear to the right of a non-assignment operator** inside `#expect` — bind the
+  value to a `let` first.
+- New files under `AppTape/AppTape/` and `AppTape/AppTapeTests/` join their targets automatically
+  (`PBXFileSystemSynchronizedRootGroup`); no project-file edit.
+
+### Deliberately left alone
+
+`reconcile` still costs up to four `stat`s per url on the growing-master path. Every
+behaviour-preserving fix either adds memoization or moves cost onto first adoption, and the obvious
+one — gating the rename branch on a `byURL` miss — breaks the case where a *different* Recording is
+renamed onto a tracked path. It was not made worse here. If it is ever worth fixing, the shape is a
+single combined probe on `RecordingReading` returning length and identity from one `stat`.
+
+---
+
 ## 0 · Three decisions to take before any code
 
 ### `Recording` stays a class, and "plain value" means "does no I/O"
