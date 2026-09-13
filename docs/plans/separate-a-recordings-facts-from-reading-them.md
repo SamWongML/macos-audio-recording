@@ -1,7 +1,7 @@
 ---
-status: proposed
+status: delivered
 source: architecture review, 12 Sep 2026 — candidate 2, "Separate a Recording's facts from reading them"
-record: docs/adr/0044-a-recording-is-read-once-at-one-seam.md (Phase 6)
+record: docs/adr/0044-a-recording-is-read-once-at-one-seam.md
 ---
 
 # Separate a Recording's facts from reading them
@@ -118,7 +118,7 @@ bookkeeping cases the stub made expressible).
 
 ---
 
-## Handoff — Phases 5 and 6
+## Handoff — Phases 5 and 6 *(delivered; kept for the reasoning)*
 
 **Start here if you are picking this up fresh.** Branch `refactor/a-recording-is-read-once`, four
 commits on top of `main`, nothing pushed. Phases 1-4 are delivered; 5 and 6 are not. The suite is
@@ -733,3 +733,45 @@ Roughly +600 lines of app and test code, of which ~440 are tests and the double,
 whose consumers have none. The suite's 251 cases gain ~26, all of them over logic that has been
 shipped and churning for weeks — `EditorView` alone changed 12 times in three days — with nothing
 able to hold it still.
+
+---
+
+## As built — Phases 5 and 6
+
+The suite went from 283 cases to 288, green, with no warning of its own in either target.
+`docs/adr/0044-a-recording-is-read-once-at-one-seam.md` is written; ADR-0021 and ADR-0031 each carry
+a pointer to it, in place, as ADR-0022's "closed by ADR-0043" bullet did.
+
+| file | change |
+|---|---|
+| `CaptureRun.swift` | +42/−15: `masterByteCount`, a fourth dependency, `publishElapsed` → `publishFigures` |
+| `EditorView.swift` | +11/−10: the `stat`, the discarded `elapsed` read and the `reader` parameter go |
+| `RecordingController.swift` | +6/−4: the production reader, and one forward |
+| `LibraryStore.swift` | ±1: `reader` is `private` again, as Phase 4 predicted |
+| `CaptureRunTests.swift` | +93/−1: five cases, and a `StubRecordingReader` in the `Rig` |
+
+**The handoff recommended option B and the code refused it.** `Capturing.masterByteCount` — the
+capture weighing the file it is writing — needs `CoreAudioCapture` to hold that file's url, and the
+only place it exists is `CaptureEngine.writer`, which is documented writer-thread-only state
+("reached by the main thread only after `finished` is signalled"). Reading it from the main actor is
+a data race, and the honest workarounds all end in a URL box threaded through the builder's hooks so
+that the capture can learn its own path after construction — more machinery than option A's one
+stored property. So the run takes the reader as a fourth dependency, which is also what §5's own
+Phase 5 said before the handoff second-guessed it. `RecordingReading` gets its second consumer
+either way.
+
+**One publish, not two.** `publishElapsed` became `publishFigures` rather than gaining a sibling:
+the 4 Hz gate is shared, so the two figures cannot drift into different cadences, and the reason is
+the same twice over — the menu bar observes `elapsed`, and ADR-0028 forbids a byte count ticking
+twenty times a second.
+
+**Five cases, not three.** The three the handoff asked for, plus
+`theMastersSizeCostsOneStatPerClockTickRatherThanOnePerTick` — which counts the stub's probes over a
+second of 20 Hz ticks, and is the only one that pins *the syscall moved* rather than what it
+returns — and `aMasterThatCannotBeStattedPublishesNoFigureRatherThanZero`, because `nil` and `0`
+render as different sentences in the `Master` row.
+
+**Not done: the by-hand pass.** §7's real-app checklist — record → stop, and watch the `Master` row
+count up — was not run. It needs the System Audio Recording grant, a Source making noise and a human
+looking at the window. The cadence and the two em-dash cases are pinned by tests; what no test can
+see is whether the figure *reads* right on screen at 4 Hz.

@@ -39,7 +39,8 @@ worth keeping.
   the bridged `NSURL`, so asking the same URL twice can return the length from before the file grew —
   exactly the staleness being tested for. `FileIdentity` already reached for `stat` for the same
   reason. This was not a theoretical worry: the first implementation used `resourceValues` and the
-  test caught it.
+  test caught it. It is now `RecordingReader.byteCount(of:)`, the app's only such read
+  ([ADR-0044](0044-a-recording-is-read-once-at-one-seam.md)).
 - **The selection has to rebind.** `EditorModel` holds the selected `Recording` by object reference,
   so a re-adopt would otherwise leave the editor rendering the object the store just dropped.
   `reconcileSelection` now rebinds when the store holds a different object at the same url, which also
@@ -79,5 +80,9 @@ worth keeping.
   re-read with it and the Trim re-clamped. That is re-adoption with extra steps, and it keeps an
   object identity whose only remaining value is avoiding an envelope rescan the growth has invalidated
   anyway.
+
+  **Made unexpressible by [ADR-0044](0044-a-recording-is-read-once-at-one-seam.md).**
+  `RecordingReader` reads a file once and whole; there is no per-field read on the interface for
+  anyone to reach for.
 - **Have capture-end tell the store to re-adopt that one path.** Narrow, imperative, and it couples
   `RecordingController` to `LibraryStore` to fix one of the two ways a part-written file gets adopted.
