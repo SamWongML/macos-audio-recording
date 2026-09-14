@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Amplitude is drawn on a mild power curve; linear peaks make ordinary speech invisible next to
 /// one loud transient. 0.65 is close to how Logic and Audacity look.
-private let drawnCurve: Double = 0.65
-private func drawn(_ amplitude: Double) -> Double {
+nonisolated private let drawnCurve: Double = 0.65
+nonisolated private func drawn(_ amplitude: Double) -> Double {
     pow(min(1, max(0, amplitude)), drawnCurve)
 }
 
@@ -47,7 +47,7 @@ struct WaveformShape: View {
 }
 
 /// Same picture, drawn as a `Shape` instead of a `Canvas`.
-struct WaveformPath: Shape {
+nonisolated struct WaveformPath: Shape {
     var columns: [Envelope.Column]
 
     func path(in rect: CGRect) -> Path {

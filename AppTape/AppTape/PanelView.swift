@@ -248,7 +248,7 @@ private struct SourceRow: View {
 
 /// The row's live level meter, drawn as a compact scroll of vertical bars — one per recent meter
 /// fill, oldest at the leading edge — mirrored around the centre line.
-private struct LevelMeterShape: Shape {
+nonisolated private struct LevelMeterShape: Shape {
     /// Meter fills 0...1, oldest first.
     var fills: [Double]
 

@@ -144,7 +144,7 @@ final class LibraryStore {
         source = nil
     }
 
-    deinit {
+    isolated deinit {
         source?.cancel()
         if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
     }

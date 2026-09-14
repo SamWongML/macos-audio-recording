@@ -6,7 +6,7 @@ import Foundation
 struct Envelope: Equatable, Sendable {
     /// The fraction of the lane's half-height a full-scale sample is drawn at, so ordinary loud
     /// material never reaches the lane's edge and is cut flat by the rounded-rect clip.
-    static let drawnHeadroom: Double = 0.88
+    nonisolated static let drawnHeadroom: Double = 0.88
 
     var framesPerBucket: Int = 256
     var sampleRate: Double = 48_000

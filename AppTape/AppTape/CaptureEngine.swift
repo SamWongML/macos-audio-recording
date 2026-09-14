@@ -14,6 +14,8 @@ nonisolated struct CaptureResult: Sendable {
 /// Drives one Recording end to end: it owns the tap, a non-realtime writer thread, the
 /// observation→decision reducer, and the lazily-created CAF master, and it holds off idle system
 /// sleep for the Recording's lifetime.
+/// `@unchecked` because its mutable state belongs to the writer thread alone; what the main actor
+/// reads crosses through atomics.
 nonisolated final class CaptureEngine: @unchecked Sendable {
     let sampleRate: Double
     private let channels: Int

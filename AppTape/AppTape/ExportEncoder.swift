@@ -20,7 +20,9 @@ struct ExportRequest {
 
 /// The encode itself: a hand-rolled `ExtAudioFileRead`/`Write` loop over the master's trimmed
 /// frames.
-final class ExportEncoder: @unchecked Sendable {
+/// `@unchecked` because one encode runs on one queue at a time; `cancel` is the only cross-thread
+/// entry point and it writes an atomic flag.
+nonisolated final class ExportEncoder: @unchecked Sendable {
     /// ~0.34 s of stereo 48 kHz per read — large enough to keep syscalls down, small enough that a
     /// cancel is honoured within a fraction of a second.
     private static let bufferFrames = 16_384

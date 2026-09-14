@@ -2,6 +2,8 @@ import Synchronization
 
 /// A lock-free single-producer / single-consumer ring of `Float` samples: the realtime IOProc
 /// writes, the non-realtime writer thread reads.
+/// `@unchecked` because the invariant is the SPSC discipline, not a lock: exactly one producer
+/// thread writes and exactly one consumer thread reads, and the indices are atomics.
 nonisolated final class AudioRingBuffer: @unchecked Sendable {
     private let storage: UnsafeMutableBufferPointer<Float>
     private let capacity: Int

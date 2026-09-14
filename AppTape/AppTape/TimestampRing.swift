@@ -2,6 +2,7 @@ import Synchronization
 
 /// A lock-free single-producer / single-consumer ring of host-time marks, parallel to the
 /// sample `AudioRingBuffer`.
+/// `@unchecked` for the same reason as `AudioRingBuffer`: one producer, one consumer, atomic indices.
 nonisolated final class TimestampRing: @unchecked Sendable {
     struct Mark: Equatable {
         /// Frames written to the sample ring before this buffer — the ring-frame position of the

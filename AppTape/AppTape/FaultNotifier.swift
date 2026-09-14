@@ -5,11 +5,11 @@ import UserNotifications
 /// The four unrequested ends share the notification channel, and each names its reason.
 enum FaultNotifier {
     /// The Recording URL carried in a notification's `userInfo`, read back on click to open the editor.
-    static let openEditorURLKey = "com.apptape.fault.recordingURL"
+    nonisolated static let openEditorURLKey = "com.apptape.fault.recordingURL"
 
     /// Marks the 30-minute Runway warning, whose click opens Finder at the Library rather than the
     /// editor — the Recording is still running, and freeing space is the only action it asks for.
-    static let revealLibraryKey = "com.apptape.fault.revealLibrary"
+    nonisolated static let revealLibraryKey = "com.apptape.fault.revealLibrary"
 
     /// Requested at the end of the first *completed* Recording, so a later unrequested end
     /// has a channel — never at a fault, and never as a prompt the user did not invite. Once only.
@@ -26,8 +26,7 @@ enum FaultNotifier {
     /// authorized; opens the editor directly when not. No-op for the two requested ends.
     static func recordingEnded(reason: RecordingEndReason, recordingURL: URL) {
         guard reason.isUnrequested, let body = reason.notificationBody else { return }
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
                 let content = UNMutableNotificationContent()
@@ -37,7 +36,7 @@ enum FaultNotifier {
                 content.userInfo = [openEditorURLKey: recordingURL.absoluteString]
                 let request = UNNotificationRequest(identifier: UUID().uuidString,
                                                     content: content, trigger: nil)
-                center.add(request)
+                UNUserNotificationCenter.current().add(request)
             case .denied, .notDetermined:
                 fallthrough
             @unknown default:
@@ -50,8 +49,7 @@ enum FaultNotifier {
     /// The 30-minute Runway warning: posted once when the guard crosses 30 minutes, report the
     /// user to free space — the only action the warning asks for.
     static func runwayLow() {
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
                 // Time-framed to match the Recording's Runway and parallel to the `.diskGuard`
@@ -64,7 +62,7 @@ enum FaultNotifier {
                 content.userInfo = [revealLibraryKey: true]
                 let request = UNNotificationRequest(identifier: UUID().uuidString,
                                                     content: content, trigger: nil)
-                center.add(request)
+                UNUserNotificationCenter.current().add(request)
             case .denied, .notDetermined:
                 fallthrough
             @unknown default:
@@ -76,8 +74,7 @@ enum FaultNotifier {
     /// A failed Export, told louder than a success: the inspector always says so in-window, and
     /// this adds a system notification for the case where the user has moved on to another app.
     static func exportFailed(recordingName: String, detail: String) {
-        let center = UNUserNotificationCenter.current()
-        center.getNotificationSettings { settings in
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
                 let content = UNMutableNotificationContent()
@@ -86,7 +83,7 @@ enum FaultNotifier {
                 content.sound = .default
                 let request = UNNotificationRequest(identifier: UUID().uuidString,
                                                     content: content, trigger: nil)
-                center.add(request)
+                UNUserNotificationCenter.current().add(request)
             case .denied, .notDetermined:
                 fallthrough
             @unknown default:
