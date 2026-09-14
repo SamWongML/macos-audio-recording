@@ -84,9 +84,19 @@ capturing — and a control whose label cannot be read is not a control anyone w
 
 | state | sentence |
 |---|---|
+| the file can't be decoded | `AppTape can't decode this file.` |
+| the Recording is still being captured | `This Recording is still capturing.` |
 | the Trim holds nothing | `Nothing in the Trim to export.` |
 | the effective Quality Preset can't encode this file | `This quality can't encode this file.` |
 | an Export of this Recording is already running | `An Export is already running.` |
+
+_Five rows, not three:
+[ADR-0046](0046-an-export-refuses-once-and-both-callers-ask.md) folded the still-capturing sentence
+below into the same decision and gave the can't-decode case a stated rule of its own. The wordings
+above are unchanged, and they now live in exactly one place — `ExportReadiness.Reason.sentence` — which
+`ExportInspector` renders and `ExportCoordinator` refuses on. The can't-decode row is reachable on
+neither surface (ADR-0034 removes the whole column for such a Recording) and is kept against that
+ADR's note that a fourth pane could re-open it._
 
 The second **deliberately duplicates** what ADR-0041 already states on the rung. The dock names the
 situation and leaves the specifics to the rung, because the alternative — one sentence generic enough
@@ -96,6 +106,10 @@ screen explains.
 The still-capturing sentence **moves to ink in the same change**: it was `.secondary` at
 **3.89 : 1 in Light**, the same figure #119 rejected for the rungs, in the same slot on the same
 ground. Two sentences in one slot at two strengths would have been an authored inconsistency.
+
+_It is no longer a second idiom either. ADR-0046 made it a case of the same decision, so all five
+sentences are drawn by one call — the branch it kept in `exportControl` exists now only to outrank the
+Export phases, never to draw a sentence of its own._
 
 ## Two things this does not move
 
