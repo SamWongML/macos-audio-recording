@@ -156,7 +156,7 @@ struct ExportCoordinatorTests {
         @Test func aCallDuringASucceededTellingIsStillSwallowed() {
             let coordinator = ExportCoordinator()
             let recording = Recording.stub()
-            coordinator.park(in: .succeeded(url: recording.url), subject: recording.url)
+            coordinator.park(in: .succeeded(url: recording.url), subject: recording)
 
             coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
             #expect(coordinator.phase == .succeeded(url: recording.url))   // unchanged, not refused
@@ -166,6 +166,61 @@ struct ExportCoordinatorTests {
             coordinator.export(recording: .stub(seconds: 0), preset: .high,
                                capture: PreviewCapture.settled)
             #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
+        }
+    }
+
+    /// **The telling's subject is the Recording, not the path it had at launch** (issue #127).
+    ///
+    /// A rename moves the file and the store relocates the *same object* (ADR-0006/-0020), so a
+    /// coordinator that had copied the url was left naming a file that no longer exists. The dock
+    /// asks `subjectURL == recording.url` before it renders a phase, so the running Recording lost
+    /// its own progress bar and Cancel button mid-encode and read `An Export is already running.`
+    /// instead, while the encode — snapshotted at launch, and reading a file it already has open —
+    /// ran to completion invisibly. Only the *telling* ever broke, which is why the fix is the
+    /// coordinator's identity and not the view's comparison.
+    ///
+    /// `@MainActor` at the suite for the reason `Refusals` carries it: `ExportCoordinator` and
+    /// `Recording` both are (ADR-0022), and this target does not carry the app's default isolation.
+    @MainActor
+    struct Subject {
+        /// The case in the ticket: a rename mid-Export, from the sidebar or from Finder — both end
+        /// at `Recording.relocate`, so both are this one assertion.
+        @Test func aRenamedSubjectTakesItsTellingWithIt() {
+            let coordinator = ExportCoordinator()
+            let recording = Recording.stub()
+            coordinator.park(in: .running(fraction: 0.42), subject: recording)
+
+            let renamed = recording.url.deletingLastPathComponent()
+                .appendingPathComponent("Interview.caf")
+            recording.relocate(to: renamed)
+
+            #expect(coordinator.subjectURL == renamed)               // the dock still matches
+            #expect(coordinator.phase == .running(fraction: 0.42))   // and the encode is untouched
+        }
+
+        /// And the subject is still asked *where it is*, not *which object it is* — because the
+        /// Recording on screen may be a fresh reading of the same file (ADR-0021): a different
+        /// object at the same path, which the user has navigated nowhere to reach. Comparing
+        /// objects would take the progress bar away from that one exactly as the url took it away
+        /// from a rename.
+        @Test func aFreshReadingOfTheSameFileStillFindsItsTelling() {
+            let coordinator = ExportCoordinator()
+            let opened = Recording.stub("growing")
+            coordinator.park(in: .running(fraction: 0.4), subject: opened)
+
+            let reRead = Recording.stub("growing")
+            #expect(reRead !== opened)
+            #expect(coordinator.subjectURL == reRead.url)
+        }
+
+        /// A cancel drops the subject with the phase, so an idle dock keeps no Recording alive
+        /// behind it.
+        @Test func aCancelLetsTheSubjectGo() {
+            let coordinator = ExportCoordinator()
+            coordinator.park(in: .running(fraction: 0.4), subject: .stub())
+
+            coordinator.cancel()
+            #expect(coordinator.subjectURL == nil)
         }
     }
 }

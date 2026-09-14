@@ -205,7 +205,14 @@ struct ExportInspector: View {
         // toggle is already its own feedback; the row does not need to slide as well.
         // A new selection drops any per-file display-over, so the sticky preset shows through again
         // on the next Recording (ADR-0015).
-        .onChange(of: recording.url) { perFilePreset = nil }
+        //
+        // **Which Recording, not which path** — the same correction issue #127 made in the
+        // coordinator. The display-over belongs to the *file*, and a rename does not change the
+        // file: keyed on the url, renaming an adopted 96 kHz Recording threw away the rung the user
+        // had picked for it and dropped the dock back to a sticky that cannot encode it. A fresh
+        // reading of the same path is a different object and does reset it, which is right — ADR-0021
+        // re-adopts a file whose bytes changed, and its format may have changed with them.
+        .onChange(of: ObjectIdentifier(recording)) { perFilePreset = nil }
         .onChange(of: correctionKey, initial: true) {
             // Nothing to measure from a Trim whose end has not happened yet (ADR-0031).
             guard !isStillArriving else { return }
@@ -678,14 +685,14 @@ private func previewDock(_ recording: Recording,
 #Preview("Dock · running") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .running(fraction: 0.42), subject: recording.url)
+    coordinator.park(in: .running(fraction: 0.42), subject: recording)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
 #Preview("Dock · succeeded") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .succeeded(url: recording.url), subject: recording.url)
+    coordinator.park(in: .succeeded(url: recording.url), subject: recording)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
@@ -697,7 +704,7 @@ private func previewDock(_ recording: Recording,
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
     coordinator.park(in: .failed(message: "Not enough space: needs 5.41 MB, 2.96 MB free."),
-                     subject: recording.url)
+                     subject: recording)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
@@ -717,13 +724,14 @@ private func previewDock(_ recording: Recording,
                 coordinator: ExportCoordinator())
 }
 
-/// An Export running on a *different* subject. Reachable in the running app only through issue #127 —
-/// a rename mid-encode moves `recording.url` while `subjectURL` keeps the old path — so this refusal
-/// has never been seen. Parked on a URL that is deliberately not this Recording's.
+/// An Export running on a *different* subject. Its one route used to be issue #127 — a rename
+/// mid-encode moved `recording.url` while `subjectURL` kept the old path — which ADR-0048 closed by
+/// having the telling follow its Recording; what is left is the compound case in
+/// `ExportReadiness.Reason.alreadyRunning`. So this refusal has still never been seen in the running
+/// app, and this is where it is looked at. Parked on a Recording that is deliberately not this one.
 #Preview("Dock · refused · already running") {
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .running(fraction: 0.42),
-                     subject: URL(filePath: "/Library/Some Other Recording.caf"))
+    coordinator.park(in: .running(fraction: 0.42), subject: .stub("Some Other Recording"))
     return previewDock(.stub(), capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
