@@ -96,8 +96,8 @@ struct TrimTimeline: View {
             } else {
                 waveform(geometry)
 
-                // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
-                // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
+                // Seams draw as hatched bands over the waveform, each carrying `minimumSeamWidth`
+                // so one that is sub-pixel on an always-fits-the-width lane stays visible (ADR-0010).
                 seamBands(geometry, height: height)
 
                 handle(.start, at: geometry.x(atTime: recording.trim.lowerBound), height: height)
