@@ -27,19 +27,6 @@ final class RecordingController {
         self.run = run
     }
 
-    // MARK: - What the panel and the status item read
-    // Forwards, not copies.
-
-    var isRecording: Bool { run.isRecording }
-    var recordingSourceID: String? { run.recordingSourceID }
-    var elapsed: TimeInterval { run.elapsed }
-    var elapsedText: String { run.elapsedText }
-    var meterColumns: [Double] { run.meterColumns }
-    var hasFirstSound: Bool { run.hasFirstSound }
-    var permissionRecovery: Bool { run.permissionRecovery }
-    var runwayTier: RunwayGuard.Tier { run.runwayTier }
-    var startBlocker: DiskGuardBlocker? { run.startBlocker }
-
     /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
     var sincePress: TimeInterval? {
         run.pressedAt.map { ProcessInfo.processInfo.systemUptime - $0 }

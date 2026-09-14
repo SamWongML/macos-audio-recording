@@ -64,7 +64,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             $0.type == .rightMouseUp || $0.modifierFlags.contains(.control)
         } ?? false
         // The one-click stop: a left-click while recording finalizes and opens the editor.
-        if recorder.isRecording && !isRightClick {
+        if recorder.run.isRecording && !isRightClick {
             recorder.stop()
             return
         }
@@ -79,13 +79,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// arrive baked in.
     private func refreshStatusItem() {
         guard let button = statusItem?.button else { return }
-        if recorder.isRecording {
+        if recorder.run.isRecording {
             // Amber at 3 hours of Runway: the whole item goes amber, dot and clock together, and
             // reverts silently when the Runway recovers past the hysteresis band.
-            let amber = recorder.runwayTier == .amber
+            let amber = recorder.run.runwayTier == .amber
             button.image = amber ? amberDot : recordingDot
             button.attributedTitle = NSAttributedString(
-                string: " " + recorder.elapsedText,
+                string: " " + recorder.run.elapsedText,
                 attributes: [
                     .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
                     .foregroundColor: amber ? NSColor.systemOrange : NSColor.systemRed,
@@ -110,11 +110,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func trackRecorder() {
         withObservationTracking {
-            _ = recorder.isRecording
-            _ = recorder.elapsed
-            _ = recorder.permissionRecovery
-            _ = recorder.runwayTier
-            _ = recorder.startBlocker
+            _ = recorder.run.isRecording
+            _ = recorder.run.elapsed
+            _ = recorder.run.permissionRecovery
+            _ = recorder.run.runwayTier
+            _ = recorder.run.startBlocker
         } onChange: { [weak self] in
             guard let self else { return }
             Task { @MainActor in
@@ -129,7 +129,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// Raise the panel the moment a record press is blocked — a denial or a blocker below the
     /// floor — so its one blocking-message surface reaches the user who just pressed record.
     private func raisePanelOnBlockingMessage() {
-        let blocked = recorder.permissionRecovery || recorder.startBlocker != nil
+        let blocked = recorder.run.permissionRecovery || recorder.run.startBlocker != nil
         defer { lastBlocked = blocked }
         guard blocked, !lastBlocked else { return }
         if popover?.isShown != true { showPanel() }

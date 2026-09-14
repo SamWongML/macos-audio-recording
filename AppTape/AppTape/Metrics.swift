@@ -26,9 +26,6 @@ enum Metrics {
     /// Metadata and secondary lines. Subheadline/11 — pair it with `.secondary`.
     static let metadata = Font.subheadline
 
-    /// Inspector section headers. Headline/13 bold.
-    static let sectionHeader = Font.headline
-
     /// The transport position and the Trim readouts.
     static let readout = Font.body.monospacedDigit()
 

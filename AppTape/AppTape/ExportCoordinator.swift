@@ -181,7 +181,7 @@ final class ExportCoordinator {
         phase = .failed(message: message)
         // Told louder: when not frontmost, also a notification.
         if !NSApp.isActive {
-            ExportNotifier.exportFailed(recordingName: name, detail: message)
+            FaultNotifier.exportFailed(recordingName: name, detail: message)
         }
     }
 
@@ -190,7 +190,7 @@ final class ExportCoordinator {
     private func fail(message: String, name: String, for recording: Recording) {
         present(.failed(message: message), for: recording)
         if !NSApp.isActive {
-            ExportNotifier.exportFailed(recordingName: name, detail: message)
+            FaultNotifier.exportFailed(recordingName: name, detail: message)
         }
     }
 

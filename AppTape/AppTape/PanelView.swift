@@ -40,7 +40,7 @@ struct PanelView: View {
             model.refresh()
         }
         .onReceive(tick) { _ in model.refresh() }
-        .onReceive(recTick) { _ in if recorder.isRecording { recNudge &+= 1 } }
+        .onReceive(recTick) { _ in if recorder.run.isRecording { recNudge &+= 1 } }
         // An unrelated key handler, exactly the kind a real control adds: it silently takes the
         // popover's free Escape away, which is why the app owns Escape in MenuBarController.
         .onKeyPress(.space) { .ignored }
@@ -49,14 +49,14 @@ struct PanelView: View {
     // MARK: - Header
 
     @ViewBuilder private var header: some View {
-        if recorder.isRecording {
+        if recorder.run.isRecording {
             HStack(spacing: 8) {
                 Circle().fill(.red).frame(width: 9, height: 9)
                 Text(recordingName)
                     .font(.callout.weight(.medium))
                     .lineLimit(1)
                 Spacer()
-                Text(recorder.elapsedText)
+                Text(recorder.run.elapsedText)
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -73,16 +73,16 @@ struct PanelView: View {
     }
 
     private var recordingName: String {
-        model.sources.first { $0.bundleID == recorder.recordingSourceID }?.name ?? "Recording"
+        model.sources.first { $0.bundleID == recorder.run.recordingSourceID }?.name ?? "Recording"
     }
 
     // MARK: - Blocking banner
 
     /// The panel's one blocking-message surface.
     @ViewBuilder private var blockingBanner: some View {
-        if let blocker = recorder.startBlocker {
+        if let blocker = recorder.run.startBlocker {
             diskBlockerBanner(blocker)
-        } else if recorder.permissionRecovery {
+        } else if recorder.run.permissionRecovery {
             recoveryBanner
         }
     }
@@ -139,17 +139,17 @@ struct PanelView: View {
                         // A Source with no HAL clients yet cannot be aimed at by object ID, so
                         // pressing it could do nothing.
                         let capturable = !source.processObjectIDs.isEmpty
-                        let isTarget = recorder.isRecording && recorder.recordingSourceID == source.bundleID
+                        let isTarget = recorder.run.isRecording && recorder.run.recordingSourceID == source.bundleID
                         let glyph = RowRecordGlyph.state(
                             isRecordingTarget: isTarget,
                             sincePress: isTarget ? recorder.sincePress : nil,
-                            hasFirstSound: recorder.hasFirstSound)
+                            hasFirstSound: recorder.run.hasFirstSound)
                         SourceRow(source: source,
                                   icon: model.icon(for: source),
                                   glyph: glyph,
                                   // Only the recording row carries live meter data; every other
                                   // row's meter is dead and reads zero.
-                                  meterColumns: isTarget ? recorder.meterColumns : [],
+                                  meterColumns: isTarget ? recorder.run.meterColumns : [],
                                   reduceMotion: reduceMotion)
                             .opacity(capturable ? 1 : 0.4)
                             .contentShape(Rectangle())
@@ -165,7 +165,7 @@ struct PanelView: View {
     /// While recording, the transport is busy: a press cannot start a second Recording (one Source
     /// at a time), so rows are inert until stop.
     private func pick(_ source: Source) {
-        guard !recorder.isRecording else { return }
+        guard !recorder.run.isRecording else { return }
         recorder.start(source)
     }
 

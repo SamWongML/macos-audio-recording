@@ -73,6 +73,28 @@ enum FaultNotifier {
         }
     }
 
+    /// A failed Export, told louder than a success: the inspector always says so in-window, and
+    /// this adds a system notification for the case where the user has moved on to another app.
+    static func exportFailed(recordingName: String, detail: String) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                let content = UNMutableNotificationContent()
+                content.title = "Export failed"
+                content.body = "Couldn’t export “\(recordingName).” \(detail)"
+                content.sound = .default
+                let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                                    content: content, trigger: nil)
+                center.add(request)
+            case .denied, .notDetermined:
+                fallthrough
+            @unknown default:
+                break
+            }
+        }
+    }
+
     /// Reveal the Library in Finder — the action both the blocker and the warning offer, there
     /// being no Settings pane to send the user to.
     @MainActor
