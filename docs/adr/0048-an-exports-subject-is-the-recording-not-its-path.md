@@ -76,14 +76,23 @@ back to showing nothing in exactly the previews and tests that exist to show the
 
 ## Consequences
 
-**`.alreadyRunning` keeps its case and loses its only route.** ADR-0046 wrote it as *"reachable in the
-dock only through #127's rename"* and anticipated that #127 would let it be deleted cleanly. It is
-kept, because one compound route survives: a Recording re-adopted mid-Export leaves the telling on the
-object that was dropped, and a rename *after that* parts the two paths. The rule is what stops the
-dock offering an `Export…` button whose click `export`'s `guard case .idle` would swallow in silence,
-which is worse than a sentence. Its docstring now says where it stands, including that the
-coordinator's own gate returns before the rule can fire there — which ADR-0046's *"in the coordinator
-it is the plain one-at-a-time rule"* did not.
+**`.alreadyRunning` keeps its case and loses its named route.** ADR-0046 wrote it as *"reachable in
+the dock only through #127's rename"* and anticipated that #127 would let it be deleted cleanly. It is
+kept, because that was not its only route — **looking for the others is what decided this**, and two
+stand:
+
+- **A modeless save panel.** `presentSavePanel` falls back from a sheet to `panel.begin` when there is
+  no key window, and a modeless panel leaves the editor live behind it. Select another Recording while
+  it is up and `cancel()` runs, but the panel's completion is not guarded by it, so `begin` starts an
+  encode on the Recording the user has navigated away from — with the dock now on a different one.
+- **A re-adoption, then a rename.** ADR-0021 re-adopts a file whose length changed and the editor
+  rebinds to the fresh object; the telling stays on the object that was dropped, and a rename after
+  that parts the two paths.
+
+The rule is what stops the dock offering an `Export…` button whose click `export`'s `guard case .idle`
+would swallow in silence, which is worse than a sentence. Its docstring now says where it stands,
+including that the coordinator's own gate returns before the rule can fire there — which ADR-0046's
+*"in the coordinator it is the plain one-at-a-time rule"* did not.
 
 **The Quality Preset display-over was the same defect, and is fixed with it.** `ExportInspector` reset
 its per-file preset on `.onChange(of: recording.url)`, so renaming an adopted 96 kHz Recording threw
@@ -111,6 +120,13 @@ driving renames with synthetic clicks. ADR-0018 gives the app no UI test layer, 
 the coordinator's identity and the store's wiring, not the picture.
 
 ## Found by the same scan, not fixed here
+
+**A save panel that is not a sheet outlives the navigation that should have cancelled it.** The route
+above is not only a way to reach a sentence: ADR-0012's *navigating away cancels* is broken on it, in
+the encode and not just the telling. `cancel()` bumps `jobID`, and the panel's completion closure does
+not read it, so a destination chosen after the user moved on still launches a job. The fix is small —
+capture `jobID` before presenting and drop the completion if it has moved — but it is ADR-0012's
+navigation rule rather than this ADR's identity, and it wants its own ticket and its own test.
 
 **`CaptureRun.capturingURL` is the same copied path, one domain over.** `isCapturing(_:)` asks
 `capturingURL == recording.url`, and nothing gates Rename on the Recording being captured — the
