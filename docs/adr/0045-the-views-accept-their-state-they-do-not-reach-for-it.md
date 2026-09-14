@@ -91,7 +91,7 @@ outline diffing — `TableViewListCore_Mac2.swift:5538`, through
 `OutlineListCoordinator.recursivelyDiffRows` → `NSOutlineView.expandItem` — with three rows in one day
 as surely as with twelve across three days, and whether the store lists before the view mounts or from
 the view's own `.task`. The running app renders that `List` correctly and this change does not touch
-it. So the populated editor is previewed one component at a time.
+it. So the populated editor is previewed one component at a time, and the crash is issue #130.
 
 **`Recording.stub` moved into the app target under `#if DEBUG`.** One definition of "an ordinary
 Recording", shared by the previews and the 288 cases that already used it, rather than two that drift.

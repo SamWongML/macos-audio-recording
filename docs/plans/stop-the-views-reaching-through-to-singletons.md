@@ -93,7 +93,7 @@ Five things differ from the plan below, each because writing the code showed the
   rows in one day and twelve across three, listing before the view mounts and from its own `.task`.
   The running app renders that `List` fine and nothing here touches it. So the populated editor is
   previewed a component at a time: the lane ×3, the brief ×2 and the dock ×6, each verified in the
-  canvas rather than by the compiler.
+  canvas rather than by the compiler. Filed as issue #130.
 - **`Recording.stub` moved with no fallback needed.** The suite's 288 call sites are unchanged and the
   app's Release build carries none of it.
 
