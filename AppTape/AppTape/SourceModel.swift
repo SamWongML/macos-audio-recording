@@ -1,8 +1,3 @@
-//
-//  SourceModel.swift
-//  AppTape
-//
-
 import AppKit
 import CoreAudio
 import Observation
@@ -38,7 +33,7 @@ final class SourceModel {
     }
 
     /// The raw HAL client table. `running` is threaded in so the localized-name lookup
-    /// shares the workspace snapshot `refresh()` already took.
+    /// shares the workspace snapshot `refresh` already took.
     private static func scanAudioProcesses(running: [NSRunningApplication]) -> [AudioProcess] {
         CAProperty.objectIDs(of: AudioObjectID(kAudioObjectSystemObject),
                              kAudioHardwarePropertyProcessObjectList).map { object in

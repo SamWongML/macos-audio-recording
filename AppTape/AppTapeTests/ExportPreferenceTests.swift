@@ -1,13 +1,8 @@
-//
-//  ExportPreferenceTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The Quality Preset is sticky **app-wide** (issue #9): a choice about how to export, not a
+/// The Quality Preset is sticky **app-wide**: a choice about how to export, not a
 /// property of any Recording, so it persists across launches in `UserDefaults`.
 @MainActor
 struct ExportPreferenceTests {
@@ -37,7 +32,7 @@ struct ExportPreferenceTests {
         #expect(ExportPreference(defaults: defaults).preset == .high)
     }
 
-    // MARK: - Normalize toggle (ADR-0013): sticky app-wide, off on first use.
+    // MARK: - Normalize toggle: sticky app-wide, off on first use.
 
     @Test func normalizationIsOffOnFirstUse() {
         #expect(ExportPreference(defaults: scratchDefaults()).normalizeLoudness == false)

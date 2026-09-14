@@ -1,14 +1,9 @@
-//
-//  LibraryLocationTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
 /// The Library filename is the Recording's name, formed from the Source and the start time,
-/// and a collision resolves by appending ` 2` rather than overwriting (ADR-0006).
+/// and a collision resolves by appending ` 2` rather than overwriting.
 struct LibraryLocationTests {
     // 2026-08-27 20:05:03 UTC, read in UTC so the test is timezone-independent.
     private let date = Date(timeIntervalSince1970: 1_787_861_103)
@@ -47,7 +42,7 @@ struct LibraryLocationTests {
     }
 }
 
-/// Renaming a Recording from inside the app (ADR-0020). The Library is an ordinary folder, so a
+/// Renaming a Recording from inside the app. The Library is an ordinary folder, so a
 /// rename *is* a file rename — and unlike capture, which resolves a collision silently because
 /// there is no one to ask, these rules **refuse rather than fix**.
 struct LibraryRenameTests {

@@ -1,23 +1,12 @@
-//
-//  LibraryLocation.swift
-//  AppTape
-//
-
 import Foundation
 
 /// Where a Recording's master lands and what it is called. The Library is the ordinary
-/// visible folder `~/Music/AppTape/` (ADR-0006); a Recording's **filename is its name**,
+/// visible folder `~/Music/AppTape/`; a Recording's **filename is its name**,
 /// formed from the Source and the **start** time, and the master is written in place at its
-/// final path from the first sample — never temp-then-moved (ADR-0006).
-///
-/// The naming and collision rules are pure functions over injected inputs so they can be
-/// tested without a clock, a timezone, or the disk.
-/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
-/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
-/// a piece of the capture spine.
+/// final path from the first sample — never temp-then-moved.
 nonisolated enum LibraryLocation {
     /// `~/Music/AppTape/`. Not created here — the directory is made lazily at the first
-    /// frame, alongside the file, so an arm-then-never-play leaves no trace (ADR-0016).
+    /// frame, alongside the file, so an arm-then-never-play leaves no trace.
     static var directory: URL {
         let music = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Music")
@@ -37,7 +26,7 @@ nonisolated enum LibraryLocation {
 
     /// A `.caf` filename that does not collide with anything `exists` reports, resolving a
     /// clash by appending ` 2`, ` 3`, … rather than overwriting — a master overwritten is
-    /// unrecoverable (ADR-0006). Collisions cannot arise in practice (one Source, second
+    /// unrecoverable. Collisions cannot arise in practice (one Source, second
     /// resolution), so this is a safety net, not a hot path.
     static func uniqueFileName(source: String,
                                date: Date,
@@ -59,14 +48,14 @@ nonisolated enum LibraryLocation {
     }
 }
 
-// MARK: - Renaming (ADR-0020)
+// MARK: - Renaming
 
 extension LibraryLocation {
-    /// Why a name the user typed cannot become a Recording's filename. ADR-0020 **refuses rather
+    /// Why a name the user typed cannot become a Recording's filename. **refuses rather
     /// than fixes**: there is a human here to ask, and quietly turning the "Interview" they typed
     /// into "Interview 2" is a lie about what they asked for. (Capture has no human to ask, which
     /// is why `uniqueFileName` above resolves a clash silently instead — the same question, a
-    /// different answer, for the reason ADR-0006 gives.)
+    /// different answer, for the reason gives.)
     enum NameValidationError: Equatable {
         /// Empty, or nothing but whitespace.
         case empty
@@ -111,13 +100,9 @@ extension LibraryLocation {
     }
 
     /// Resolve a rename. `proposed` is the **base name** the user typed — the extension is never
-    /// theirs to edit (ADR-0020: an edited extension fails `RecordingReader.adopt`'s gate and
+    /// theirs to edit (an edited extension fails `RecordingReader.adopt`'s gate and
     /// vanishes the Recording, the same failure as a leading dot), so it is carried over from
     /// `currentFileName` unchanged.
-    ///
-    /// Leading and trailing whitespace is trimmed rather than refused. That is not a violation of
-    /// refuse-don't-fix: whitespace at the ends carries no meaning, so trimming it changes nothing
-    /// the user meant, where suffixing a collision or dropping a character would.
     static func rename(_ currentFileName: String,
                        to proposed: String,
                        existingFileNames: [String]) -> RenameOutcome {
@@ -146,10 +131,6 @@ extension LibraryLocation {
 
     /// Whether `baseName` still looks like a name **this app generated at capture** — the
     /// `baseName(source:date:)` pattern above, optionally carrying `uniqueFileName`'s ` 2` suffix.
-    ///
-    /// This is the predicate behind ADR-0020's display rule: while it holds, the Library shows the
-    /// Recording's Source, because the filename says nothing the row isn't already showing; once
-    /// the user has named the file themselves it stops holding, and the Library shows their name.
     static func isGeneratedName(_ baseName: String) -> Bool {
         baseName.range(of: #"^.+ \d{4}-\d{2}-\d{2} at \d{2}\.\d{2}\.\d{2}( \d+)?$"#,
                        options: .regularExpression) != nil

@@ -1,8 +1,3 @@
-//
-//  CaptureDoubles.swift
-//  AppTapeTests
-//
-
 import Foundation
 @testable import AppTape
 
@@ -16,11 +11,11 @@ import Foundation
 final class FakeCapture: Capturing {
     var elapsed: TimeInterval = 0
     var currentLevel: Float = 0
-    /// 48 kHz stereo Float32 — the ADR-0009 worked rate, so Runway arithmetic in a test matches the
+    /// 48 kHz stereo Float32 — the worked rate, so Runway arithmetic in a test matches the
     /// arithmetic in `RunwayGuardTests`.
     var bytesPerSecond: Double = 8 * 48_000
 
-    /// What `stop` hands back. The default is arm-then-never-play: no file, no self-end (ADR-0016).
+    /// What `stop` hands back. The default is arm-then-never-play: no file, no self-end.
     var outcome = CaptureOutcome()
 
     private(set) var stopCount = 0
@@ -47,14 +42,14 @@ final class FakeCapture: Capturing {
 
 /// Bring-up under the test's control. The three things it can do are the three things a real
 /// bring-up does: hand a capture back, throw, or block — and the third one, `stall`, is the only
-/// way ADR-0010's wedge and its three races can be written down at all.
+/// way 's wedge and its three races can be written down at all.
 @MainActor
 final class FakeCaptureBuilder: CaptureBuilding {
     private(set) var builds: [(source: Source, hooks: CaptureHooks)] = []
 
     /// One outstanding completion **per bring-up**, not one in total. That is the whole point: a
     /// blocked first attempt has to be able to return *after* a second press, which is the race
-    /// ADR-0010's generation rule exists for and the one a single slot cannot express.
+    /// 's generation rule exists for and the one a single slot cannot express.
     private var pending: [(@Sendable @MainActor ((any Capturing)?) -> Void)?] = []
 
     var buildCount: Int { builds.count }
@@ -94,7 +89,7 @@ final class FakeCaptureBuilder: CaptureBuilding {
 }
 
 /// A settable free-space reading, `nil` included — the volume that cannot be stat'd, which must
-/// never be read as "no space" (ADR-0009).
+/// never be read as "no space".
 @MainActor
 final class StubRunway: RunwayProbing {
     var freeBytes: Int64?

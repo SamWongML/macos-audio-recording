@@ -1,13 +1,8 @@
-//
-//  RecordingMetadataTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// Trim and Gain ride in extended attributes on the file (ADR-0006), so they persist across an
+/// Trim and Gain ride in extended attributes on the file, so they persist across an
 /// editor reopen and travel with a Finder rename. Losing them degrades gracefully — a missing
 /// attribute reads as the full-length Trim and zero Gain.
 @MainActor
@@ -38,7 +33,7 @@ struct RecordingMetadataTests {
     }
 
     @Test func aTrimFromAShorterFileIsSanitisedNotTrusted() throws {
-        // ADR-0006 permits pointing the app at a shorter file with the same name. A stored Trim
+        // permits pointing the app at a shorter file with the same name. A stored Trim
         // that no longer fits must land on a valid Trim, never trap.
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 30)
         defer { try? FileManager.default.removeItem(at: url) }
@@ -99,7 +94,7 @@ struct RecordingMetadataTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         // Write junk directly under the Dropouts key — an unreadable value reads as a clean Recording,
-        // the safe direction (ADR-0010), never a trap.
+        // the safe direction, never a trap.
         let junk = "not json at all"
         junk.withCString { _ in
             _ = url.withUnsafeFileSystemRepresentation { path in
@@ -142,6 +137,6 @@ struct RecordingMetadataTests {
         let after = try #require(AudioFixtures.adopt(renamed))
         #expect(abs(after.trim.start - 1.5) < 1e-6)   // Trim survived
         #expect(after.source == "Google Chrome")       // Source xattr survived, not parsed from name
-        #expect(after.name == "Kettle noises")         // the filename is the name (ADR-0006)
+        #expect(after.name == "Kettle noises")         // the filename is the name
     }
 }

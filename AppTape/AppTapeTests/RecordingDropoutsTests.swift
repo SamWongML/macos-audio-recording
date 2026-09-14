@@ -1,28 +1,16 @@
-//
-//  RecordingDropoutsTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
 /// How a Recording surfaces the Dropouts it read: the 250 ms single-or-total rule, what draws in the
-/// lane, and how the rest are told in one line (ADR-0010). The mark describes the master, and a
+/// lane, and how the rest are told in one line. The mark describes the master, and a
 /// hand-adopted file with no attribute is clean.
-///
-/// The xattr round trip is `RecordingMetadataTests`' subject and needs a real file. This is the
-/// surfacing rule over Dropouts a Recording already has, so it needs none.
 @MainActor
 struct RecordingDropoutsTests {
     /// The summary is a `LocalizedStringResource`, so the inflection markup is parsed rather than
     /// printed. Returned as a `String` it reached `Text`'s non-localized initializer and the editor
     /// showed `^[3 Dropout](inflect: true) · 2.8 s of silence padded in` verbatim on screen
-    /// (issue #73, finding 1).
-    ///
-    /// Resolved through **`AttributedString(localized:)`, not `String(localized:)`** — the latter
-    /// hands the markup straight back untouched even for a resource that inflects correctly
-    /// everywhere else, which is the same trap one level down. `Text` takes the attributed path.
+    ///.
     private func resolved(_ resource: LocalizedStringResource) -> String {
         String(AttributedString(localized: resource).characters)
     }

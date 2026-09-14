@@ -1,13 +1,8 @@
-//
-//  RecordingEndReasonTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
 /// A Recording ends for exactly six reasons; four are unrequested and notify with a named reason,
-/// two are requested and stay silent (ADR-0007, ADR-0010).
+/// two are requested and stay silent.
 struct RecordingEndReasonTests {
     @Test func thereAreExactlySixEnds() {
         #expect(RecordingEndReason.allCases.count == 6)

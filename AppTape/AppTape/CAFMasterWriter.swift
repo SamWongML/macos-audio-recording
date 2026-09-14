@@ -1,25 +1,10 @@
-//
-//  CAFMasterWriter.swift
-//  AppTape
-//
-
 import AudioToolbox
 import Foundation
 
 /// Writes the immutable Float32 CAF master with the raw `AudioFile` API, append-only, from
-/// the non-realtime writer thread (ADR-0003). Created lazily at the first frame, in place
-/// at its final Library path (ADR-0006) — so a crash mid-capture leaves a valid, playable
+/// the non-realtime writer thread. Created lazily at the first frame, in place
+/// at its final Library path — so a crash mid-capture leaves a valid, playable
 /// file already in the Library, complete to within the last few frames, with no repair step.
-///
-/// The crash guarantee is two facts working together (ADR-0003): CAF records an in-progress
-/// data chunk with a negative `mChunkSize` meaning "runs to the end of the file", and
-/// `kAudioFilePropertyDeferSizeUpdates` keeps the header from being rewritten on every write.
-/// So a killed Recording opens as a normal one. `AudioFileWritePackets` is called with
-/// `inUseCache: false` to keep a write-once file from evicting the page cache, and for
-/// uncompressed formats packets == frames, so appending is just advancing the packet index.
-/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
-/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
-/// a piece of the capture spine.
 nonisolated final class CAFMasterWriter {
     let url: URL
     private var fileID: AudioFileID?
@@ -39,7 +24,7 @@ nonisolated final class CAFMasterWriter {
 
         var file: AudioFileID?
         // Empty flags: do not erase. The path is already collision-resolved, and erasing a
-        // master would be unrecoverable (ADR-0006).
+        // master would be unrecoverable.
         let create = AudioFileCreateWithURL(url as CFURL, kAudioFileCAFType, &self.asbd,
                                             AudioFileFlags(), &file)
         guard create == noErr, let file else { throw WriteError.create(create) }
@@ -58,7 +43,7 @@ nonisolated final class CAFMasterWriter {
         }
 
         // Stamp metadata now, before any audio, so a crash leaves it in place. Best-effort:
-        // a Recording that loses these still plays (ADR-0006), so a failure here is not fatal.
+        // a Recording that loses these still plays, so a failure here is not fatal.
         try? RecordingMetadata.writeSource(sourceName, to: url)
         var resourceValues = URLResourceValues()
         resourceValues.isExcludedFromBackup = true   // a 1.4 GB/hour intermediate has no place in Time Machine

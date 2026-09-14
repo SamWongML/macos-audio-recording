@@ -1,13 +1,8 @@
-//
-//  ActivationPolicyTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import AppKit
 @testable import AppTape
 
-/// The flip is existence-based, not focus-based (ADR-0017): any open editor
+/// The flip is existence-based, not focus-based: any open editor
 /// window means `.regular`, only zero means `.accessory`.
 struct ActivationPolicyTests {
     @Test func noEditorWindowIsAccessory() {

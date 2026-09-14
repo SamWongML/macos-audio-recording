@@ -1,13 +1,8 @@
-//
-//  DiskSpaceTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The Export pre-flight refuses over-large exports before writing (ADR-0012). The decision is a
+/// The Export pre-flight refuses over-large exports before writing. The decision is a
 /// pure byte comparison with a safety margin, tested here; the `statfs` read is exercised against
 /// a real directory to prove it returns a plausible figure.
 struct DiskSpaceTests {
@@ -26,7 +21,7 @@ struct DiskSpaceTests {
 
     @Test func anUnverifiableVolumeIsNotRefused() {
         // Could-not-stat (nil) means "cannot verify", not "no space" — the encode proceeds and a
-        // genuine ENOSPC surfaces later as a plain failure with the temp discarded (ADR-0012).
+        // genuine ENOSPC surfaces later as a plain failure with the temp discarded.
         #expect(DiskSpace.hasRoom(estimatedBytes: 1_000_000_000_000, freeBytes: nil))
     }
 
@@ -47,7 +42,7 @@ struct DiskSpaceTests {
     }
 
     @Test func theLibraryVolumeReadClimbsToAnExistingAncestor() throws {
-        // The Runway guard's read (ADR-0009): a deeply-nested path that does not exist yet — as the
+        // The Runway guard's read: a deeply-nested path that does not exist yet — as the
         // Library folder does before the first sound — still stats its volume by climbing to the
         // nearest existing ancestor rather than returning nil.
         let dir = try AudioFixtures.makeScratchDirectory()

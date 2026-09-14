@@ -1,26 +1,9 @@
-//
-//  TimestampRing.swift
-//  AppTape
-//
-
 import Synchronization
 
 /// A lock-free single-producer / single-consumer ring of **host-time marks**, parallel to the
 /// sample `AudioRingBuffer`. The realtime IOProc pushes one mark per delivered buffer — the buffer's
 /// first-frame host time and the ring-frame position it lands at — and the non-realtime writer
-/// thread pops them to learn where, in wall-clock time, each drained chunk sits (ADR-0010).
-///
-/// It carries the timestamps the sample ring cannot: a flat buffer of `Float` has no room for a
-/// per-buffer `mHostTime`, and the writer needs exactly that to reconcile gaps into Dropouts. Same
-/// index discipline as `AudioRingBuffer` — each side owns one monotonic index; the payload writes
-/// happen-before the release of `written`, so a mark read with acquire ordering is fully published.
-///
-/// A mark is pushed **only when the sample write succeeded**, with `ringFrame` counting frames
-/// actually written. So a dropped buffer pushes no mark and leaves a host-time jump the writer reads
-/// as an overrun gap — the sample ring's drop and this ring's silence describe the same event.
-/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
-/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
-/// a piece of the capture spine.
+/// thread pops them to learn where, in wall-clock time, each drained chunk sits.
 nonisolated final class TimestampRing: @unchecked Sendable {
     struct Mark: Equatable {
         /// Frames written to the sample ring **before** this buffer — the ring-frame position of the

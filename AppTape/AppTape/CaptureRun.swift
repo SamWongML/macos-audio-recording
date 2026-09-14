@@ -1,8 +1,3 @@
-//
-//  CaptureRun.swift
-//  AppTape
-//
-
 import Foundation
 import Observation
 
@@ -13,15 +8,8 @@ nonisolated private struct Attempt: Equatable, Sendable {
     let id: Int
 }
 
-/// One run of capture, start to stop: the coordination that ADR-0007's six ends, ADR-0008's denial
-/// inference, ADR-0009's Runway guard and ADR-0010's generation rule all live in.
-///
-/// It **accepts** its world rather than creating it — a capture builder, a free-space probe, the
-/// telling and the Recording reader — and it **reads no clock**. Time arrives as `tick(now:)`, the
-/// way `FaultReducer` already takes it, so the four `Timer`s this used to carry are one timer in
-/// `RecordingController` and every cadence in here is arithmetic a test can drive. Nothing in this
-/// file touches Core Audio, AppKit, the notification centre or `ProcessInfo`; that is the whole
-/// point of it.
+/// One run of capture, start to stop: the coordination that 's six ends, 's denial
+/// inference, 's Runway guard and 's generation rule all live in.
 @MainActor
 @Observable
 final class CaptureRun {
@@ -34,10 +22,10 @@ final class CaptureRun {
     private enum Phase {
         case idle
         /// Pressed, and the capture is being built. May sit here ~90 s behind the TCC prompt on the
-        /// first run (ADR-0008), which is why the wedge timeout is armed only after a success.
+        /// first run, which is why the wedge timeout is armed only after a success.
         case bringingUp(Attempt, pressedAt: TimeInterval)
         /// Built and attached. The master may or may not have begun — that is the first sound's
-        /// business, not this one's (ADR-0016).
+        /// business, not this one's.
         case capturing(Attempt, any Capturing, pressedAt: TimeInterval)
 
         var attempt: Attempt? {
@@ -65,14 +53,9 @@ final class CaptureRun {
     private var phase: Phase = .idle
     private var nextAttemptID = 0
 
-    /// **The generation rule, stated once** (ADR-0010). Every callback a bring-up can produce — the
+    /// **The generation rule, stated once**. Every callback a bring-up can produce — the
     /// built capture, an inferred denial, the master's creation, a self-end, the wedge timeout —
     /// comes through here first, and one belonging to an attempt that is no longer live is dropped.
-    ///
-    /// A return to idle invalidates every attempt in flight *by construction*: `.idle` carries no
-    /// attempt and a later press mints a fresh id, so there is no counter left to forget to bump.
-    /// The blocked Core Audio call that eventually returns cannot attach to a later press, which is
-    /// the hazard the rule exists for, and it is enforced in one place rather than eight.
     private func isLive(_ attempt: Attempt) -> Bool {
         phase.attempt == attempt
     }
@@ -97,21 +80,17 @@ final class CaptureRun {
     private(set) var recordingSourceID: String?
 
     /// Master duration in seconds, read off the capture's frame count on the clock's cadence — so
-    /// it sits at 0 (menu bar `00:00`) until the first sound (ADR-0016).
+    /// it sits at 0 (menu bar `00:00`) until the first sound.
     private(set) var elapsed: TimeInterval = 0
 
-    /// What the master weighs **right now**, on the same 4 Hz cadence as `elapsed` (ADR-0031). The
+    /// What the master weighs **right now**, on the same 4 Hz cadence as `elapsed`. The
     /// editor's `Master` row reads this rather than stat'ing the file from its own body: a bare
     /// `stat` is not observable, so the row used to discard a read of `elapsed` purely to invalidate
     /// itself around one.
-    ///
-    /// Nil through the armed window — there is no file until the first sound (ADR-0016) — and nil
-    /// at rest. A file merely *arriving* in the Library is not this one and gets no figure: nothing
-    /// is watching it, so there is nothing to be current about (ADR-0031).
     private(set) var masterByteCount: Int64?
 
     /// The active Recording's live meter fill (0...1), sampled off the capture's published peak at
-    /// ~20 Hz through `LevelMeter` (issue #59). A dead tap reads exactly 0, so a soft-faulted
+    /// ~20 Hz through `LevelMeter`. A dead tap reads exactly 0, so a soft-faulted
     /// Recording shows a flat meter. 0 at rest.
     private(set) var currentLevel: Double = 0
 
@@ -123,19 +102,19 @@ final class CaptureRun {
 
     /// True once a Recording has actually captured audio this launch. It gates the wedge timeout:
     /// the first bring-up is cancellable-not-timed so a ~90 s TCC prompt cannot abort it, and only
-    /// after a success does a slow bring-up become a wedge worth timing out (ADR-0008, ADR-0010). A
+    /// after a success does a slow bring-up become a wedge worth timing out. A
     /// fact about *capture*, held in memory only — nothing about permission is ever persisted.
     private(set) var hasCompletedACapture = false
 
-    /// Set when a denied System Audio Recording grant is inferred (ADR-0008); drives the panel's
+    /// Set when a denied System Audio Recording grant is inferred; drives the panel's
     /// recovery banner. Cleared on the next record press — retry is simply pressing record again.
     private(set) var permissionRecovery = false
 
-    /// The menu bar's disk tier (ADR-0009): amber at 3 hours of Runway, whole item, no glyph.
+    /// The menu bar's disk tier: amber at 3 hours of Runway, whole item, no glyph.
     /// Driven by the 5 s guard poll while recording; nominal at rest.
     private(set) var runwayTier: RunwayGuard.Tier = .nominal
 
-    /// Set when a record press is refused below the 2 GB floor (ADR-0009); drives the panel's one
+    /// Set when a record press is refused below the 2 GB floor; drives the panel's one
     /// blocking-message surface, sharing it with `permissionRecovery` — the panel carries at most
     /// one blocking reason at a time. Cleared on the next successful start, and by a denial taking
     /// the surface. Its action opens Finder at the Library.
@@ -143,26 +122,19 @@ final class CaptureRun {
 
     /// The Library file currently being written, once the first sound has created it. The editor
     /// refuses to export this one: its `.caf` is still growing in place and its Trim end is
-    /// undefined until Stop (ADR-0012). Nil when nothing is capturing, or before the first sound.
+    /// undefined until Stop. Nil when nothing is capturing, or before the first sound.
     private(set) var capturingURL: URL?
 
     /// Whether the current Recording has heard its first sound. The master is created at the first
-    /// sound (ADR-0016), which is exactly when `capturingURL` is set — so this reuses that signal.
+    /// sound, which is exactly when `capturingURL` is set — so this reuses that signal.
     var hasFirstSound: Bool { capturingURL != nil }
 
-    /// Whether `recording` is the one being captured right now, and so not exportable (ADR-0012).
-    ///
-    /// This is the run's half of `CaptureState`; the derived `isStillArriving(_:)` the editor asks for
-    /// lives on that protocol, so the rule has one home and no conformance can hold a second opinion
-    /// of it.
+    /// Whether `recording` is the one being captured right now, and so not exportable.
     func isCapturing(_ recording: Recording) -> Bool {
         isRecording && capturingURL == recording.url
     }
 
     /// `01:23`, or `1:02:03` past the hour. Frozen at `00:00` through the armed window.
-    ///
-    /// Deliberately **not** `Format.time`: ADR-0027 has the editor's transport reserve its widest
-    /// readout, so it pads where the menu bar does not. The two differ on purpose.
     var elapsedText: String {
         let total = Int(elapsed)
         let (hours, minutes, seconds) = (total / 3600, (total % 3600) / 60, total % 60)
@@ -174,7 +146,7 @@ final class CaptureRun {
     // MARK: - Cadences
 
     /// The wedge timeout that applies to bring-up *after* the first successful capture, when the
-    /// TCC prompt can no longer appear and a slow start is a hang, not a human reading (ADR-0010).
+    /// TCC prompt can no longer appear and a slow start is a hang, not a human reading.
     static let wedgeTimeout: TimeInterval = 10
 
     /// The menu bar's clock cadence. Not the tick rate: the meter wants 20 Hz and the menu bar
@@ -182,7 +154,7 @@ final class CaptureRun {
     /// churn for no readable gain. This separation is why there used to be two timers.
     static let clockInterval: TimeInterval = 0.25
 
-    /// The disk guard's poll (ADR-0009) — one `statfs` through the probe, off the realtime IOProc
+    /// The disk guard's poll — one `statfs` through the probe, off the realtime IOProc
     /// and the writer thread.
     static let runwayPollInterval: TimeInterval = 5
 
@@ -198,7 +170,7 @@ final class CaptureRun {
     private let builder: any CaptureBuilding
     private let runway: any RunwayProbing
     private let reporter: any CaptureReporting
-    /// The one module that reads a Recording's facts off the disk (ADR-0044). The run holds it for
+    /// The one module that reads a Recording's facts off the disk. The run holds it for
     /// exactly one read — the growing master's length, below — which is the only file the run has
     /// any business asking about.
     private let reader: any RecordingReading
@@ -215,14 +187,12 @@ final class CaptureRun {
 
     /// Begins capturing a Source. Flips to the recording state at once so the menu bar responds to
     /// the press, then asks the builder for a capture — which blocks and can raise the TCC prompt,
-    /// so it happens off the main thread and lands back here as a callback (issue #12).
+    /// so it happens off the main thread and lands back here as a callback.
     func start(_ source: Source, now: TimeInterval) {
         guard !isRecording, !source.processObjectIDs.isEmpty else { return }
 
-        // The start policy against the disk (ADR-0009). The rate is a pre-tap estimate — no tap
+        // The start policy against the disk. The rate is a pre-tap estimate — no tap
         // exists yet to report its real format — corrected by the first real poll a few seconds
-        // later; an unverifiable volume (nil) is neither refused nor pre-ambered, matching the
-        // running guard, which never ends on a volume it cannot stat.
         let free = runway.freeBytesForLibraryVolume()
         let startDecision = free.map {
             RunwayGuard.startDecision(freeBytes: $0, ratePerSecond: RunwayGuard.nominalRatePerSecond)
@@ -250,7 +220,7 @@ final class CaptureRun {
         phase = .bringingUp(attempt, pressedAt: now)
 
         // Begin amber if already inside the 3-hour tier, so a Recording the guard would paint amber
-        // within seconds does not flash green first (ADR-0009). The first real poll re-decides with
+        // within seconds does not flash green first. The first real poll re-decides with
         // the tap's own byte rate, so an off estimate only ever costs a brief wrong colour.
         let amberStart = startDecision == .allowAmber
         runwayGuard = RunwayGuard(tier: amberStart ? .amber : .nominal)
@@ -295,7 +265,7 @@ final class CaptureRun {
     }
 
     /// Learn the growing master's path when the first sound creates it, so the editor can refuse to
-    /// export the still-capturing Recording (ADR-0012).
+    /// export the still-capturing Recording.
     private func masterCreated(_ url: URL, _ attempt: Attempt) {
         guard isLive(attempt) else { return }
         capturingURL = url
@@ -303,7 +273,7 @@ final class CaptureRun {
 
     // MARK: - Ending
 
-    /// The user pressed stop — one of the two *requested* ends (ADR-0007). The editor opens on the
+    /// The user pressed stop — one of the two *requested* ends. The editor opens on the
     /// Recording just made, once finalized, but only if there was one: arm-then-never-play opens
     /// nothing.
     func stop() {
@@ -312,18 +282,18 @@ final class CaptureRun {
     }
 
     /// An end arriving from outside the run: system sleep, or fast user switching folded into it
-    /// (ADR-0007). Ends the Recording **on the notification**, while the machine is still awake, so
+    ///. Ends the Recording **on the notification**, while the machine is still awake, so
     /// the file is finalized at its last real sample and there is no gap to reconcile — no Dropout.
     func end(_ reason: RecordingEndReason) {
         guard let attempt = phase.attempt else { return }
         finalize(reason: reason, attempt)
     }
 
-    /// App quit or logout: finalize and save unwarned, as ADR-0004 accepts for a left-click. A
+    /// App quit or logout: finalize and save unwarned, as accepts for a left-click. A
     /// requested end — no notification, no window. Unlike the other ends this finalizes
     /// **synchronously**, because the process is about to exit: the writer must finish draining,
     /// close the CAF, and write the Dropouts xattr before `applicationWillTerminate` returns. The CAF
-    /// is crash-safe even if the OS kills us first (ADR-0003), but a synchronous close also secures
+    /// is crash-safe even if the OS kills us first, but a synchronous close also secures
     /// the Dropout mark and the tail.
     func endForQuit() {
         guard isRecording else { return }
@@ -333,16 +303,16 @@ final class CaptureRun {
     }
 
     /// The Recording ended itself — recovery exhausted, a format mismatch, or a >30 s gap: one of
-    /// the four unrequested ends (ADR-0010). The capture has already finalized the file; reclaim it
+    /// the four unrequested ends. The capture has already finalized the file; reclaim it
     /// and tell the user why.
     private func captureEndedItself(_ reason: RecordingEndReason, _ attempt: Attempt) {
         guard isLive(attempt) else { return }
         finalize(reason: reason, attempt)
     }
 
-    /// The one finalization path every end funnels through (ADR-0007). Returns to idle at once,
+    /// The one finalization path every end funnels through. Returns to idle at once,
     /// then tears the capture down — off the main thread, since draining the ring and closing the
-    /// file may block (ADR-0003).
+    /// file may block.
     private func finalize(reason: RecordingEndReason, _ attempt: Attempt) {
         guard isLive(attempt) else { return }
         let capture = phase.capture
@@ -358,7 +328,7 @@ final class CaptureRun {
     }
 
     /// Back with the finalized file (or nil for arm-then-never-play). Tells the user what happened
-    /// per the end's kind (ADR-0009/0010).
+    /// per the end's kind (/0010).
     private func didFinalize(_ outcome: CaptureOutcome, requested: RecordingEndReason) {
         // A Recording that captured audio — even one a fault ended — means the grant is known good,
         // so a later slow bring-up is a wedge to time out rather than a human at the prompt.
@@ -369,7 +339,7 @@ final class CaptureRun {
         switch outcome.selfEndReason ?? requested {
         case .userStopped:
             // The first *completed* Recording is where notification authorization is requested, so a
-            // later unrequested end has a channel — never stacked onto a failure (ADR-0009).
+            // later unrequested end has a channel — never stacked onto a failure.
             reporter.requestNotificationAuthorizationOnce()
             reporter.openEditor(selecting: result.url)
         case .quit:
@@ -380,21 +350,15 @@ final class CaptureRun {
         }
     }
 
-    /// A denied grant was inferred (ADR-0008): end the Recording, discard the capture (which removes
+    /// A denied grant was inferred: end the Recording, discard the capture (which removes
     /// any all-zero file), and raise the panel's recovery banner. No file is opened — unlike a
     /// fault-stopped Recording, a denial produced no first sound and so no Recording.
-    ///
-    /// It must not depend on the capture having been attached: the writer thread can infer denial
-    /// before the build callback arrives under load. So we return to idle and raise recovery
-    /// regardless — and if we do not yet hold the capture, the in-flight build for this (now stale)
-    /// attempt orphan-stops it, which is equivalent to `discard` here since a denied Recording
-    /// created no file to remove (ADR-0016 head elision).
     private func handleDenial(_ attempt: Attempt) {
         guard isLive(attempt) else { return }
         let capture = phase.capture
         returnToIdle()
         capture?.discard()
-        startBlocker = nil   // the panel carries at most one blocking reason (ADR-0009)
+        startBlocker = nil   // the panel carries at most one blocking reason
         permissionRecovery = true
     }
 
@@ -430,9 +394,9 @@ final class CaptureRun {
         case .idle:
             return
         case .bringingUp(let attempt, let pressedAt):
-            // The wedge (ADR-0010): armed only *after* the first successful capture. On the first
+            // The wedge: armed only *after* the first successful capture. On the first
             // Recording, bring-up is cancellable-not-timed, so it can block ~90 s behind the TCC
-            // prompt without aborting; a second click is the only way out then (ADR-0008/0010).
+            // prompt without aborting; a second click is the only way out then (/0010).
             if hasCompletedACapture, now - pressedAt >= Self.wedgeTimeout { abandon(attempt) }
         case .capturing(_, let capture, _):
             sampleLevel(from: capture)
@@ -444,11 +408,7 @@ final class CaptureRun {
     /// The two figures a capture publishes about itself, at 4 Hz rather than the tick's 20 — see
     /// `clockInterval`. One gate for both, because the reason is the same twice over: the menu bar
     /// observes `elapsed`, and a byte count ticking twenty times a second is ambient motion rather
-    /// than a fact changing, which ADR-0028 forbids.
-    ///
-    /// The length is a bare `stat` of the file being written (ADR-0031) — the read the `Master` row
-    /// used to perform from its own view body, moved onto something observable. Nil before the
-    /// first sound, because `capturingURL` is nil until the master exists (ADR-0016).
+    /// than a fact changing, which forbids.
     private func publishFigures(from capture: any Capturing, now: TimeInterval) {
         if let last = lastFiguresPublishedAt, now - last < Self.clockInterval { return }
         lastFiguresPublishedAt = now
@@ -474,7 +434,7 @@ final class CaptureRun {
         meterColumns = Array(repeating: 0, count: Self.meterColumnCount)
     }
 
-    /// One Runway reading (ADR-0009): fold current free space and the master's byte rate into the
+    /// One Runway reading: fold current free space and the master's byte rate into the
     /// guard, then act — paint amber, post the 30-minute warning once, or end at the floor. A volume
     /// that cannot be stat'd is skipped, never treated as empty, so an unverifiable disk never ends
     /// a Recording.

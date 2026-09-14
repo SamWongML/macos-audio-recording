@@ -1,8 +1,3 @@
-//
-//  AudioFixtures.swift
-//  AppTapeTests
-//
-
 import AVFoundation
 import AudioToolbox
 import Foundation

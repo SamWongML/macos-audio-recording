@@ -1,40 +1,24 @@
-//
-//  RunwayGuard.swift
-//  AppTape
-//
-
 import Foundation
 
-/// The disk guard as a **Runway** clock (ADR-0009): a pure value reducer, off the realtime IOProc
+/// The disk guard as a **Runway** clock: a pure value reducer, off the realtime IOProc
 /// and the writer thread, that turns a `statfs` free-space reading and the master's byte rate into
 /// three advisory tiers measured in *time to a 2 GB floor* rather than in bytes.
-///
-/// The whole decision lives here so it can be tested without a disk, a clock, or a Recording. The
-/// Capture Engine's coordinator polls free space every 5 s, folds each reading in, and acts on the
-/// `Decision`: paint the menu bar amber, post the 30-minute warning once, or end at the floor. ENOSPC
-/// — the guard firing late between polls — is the engine's own write failure and ends by the same
-/// `.diskGuard` route, so ADR-0007's six ends stay six.
-///
-/// **Runway is `(free − 2 GB) ÷ rate`.** Dividing plain free space by the rate would measure time to
-/// *zero* and overstate every tier by the floor's own ~87 minutes (ADR-0009); the floor is subtracted
-/// first so the number is honestly "time until we stop." The rate is not a constant — 8 bytes/frame
-/// at 48 kHz is 1.38 GB/hour against 1.27 at 44.1 — so it is an input, never baked in.
 nonisolated struct RunwayGuard {
     /// The hard floor on the Library's volume. Plain available capacity, not
-    /// `…ForImportantUsage` (ADR-0009). Decimal GB, matching how Finder reports free space and how
+    /// `…ForImportantUsage`. Decimal GB, matching how Finder reports free space and how
     /// the refusal names it, so "2 GB" on screen is the same 2 GB enforced here.
     static let floorBytes: Int64 = 2_000_000_000
 
     /// The menu bar turns amber at 3 hours of Runway — late enough that a healthy disk never shows
-    /// it, since an advisory that is always on is decoration (ADR-0009).
+    /// it, since an advisory that is always on is decoration.
     static let amberThreshold: TimeInterval = 3 * 60 * 60
 
     /// The 30-minute warning: enough time to delete something and keep recording, which is the only
-    /// action the warning asks for (ADR-0009).
+    /// action the warning asks for.
     static let warnThreshold: TimeInterval = 30 * 60
 
     /// A 15-minute Runway hysteresis band on both the tier and its notification, so a Recording
-    /// hovering on a boundary does not flap the menu bar every 5 s or warn twice (ADR-0009).
+    /// hovering on a boundary does not flap the menu bar every 5 s or warn twice.
     static let hysteresis: TimeInterval = 15 * 60
 
     /// A pre-tap estimate of the master's byte rate — 48 kHz stereo Float32 — used only for the
@@ -42,7 +26,7 @@ nonisolated struct RunwayGuard {
     /// seconds later corrects the tier with the true rate, so an off estimate costs nothing.
     static let nominalRatePerSecond: Double = 8 * 48_000
 
-    /// Whether the menu bar item is drawn amber (ADR-0009). Colour is the sole signal at this tier —
+    /// Whether the menu bar item is drawn amber. Colour is the sole signal at this tier —
     /// a conscious accessibility trade, since the 30-minute tier is text and reaches a colour-blind
     /// user intact.
     enum Tier: Sendable { case nominal, amber }
@@ -58,7 +42,7 @@ nonisolated struct RunwayGuard {
         var shouldEnd: Bool
     }
 
-    /// The start decision, a pure function of the same inputs (ADR-0009): refused below the floor,
+    /// The start decision, a pure function of the same inputs: refused below the floor,
     /// begun amber between the floor and the 3-hour tier, begun plain above it.
     enum StartDecision: Equatable { case allow, allowAmber, refuse }
 
@@ -71,7 +55,7 @@ nonisolated struct RunwayGuard {
 
     /// The start policy. The refusal depends only on the floor; the amber split uses the Runway, so a
     /// Recording the guard would paint amber within seconds begins amber rather than flashing green
-    /// first (ADR-0009).
+    /// first.
     static func startDecision(freeBytes: Int64, ratePerSecond: Double) -> StartDecision {
         guard freeBytes > floorBytes else { return .refuse }
         return runwaySeconds(freeBytes: freeBytes, ratePerSecond: ratePerSecond) <= amberThreshold
@@ -83,7 +67,7 @@ nonisolated struct RunwayGuard {
     private(set) var tier: Tier = .nominal
     /// The warning one-shot: true once the 30-minute warning has fired, cleared only by a 45-minute
     /// recovery. A posted warning is never retracted, so this never drives an all-clear — only
-    /// re-arms the single future warning (ADR-0009).
+    /// re-arms the single future warning.
     private var warned = false
 
     init(tier: Tier = .nominal) { self.tier = tier }

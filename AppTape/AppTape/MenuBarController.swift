@@ -1,21 +1,8 @@
-//
-//  MenuBarController.swift
-//  AppTape
-//
-
 import AppKit
 import SwiftUI
 
 /// The hand-rolled menu-bar transport: a single `NSStatusItem` whose click
 /// toggles a `.transient` `NSPopover` hosting the SwiftUI panel.
-///
-/// This replaces SwiftUI's `MenuBarExtra`, which cannot intercept its own click
-/// (ADR-0004), and so must hand-roll each thing `MenuBarExtra` did for free
-/// (ADR-0011): the popover and its lifecycle, `.transient` dismissal, an
-/// app-owned Escape, `NSApp.activate()`, and anchoring that treats the button's
-/// frame as a claim to be checked. Intercepting the click is what buys the
-/// one-click stop: while a Recording runs the item itself becomes red `● MM:SS`
-/// and a left-click stops it, with the panel a right-click away (issue #8).
 @MainActor
 final class MenuBarController: NSObject, NSPopoverDelegate {
     private var statusItem: NSStatusItem?
@@ -23,7 +10,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     /// Consumes Escape while the panel is open. A plain `.transient` popover
     /// closes on Escape for free — until a SwiftUI `.onKeyPress` anywhere in the
-    /// panel takes that away, even one returning `.ignored` (ADR-0011). So
+    /// panel takes that away, even one returning `.ignored`. So
     /// Escape is the app's, owned here and never left to AppKit.
     private var escapeMonitor: Any?
 
@@ -37,20 +24,20 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     /// Last-seen blocking-message state, so the panel is auto-raised only on the transition into
     /// one — the user pressed record and it was refused (a denial, or too little disk), so the fix
-    /// must find them rather than wait behind a closed popover (ADR-0008/0009).
+    /// must find them rather than wait behind a closed popover (/0009).
     private var lastBlocked = false
 
     /// The red recording dot, rendered once. It never changes, so it is not rebuilt
     /// on every tick (only the time title is).
     private lazy var recordingDot: NSImage = Self.makeRecordingDot()
-    /// The amber variant, the whole item at 3 hours of Runway (ADR-0009): dot and clock both amber,
+    /// The amber variant, the whole item at 3 hours of Runway: dot and clock both amber,
     /// no `⚠` — red and amber on one item would read as a rendering bug, so colour is the sole signal.
     /// A conscious accessibility trade, since the 30-minute tier is text and reaches everyone.
     private lazy var amberDot: NSImage = Self.makeDot(color: .systemOrange)
     private lazy var idleGlyph: NSImage = Self.makeIdleGlyph()
 
     /// The transport this item is the face of, and the panel's too — accepted from `AppDelegate`,
-    /// which is where AppKit's half of the app names its singletons (ADR-0045).
+    /// which is where AppKit's half of the app names its singletons.
     private let recorder: RecordingController
     private let presenter: EditorPresenter
 
@@ -67,7 +54,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         if let button = item.button {
             button.target = self
             button.action = #selector(statusItemClicked)
-            // Both edges so either click reaches us (ADR-0004): a left-click while
+            // Both edges so either click reaches us: a left-click while
             // recording is Stop, and a plain action fires on left-mouse-up only.
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
@@ -81,7 +68,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             $0.type == .rightMouseUp || $0.modifierFlags.contains(.control)
         } ?? false
         // The one-click stop: a left-click while recording finalizes and opens the
-        // editor (issue #8, ADR-0016). The panel is reached with a right-click while
+        // editor. The panel is reached with a right-click while
         // recording, and with either click at rest.
         if recorder.isRecording && !isRightClick {
             recorder.stop()
@@ -95,13 +82,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// Draws the item for the current state: red `● MM:SS` while recording — a
     /// pre-rendered non-template dot plus a monospaced attributed title, because a
     /// status-bar button ignores `contentTintColor` and repaints template images in the
-    /// bar's own colour, so the red must arrive baked in (issue #8). At rest, a plain
+    /// bar's own colour, so the red must arrive baked in. At rest, a plain
     /// template waveform the menu bar tints for light/dark itself. The title sits at
-    /// `00:00` until the first sound, since it reads master duration (ADR-0016).
+    /// `00:00` until the first sound, since it reads master duration.
     private func refreshStatusItem() {
         guard let button = statusItem?.button else { return }
         if recorder.isRecording {
-            // Amber at 3 hours of Runway (ADR-0009): the whole item goes amber, dot and clock
+            // Amber at 3 hours of Runway: the whole item goes amber, dot and clock
             // together, and reverts silently when the Runway recovers past the hysteresis band.
             let amber = recorder.runwayTier == .amber
             button.image = amber ? amberDot : recordingDot
@@ -111,7 +98,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
                     .foregroundColor: amber ? NSColor.systemOrange : NSColor.systemRed,
                 ])
-            // Colour is the sole signal at the amber tier (ADR-0009): the tooltip stays constant, so
+            // Colour is the sole signal at the amber tier: the tooltip stays constant, so
             // hovering does not become a second, text channel the ADR deliberately withholds.
             button.toolTip = "Recording — click to stop, right-click for the panel"
         } else {
@@ -122,7 +109,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     /// `@Observable` reaches AppKit through `withObservationTracking`, whose callback
-    /// fires exactly once — so it re-arms after every change (the pattern issue #8
+    /// fires exactly once — so it re-arms after every change (the pattern
     /// settled). Reading `elapsed` keeps the clock ticking while the panel is closed.
     private func startObservingRecorder() {
         guard !observingRecorder else { return }
@@ -148,8 +135,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    /// Raise the panel the moment a record press is blocked — a denial (ADR-0008) or a refusal below
-    /// the floor (ADR-0009) — so its one blocking-message surface reaches the user who just pressed
+    /// Raise the panel the moment a record press is blocked — a denial or a refusal below
+    /// the floor — so its one blocking-message surface reaches the user who just pressed
     /// record. Only on the transition into a blocked state, and only if the panel is not already up,
     /// so it is not re-shown on every tick while the message stands.
     private func raisePanelOnBlockingMessage() {
@@ -162,7 +149,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private static func makeRecordingDot() -> NSImage { makeDot(color: .systemRed) }
 
     /// A filled dot baked in `color`, non-template so the menu bar cannot repaint it in its own
-    /// colour (a status-bar button ignores `contentTintColor`, ADR-0004) — the red recording dot and
+    /// colour (a status-bar button ignores `contentTintColor`) — the red recording dot and
     /// the amber Runway variant differ only by this colour.
     private static func makeDot(color: NSColor) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
@@ -188,7 +175,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func togglePanel() {
         if let popover, popover.isShown {
-            // Second click on the item dismisses (ADR-0011).
+            // Second click on the item dismisses.
             popover.performClose(nil)
             return
         }
@@ -220,9 +207,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
 
         // An `LSUIElement` app is not frontmost, so without this the panel's
-        // controls come up inactive. `NSApp.activate()`, not the deprecated
-        // `activateIgnoringOtherApps:` (ADR-0011); the theft is temporary —
-        // every close hands the front back.
+        // controls come up inactive. `NSApp.activate`, not the deprecated
         NSApp.activate()
     }
 
@@ -230,7 +215,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let popover = NSPopover()
         // `.transient`, not `.semitransient`: a semi-transient popover closes on
         // interaction with the window containing its positioning view — the menu
-        // bar — so it would effectively never close (ADR-0011).
+        // bar — so it would effectively never close.
         popover.behavior = .transient
         popover.delegate = self
         popover.contentViewController = NSHostingController(
@@ -249,7 +234,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self, event.keyCode == 53 else { return event }  // 53 == Escape
             // Only the panel's own Escape is ours. If the editor window (which
-            // can coexist with the panel, ADR-0017) holds the key, let Escape
+            // can coexist with the panel) holds the key, let Escape
             // through to it rather than dismissing a background popover.
             guard self.popoverWindow?.isKeyWindow == true else { return event }
             self.popover?.performClose(nil)

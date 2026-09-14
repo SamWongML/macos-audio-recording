@@ -1,15 +1,10 @@
-//
-//  AudioPlayer.swift
-//  AppTape
-//
-
 import AVFoundation
 import Observation
 
 /// Editor playback: an `AVAudioEngine` + `AVAudioPlayerNode` playing a frame range straight off
 /// the master with `scheduleSegment`. **Play loops the Trim** — a preview of exactly what Export
-/// will produce (issue #7, variant O/Q). The playhead is published from a 30 Hz timer onto this
-/// `@Observable`, not read out of the audio graph by the view (issue #6).
+/// will produce (variant O/Q). The playhead is published from a 30 Hz timer onto this
+/// `@Observable`, not read out of the audio graph by the view.
 @MainActor
 @Observable
 final class AudioPlayer {
@@ -21,7 +16,7 @@ final class AudioPlayer {
     @ObservationIgnored private let engine = AVAudioEngine()
     @ObservationIgnored private let node = AVAudioPlayerNode()
     /// A bandless `AVAudioUnitEQ` used only for its `globalGain` — the **one scalar** that makes Play
-    /// match Export (ADR-0013): the Loudness correction plus the manual Gain are set here in dB, so
+    /// match Export: the Loudness correction plus the manual Gain are set here in dB, so
     /// playback previews exactly what the written file will sound like rather than approximating it in
     /// a second code path. Bandless because no equalisation is wanted, only the master gain it exposes.
     @ObservationIgnored private let gainUnit = AVAudioUnitEQ(numberOfBands: 0)
@@ -37,7 +32,7 @@ final class AudioPlayer {
 
     func load(_ recording: Recording) {
         // Identity, not path: a re-adopted Recording is a *new object at the same url* holding a
-        // different reading of a file that has since grown (ADR-0021). Keyed on the url this would
+        // different reading of a file that has since grown. Keyed on the url this would
         // decline to reload and keep playing the old, short segment.
         guard self.recording !== recording else { return }
         stop()
@@ -49,16 +44,12 @@ final class AudioPlayer {
             engine.disconnectNodeOutput(gainUnit)
             // macOS 27 deprecated every non-throwing connect/play on AVAudioEngine and
             // AVAudioPlayerNode in favour of error-returning twins — and renamed them in Swift,
-            // so `try engine.connect(...)` does not exist. It is `connectNode` / `playAudio`.
-            // Best-effort: a failed connect just leaves the graph unable to play, which the next
-            // `play()` reports by staying stopped — nothing here is worth trapping the editor over.
-            // The signal runs node → gainUnit → mixer so the combined gain rides on every sample.
             try? engine.connectNode(node, to: gainUnit, format: file.processingFormat)
             try? engine.connectNode(gainUnit, to: engine.mainMixerNode, format: file.processingFormat)
         }
     }
 
-    /// Sets the combined gain — the Loudness correction plus the manual Gain (ADR-0013) — applied to
+    /// Sets the combined gain — the Loudness correction plus the manual Gain — applied to
     /// playback, in dB. Live: the Gain slider and a resolving correction both call through here, and
     /// `AVAudioUnitEQ` retunes `globalGain` without a reschedule, so the change is heard mid-loop.
     /// Clamped to the node's range.

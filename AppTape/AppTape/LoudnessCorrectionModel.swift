@@ -1,26 +1,10 @@
-//
-//  LoudnessCorrectionModel.swift
-//  AppTape
-//
-
 import Foundation
 import Observation
 
-/// The Loudness correction **preview** for the editor (ADR-0013). The correction is a full BS.1770
+/// The Loudness correction **preview** for the editor. The correction is a full BS.1770
 /// pass where the size estimate is only arithmetic, so it cannot be shown instantly — it resolves
 /// from `Measuring…` to a dB figure. This model owns that async measure for the current Recording
 /// and Trim, so the inspector shows the figure and playback can apply the same correction.
-///
-/// It is keyed on `(url, trimmed frame range)`: a redraw with the same key does not re-measure, and a
-/// new Trim or Recording supersedes the prior pass. Superseding **cancels the running measure** — the
-/// pass runs on a detached `.utility` task whose own cancellation the BS.1770 loop polls, so it stops
-/// filtering early and a dragging Trim handle over a long Recording does not pile up whole-range
-/// passes. Only the resolved result hops back to the main actor, and only if its key still stands.
-///
-/// The detached task is only detached because `LoudnessMeter` is `nonisolated` (ADR-0022). It was
-/// not, once: under this target's default-MainActor isolation the meter was implicitly main-actor
-/// isolated, so this exact `Task.detached` hopped back to the main thread and froze the editor for
-/// the length of the pass — over fifteen minutes on a twenty-minute master (issue #80).
 @MainActor
 @Observable
 final class LoudnessCorrectionModel {
@@ -45,7 +29,7 @@ final class LoudnessCorrectionModel {
     }
 
     /// The correction in dB to fold into playback — zero unless a correction has resolved. Playback
-    /// adds the manual Gain to this and sets the sum as one `globalGain` (ADR-0013).
+    /// adds the manual Gain to this and sets the sum as one `globalGain`.
     var correctionDB: Double { correction?.decibels ?? 0 }
 
     /// Measures (or clears) the correction for a Recording's current Trim. Call it on any change to

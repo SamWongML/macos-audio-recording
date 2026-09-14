@@ -1,13 +1,8 @@
-//
-//  PanelAnchoringTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import CoreGraphics
 @testable import AppTape
 
-/// The status button's frame is a claim to be checked, not trusted (ADR-0011):
+/// The status button's frame is a claim to be checked, not trusted:
 /// `[0,0 29x0]` before the item is placed, its last frame retained while hidden,
 /// and stale duplicates just after a restore. These pin the geometry decision.
 struct PanelAnchoringTests {
@@ -78,7 +73,7 @@ struct PanelAnchoringTests {
             statusBarThickness: 24
         )
         if case .screenFallback = anchor {
-            // expected
+        // expected
         } else {
             Issue.record("expected a screen fallback when no button frame exists")
         }

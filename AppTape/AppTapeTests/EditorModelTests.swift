@@ -1,26 +1,14 @@
-//
-//  EditorModelTests.swift
-//  AppTapeTests
-//
-
 import Foundation
 import Testing
 @testable import AppTape
 
 /// The editor's coordinator, and the rule it exists to keep: **the selection stays honest as the
-/// folder changes underneath it** (ADR-0021, ADR-0006, ADR-0012).
-///
-/// It had no tests until it accepted its world (ADR-0045). Every case here turns on a Library that
-/// changes between two opens — a Recording arriving, growing, or vanishing — which needed a store
-/// with no disk behind it and Export objects nothing else is watching.
+/// folder changes underneath it**.
 @MainActor
 struct EditorModelTests {
 
     /// The model under test with a store over an in-memory folder, and the Export coordinator handed
     /// back so a case can park it in a phase and read it afterwards.
-    ///
-    /// Explicitly `@MainActor`: a nested type does not inherit its enclosing type's isolation, and
-    /// this test target does not carry the app's `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
     @MainActor
     struct Rig {
         let reader = StubRecordingReader()
@@ -30,7 +18,7 @@ struct EditorModelTests {
         init() {
             let coordinator = ExportCoordinator()
             self.coordinator = coordinator
-            // A directory that does not exist, so `start()` establishes no real folder watch. The
+            // A directory that does not exist, so `start` establishes no real folder watch. The
             // stub ignores it and answers with what the test placed.
             self.model = EditorModel(store: LibraryStore(directory: URL(filePath: "/AppTapeTests-\(UUID().uuidString)"),
                                                          reader: reader),
@@ -44,7 +32,7 @@ struct EditorModelTests {
     // MARK: - What is selected when the editor opens
 
     /// The path capture takes on every Stop: the editor is opened naming the Recording just made,
-    /// which the store has only just listed (ADR-0016).
+    /// which the store has only just listed.
     @Test func theRecordingJustCapturedIsSelectedOnceItLists() {
         let rig = Rig()
         rig.reader.place("older", recordedAt: Date(timeIntervalSince1970: 1_000))
@@ -68,7 +56,7 @@ struct EditorModelTests {
         #expect(rig.model.selection?.url == other.url)
     }
 
-    /// Nothing pending, first open: the newest Recording, which is the store's own order (ADR-0031).
+    /// Nothing pending, first open: the newest Recording, which is the store's own order.
     @Test func theNewestRecordingIsSelectedOnTheFirstOpenWithNothingPending() {
         let rig = Rig()
         rig.reader.place("older", recordedAt: Date(timeIntervalSince1970: 1_000))
@@ -106,7 +94,7 @@ struct EditorModelTests {
 
     // MARK: - What happens when the open Recording changes underneath
 
-    /// ADR-0021's mechanism, and the reason `Recording` is a reference type: the store re-adopts a
+    /// 's mechanism, and the reason `Recording` is a reference type: the store re-adopts a
     /// file that grew, so the object the editor is rendering is now the stale one and the selection
     /// has to rebind to the fresh object rather than to the same url.
     @Test func theOpenRecordingReAdoptedRebindsToTheFreshObject() {
@@ -115,7 +103,7 @@ struct EditorModelTests {
         rig.model.activate(selecting: opened.url)
         #expect(rig.model.selection === opened)
 
-        // The same file, longer, and a fresh reading of it (ADR-0021).
+        // The same file, longer, and a fresh reading of it.
         let grown = Recording.stub("growing", seconds: 90,
                                    byteCount: (opened.openedByteCount ?? 0) + 1,
                                    identity: opened.fileIdentity)
@@ -128,13 +116,13 @@ struct EditorModelTests {
     }
 
     /// The open Recording disappearing from the folder is the one case that closes the window
-    /// (ADR-0006): the selection goes, playback stops, a running Export is cancelled because the
-    /// editor has navigated away from it (ADR-0012), and the tick is what the view closes on.
+    ///: the selection goes, playback stops, a running Export is cancelled because the
+    /// editor has navigated away from it, and the tick is what the view closes on.
     @Test func theOpenRecordingVanishingClosesTheEditorAndCancelsTheExport() {
         let rig = Rig()
         let opened = rig.reader.place("about to vanish")
         rig.model.activate(selecting: opened.url)
-        // Parked *after* the open: opening is itself a selection change, which cancels (ADR-0012),
+        // Parked *after* the open: opening is itself a selection change, which cancels,
         // so an Export started before it would already be idle and the case would prove nothing.
         rig.coordinator.enter(phase: .running(fraction: 0.4), subject: opened)
 
@@ -148,7 +136,7 @@ struct EditorModelTests {
         #expect(rig.model.player.isPlaying == false)
     }
 
-    // MARK: - Navigating away from an Export (ADR-0012)
+    // MARK: - Navigating away from an Export
 
     /// Selecting a different Recording cancels a running Export, unwarned. The destination is
     /// untouched, so it costs only redoable work.

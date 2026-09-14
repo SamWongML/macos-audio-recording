@@ -1,27 +1,8 @@
-//
-//  FaultReducer.swift
-//  AppTape
-//
-
 import Foundation
 
 /// The Capture Engine's fault-policy dropout: a pure value reducer, off the realtime thread, that
-/// turns observations of the tap's health into "rebuild" or "end", encoding the split ADR-0010
+/// turns observations of the tap's health into "rebuild" or "end", encoding the split
 /// draws between two kinds of fault.
-///
-/// The split exists because **a tap that has died and a Source that has gone quiet are the same
-/// observation** — callbacks arriving at the full rate with every sample zero, `isRunningOutput`
-/// true in both cases. So:
-///
-/// - A **soft fault** is all-zero-while-running, ambiguous with real silence. It gets **one**
-///   rebuild, **never counts toward exhaustion, and never ends a Recording** — a thirty-second
-///   pause in a podcast must not destroy the Recording. It re-arms only on the next non-zero sample.
-/// - A **hard fault** is unambiguous — a Core Audio error, a callback famine — and spends one of
-///   three attempts, spaced 1 s / 2 s / 4 s so restore keeps first refusal and the end lands ~7 s
-///   after an unrecoverable fault. A **format mismatch ends at once**, spending no attempt.
-///
-/// The reducer only decides *when*; the engine executes the rebuild (destroy-and-recreate the tap,
-/// re-resolving the Source's processes) and reports back the next fault or a recovery.
 nonisolated struct FaultReducer {
     enum Action: Equatable {
         case none
@@ -35,10 +16,6 @@ nonisolated struct FaultReducer {
     private var hard = HardFaultCoordinator()
 
     /// Fold in one per-tick observation of the audio (the soft path).
-    ///
-    /// A non-zero sample is a **recovery**: it re-arms the soft one-shot *and* cancels any pending
-    /// hard rebuild, which is how restore keeps first refusal — a Source that quit and relaunched
-    /// brings its audio back inside the 1 s backoff, before the first rebuild ever fires.
     mutating func observe(allZero: Bool, isRunningOutput: Bool, now: TimeInterval) -> Action {
         if !allZero {
             hard.recovered()
@@ -65,10 +42,10 @@ nonisolated struct FaultReducer {
 /// The soft (ambiguous-silence) detector: all-zero for 10 s while output runs → one rebuild, ever,
 /// per audio epoch. Never ends a Recording. A twin of `DenialDetector`, but where denial disarms
 /// permanently at the first sound, this one re-arms on every return of audio, because a
-/// mid-Recording silence is exactly what it must survive without spending anything (ADR-0010).
+/// mid-Recording silence is exactly what it must survive without spending anything.
 nonisolated struct SoftFaultDetector {
     /// Ten seconds — ten times the ~1 s restore window, so it can never race the free recovery; and
-    /// longer than essentially all in-content dead air, so a podcast's pauses make no Dropout (ADR-0010).
+    /// longer than essentially all in-content dead air, so a podcast's pauses make no Dropout.
     static let window: TimeInterval = 10
 
     /// Start of the current continuous all-zero-while-running run, or nil when none is in progress.
@@ -109,7 +86,7 @@ nonisolated struct SoftFaultDetector {
 /// A genuine recovery (audio flowing again) cancels a pending rebuild and restores the full budget.
 nonisolated struct HardFaultCoordinator {
     /// The backoff before attempt 1, 2, 3. The doubling keeps restore's first refusal on this path
-    /// too and puts the end about 1 + 2 + 4 = 7 s after an unrecoverable fault (ADR-0010).
+    /// too and puts the end about 1 + 2 + 4 = 7 s after an unrecoverable fault.
     static let backoffs: [TimeInterval] = [1, 2, 4]
 
     /// Rebuild attempts already fired this fault sequence.

@@ -1,8 +1,3 @@
-//
-//  PanelAnchoring.swift
-//  AppTape
-//
-
 import CoreGraphics
 
 /// Where the panel should hang when it opens.
@@ -15,7 +10,7 @@ enum PanelAnchor: Equatable {
 }
 
 /// The status button's own window frame is the natural anchor, but it is
-/// untrustworthy at exactly the moments it matters (ADR-0011): `[0,0 29x0]`
+/// untrustworthy at exactly the moments it matters: `[0,0 29x0]`
 /// before the item is placed, its last frame retained while `isVisible` is
 /// false, and a stale duplicate shared by two items just after a restore. So a
 /// candidate frame is treated as a claim to be checked, and an unusable one

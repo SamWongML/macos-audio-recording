@@ -1,13 +1,8 @@
-//
-//  QualityPresetTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The four Quality Presets and the size-estimate math (issue #9, ADR-0005, ADR-0012). These pin
+/// The four Quality Presets and the size-estimate math. These pin
 /// the two properties the acceptance criteria call out: the estimate is `bitrate × duration × 1.02`
 /// to three significant figures, and it is **invariant to Loudness and Gain** — a property that
 /// holds here by construction, because neither is an input the estimate can take.
@@ -32,7 +27,7 @@ struct QualityPresetTests {
     }
 
     @Test func masterQualityEstimatesAt46PercentOfTheFloatMaster() {
-        // ADR-0005: the ALAC rung is ~633 MB/hour at 48 kHz stereo Float32 (46% of the master).
+        // the ALAC rung is ~633 MB/hour at 48 kHz stereo Float32 (46% of the master).
         let bps = QualityPreset.master.estimatedBitsPerSecond(for: stereo48)
         let mbPerHour = bps / 8 * 3600 / 1_000_000
         #expect(abs(mbPerHour - 633) < 5)
@@ -64,7 +59,7 @@ struct QualityPresetTests {
     }
 
     @Test func largeEstimatesReadInGigabytes() {
-        // Master quality for ~3 hours is over a gigabyte (ADR-0009's amber-Runway Recording).
+        // Master quality for ~3 hours is over a gigabyte ('s amber-Runway Recording).
         let text = ExportSizeEstimate.sizeText(bytes: 1_900_000_000)
         #expect(text == "1.90 GB")
     }
@@ -75,7 +70,7 @@ struct QualityPresetTests {
     }
 
     /// The unit follows the number instead of being pinned to MB, so a short Trim reads `426 KB`
-    /// rather than `0.000426 MB` (issue #73, finding 23).
+    /// rather than `0.000426 MB`.
     @Test func smallEstimatesReadInKilobytes() {
         #expect(ExportSizeEstimate.sizeText(bytes: 426) == "0.426 KB")
         #expect(ExportSizeEstimate.sizeText(bytes: 4_320) == "4.32 KB")
@@ -85,7 +80,7 @@ struct QualityPresetTests {
         #expect(ExportSizeEstimate.sizeText(bytes: 1_000_000) == "1.00 MB")
     }
 
-    // MARK: - Faithful-or-refuse encodability (ADR-0015)
+    // MARK: - Faithful-or-refuse encodability
 
     @Test func aCapturedStereo48MasterEncodesOnEveryRung() {
         // The plain path: 48 kHz stereo is the captured master, and every rung takes it.
@@ -145,12 +140,12 @@ struct QualityPresetTests {
     @Test func aPickUpdatesTheStickyWhenItFitsButIsADisplayOverWhenItDoesnt() {
         let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 24)
 
-        // The sticky (High) fits a plain stereo-48 source: picking Standard updates the sticky (issue #9).
+        // The sticky (High) fits a plain stereo-48 source: picking Standard updates the sticky.
         #expect(QualityPreset.PresetPick.resolve(picking: .standard, sticky: .high, format: stereo48)
                 == .setSticky(.standard))
 
         // The sticky (High) can't encode a 96 kHz source: picking Master is a per-file display-over
-        // that leaves the sticky untouched (ADR-0015).
+        // that leaves the sticky untouched.
         #expect(QualityPreset.PresetPick.resolve(picking: .master, sticky: .high, format: hiRes)
                 == .displayOver(.master))
 

@@ -1,19 +1,9 @@
-//
-//  RecordingController.swift
-//  AppTape
-//
-
 import AppKit
 import Observation
 
 /// The shell around one `CaptureRun`: the record presses, the lifecycle notifications, the one
 /// timer that gives the run its sense of time, and the observation the menu bar and the panel
 /// render.
-///
-/// Everything that *decides* anything lives in `CaptureRun`, which accepts its world instead of
-/// creating it and so can be tested. What is left here is the part that cannot be: `Timer` on the
-/// main run loop, `NSWorkspace`'s notifications, and the single `ProcessInfo` clock read those two
-/// need. Keep it that way — a decision that lands in this file is a decision nothing verifies.
 @MainActor
 @Observable
 final class RecordingController {
@@ -42,14 +32,6 @@ final class RecordingController {
     // MARK: - What the panel and the status item read
     //
     // Forwards, not copies. Observation tracks through a computed property, so a surface reading
-    // `recorder.isRecording` registers on the run's own stored property and nothing re-renders more
-    // often than it did before the run existed.
-    //
-    // **These are the transport's two surfaces only** — the panel and the status item, which press
-    // record and stop and therefore hold the shell. The editor reads capture through `CaptureState`
-    // instead, over the run itself, so what used to be fifteen forwards for five editor views plus
-    // two transport surfaces is now the nine the transport actually asks for. A forward added back
-    // here for the editor's benefit is a reach-through with an extra step in it (ADR-0045).
 
     var isRecording: Bool { run.isRecording }
     var recordingSourceID: String? { run.recordingSourceID }
@@ -72,17 +54,17 @@ final class RecordingController {
 
     func start(_ source: Source) {
         run.start(source, now: uptime)
-        // A press refused below the disk floor (ADR-0009) never enters a recording state, so there
+        // A press refused below the disk floor never enters a recording state, so there
         // is nothing to clock.
         if run.isRecording { startClock() }
     }
 
     func stop() { run.stop() }
 
-    /// System sleep or fast user switching, folded together (ADR-0007).
+    /// System sleep or fast user switching, folded together.
     func endForSleep() { run.end(.sleep) }
 
-    /// App quit or logout. Finalizes synchronously — the process is about to exit (ADR-0003).
+    /// App quit or logout. Finalizes synchronously — the process is about to exit.
     func endForQuit() {
         run.endForQuit()
         stopClock()
@@ -112,7 +94,7 @@ final class RecordingController {
 
     // MARK: - The clock
 
-    /// 20 Hz — the meter's cadence, and the fastest thing the run does (issue #59). Every slower
+    /// 20 Hz — the meter's cadence, and the fastest thing the run does. Every slower
     /// cadence is arithmetic over `now` inside the run: the menu bar's 4 Hz clock, the Runway's 5 s
     /// poll, and the wedge timeout. Four timers used to say this.
     static let tickInterval: TimeInterval = 1.0 / 20.0

@@ -1,14 +1,9 @@
-//
-//  LoudnessMeterTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import AVFoundation
 import Foundation
 @testable import AppTape
 
-/// The hand-rolled BS.1770-5 pass (ADR-0013), driven through the streaming `LoudnessAnalyzer` dropout
+/// The hand-rolled BS.1770-5 pass, driven through the streaming `LoudnessAnalyzer` dropout
 /// with engineered fixtures. The absolute anchor is the standard calibration a hand-derivation of the
 /// K-weighting confirms: a 0 dBFS 1 kHz sine reads −3.0 LUFS in one channel. The relative anchors are
 /// filter-independent by construction — halving amplitude is exactly −6.02 LU, and a matched stereo
@@ -16,7 +11,7 @@ import Foundation
 struct LoudnessMeterTests {
     private let sampleRate = 48_000.0
 
-    /// ADR-0022 / issue #80: the pass must never execute on the main thread. The target sets
+    /// / the pass must never execute on the main thread. The target sets
     /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so dropping `nonisolated` from `LoudnessMeter`
     /// silently makes it main-actor isolated — and the `Task.detached` in `LoudnessCorrectionModel`
     /// then hops right back, freezing the editor for the length of the pass (over fifteen minutes
@@ -99,7 +94,7 @@ struct LoudnessMeterTests {
         #expect(gated > loudOnly - 1.0)               // and is far above the naive ~−3 dB average
     }
 
-    // MARK: - Unmeasurable ranges (ADR-0013: 0 dB, Export still completes)
+    // MARK: - Unmeasurable ranges (0 dB, Export still completes)
 
     @Test func pureSilenceHasNoMeasurableLoudness() {
         let m = measure([Float](repeating: 0, count: Int(2 * sampleRate)), channels: 1)

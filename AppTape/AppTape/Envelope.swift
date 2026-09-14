@@ -1,24 +1,16 @@
-//
-//  Envelope.swift
-//  AppTape
-//
-
 import AVFoundation
 import Foundation
 
-/// The waveform is built `AVAudioFile → downsample → Canvas`, the sanctioned path (issue #4:
+/// The waveform is built `AVAudioFile → downsample → Canvas`, the sanctioned path (
 /// there is no first-party waveform view in the macOS 27 SDK). **There is no peak cache and no
-/// sidecar file** — issue #7 measured a 20-minute Float32 master reducing in ~155 ms with `-O`,
+/// sidecar file** — measured a 20-minute Float32 master reducing in ~155 ms with `-O`,
 /// so an on-disk artifact beside the CAF would buy nothing and would have to be invalidated and
-/// garbage-collected, muddying ADR-0006's "the folder is the truth". The envelope is rebuilt
+/// garbage-collected, muddying 's "the folder is the truth". The envelope is rebuilt
 /// from the master each time it is needed.
-///
-/// (Watch out for the Debug build: the same reduce unoptimised is ~125× slower. A peak cache
-/// looks mandatory in Debug and is not — it is the optimiser, not the algorithm.)
 struct Envelope: Equatable, Sendable {
     /// The fraction of the lane's half-height a **full-scale** sample is drawn at, so ordinary loud
     /// material never reaches the lane's edge and is cut flat by the rounded-rect clip. Without it,
-    /// a loud Recording read as *clipped audio* — a claim the file does not make (issue #73,
+    /// a loud Recording read as *clipped audio* — a claim the file does not make (
     /// finding 7). It belongs here rather than in the two drawing paths so the big lane and the
     /// sidebar silhouette cannot quietly disagree about what full scale looks like.
     static let drawnHeadroom: Double = 0.88
@@ -86,7 +78,7 @@ struct Envelope: Equatable, Sendable {
 }
 
 /// Fills in each Recording's own envelope. Deliberately **not** a store keyed by URL: a row in
-/// a lazy `List` does not pick up a change to a dictionary living on some other object (issue #6
+/// a lazy `List` does not pick up a change to a dictionary living on some other object (
 /// proved it — sidebar sparklines never appeared while the identical view in a non-lazy `HStack`
 /// drew fine). Observing the element you were handed is the shape SwiftUI actually tracks.
 enum EnvelopeLoader {
@@ -166,11 +158,6 @@ enum EnvelopeLoader {
     /// seconds-per-**column** is always `span / columns`, the middle column is always exactly
     /// `centre`, and the part of the window off either end of the file is *reported* (via
     /// `inside`) rather than faked, so it can be drawn as an edge instead of passing for silence.
-    ///
-    /// Per **point** it is `span / boxWidth`, which is not the same number: the caller asks for
-    /// slightly more columns than its box is wide, so the picture is a little oversampled. The
-    /// centre is unaffected — it is the boundary between the two middle columns either way, which
-    /// is what makes the crosshair honest.
     nonisolated static func loupeWindow(url: URL, centre: Double, span: Double, columns: Int) -> LoupeWindow {
         var window = LoupeWindow(columns: Array(repeating: .init(min: 0, max: 0, rms: 0),
                                                  count: max(0, columns)),

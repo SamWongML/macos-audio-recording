@@ -1,8 +1,3 @@
-//
-//  TimestampRingTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 

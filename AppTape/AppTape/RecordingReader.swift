@@ -1,19 +1,9 @@
-//
-//  RecordingReader.swift
-//  AppTape
-//
-
 import AVFoundation
 import Foundation
 import UniformTypeIdentifiers
 
 /// Everything that reads a Recording's facts off the disk. `Recording` itself reads nothing, so
 /// this is the only thing in the app that opens a file to answer a question about one.
-///
-/// **A file is read once, completely.** There is deliberately no `refreshSource(of:)` or
-/// `rereadDate(of:)` here: ADR-0021 rejected re-reading a Recording field by field ("re-adoption
-/// with extra steps"), so the only way a Recording's facts change is a fresh `adopt`. The two
-/// probes below exist to decide *whether* to re-adopt, never to patch an object in place.
 @MainActor
 protocol RecordingReading {
     func audioFiles(in directory: URL) -> [URL]
@@ -28,11 +18,8 @@ protocol RecordingReading {
 @MainActor
 struct RecordingReader: RecordingReading {
     /// Every playable-looking file directly in `directory`, in whatever order the folder hands
-    /// them over. Hidden files and subdirectories are skipped (ADR-0006 lists the folder, not a
-    /// tree), and a hidden name is why `LibraryLocation.rename` refuses a leading dot (ADR-0020).
-    ///
-    /// Unsorted on purpose: the store orders Recordings by `recordedAt` once they are read, so
-    /// there is one notion of a Recording's date rather than a second one derived from the url.
+    /// them over. Hidden files and subdirectories are skipped (lists the folder, not a
+    /// tree), and a hidden name is why `LibraryLocation.rename` refuses a leading dot.
     func audioFiles(in directory: URL) -> [URL] {
         let urls = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: [.isDirectoryKey],
@@ -40,7 +27,7 @@ struct RecordingReader: RecordingReading {
         return urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true }
     }
 
-    /// The adoption gate (ADR-0015), and the one `AVAudioFile` open in the app. Nil when the file
+    /// The adoption gate, and the one `AVAudioFile` open in the app. Nil when the file
     /// is not audio at all — a stray `.txt`, an image — so it is simply not adopted. A file that is
     /// typed as audio but will not decode (WMA, DRM, a corrupt header) still becomes a Recording,
     /// in its `isOpenable == false` state, so the user can see why it did not play and delete it.
@@ -49,13 +36,11 @@ struct RecordingReader: RecordingReading {
 
         // Read **before** the decode, not after. A file growing under us then records a length no
         // greater than the one `frameCount` was derived from, so the next reconcile sees a mismatch
-        // and re-reads. Reading it after the decode could record the *later*, larger length and
-        // freeze the stale reading in place — the failure this whole mechanism exists to prevent.
         let info = Self.fileStat(url)
-        // Creation over modification, and why: `Recording.recordedAt` (ADR-0031).
+        // Creation over modification, and why: `Recording.recordedAt`.
         let dates = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
         // Only the Source xattr is read here; the filename fallback is a parse `Recording` does for
-        // itself, so a rename still moves it (ADR-0006).
+        // itself, so a rename still moves it.
         let storedSource = RecordingMetadata.readSource(from: url)
 
         // One construction, whether or not the file decoded: an undecodable one is an empty,
@@ -65,7 +50,7 @@ struct RecordingReader: RecordingReading {
         let frameCount = file?.length ?? 0
         let duration = sampleRate > 0 ? Double(frameCount) / sampleRate : 0
         // A compressed adopted file may report 0 bits/channel; fall back to the master's 32 so the
-        // ALAC estimate stays sane (which presets an adopted file even offers is ADR-0015's call).
+        // ALAC estimate stays sane (which presets an adopted file even offers is 's call).
         let bits = file.map { Int($0.fileFormat.streamDescription.pointee.mBitsPerChannel) } ?? 0
 
         return Recording(url: url,
@@ -84,18 +69,14 @@ struct RecordingReader: RecordingReading {
     }
 
     /// The file's data length, or nil if it cannot be stat'd. Extended attributes live outside it,
-    /// so writing the Trim, Gain or Dropouts xattr never changes this — which is what keeps ADR-0006's
+    /// so writing the Trim, Gain or Dropouts xattr never changes this — which is what keeps 's
     /// same-object guarantee intact for everything the app itself writes.
-    ///
-    /// A bare `stat`, and **not** `URL.resourceValues(forKeys: [.fileSizeKey])`: resource values are
-    /// cached on the bridged `NSURL`, so asking the same URL a second time can hand back the length
-    /// from before the file grew — precisely the staleness this exists to catch.
     func byteCount(of url: URL) -> Int64? {
         Self.fileStat(url).map { Int64($0.st_size) }
     }
 
     /// The file's `dev`+`inode`, which survives a rename or a move within the volume unlike its
-    /// path. The store uses it to follow a rename silently (ADR-0006).
+    /// path. The store uses it to follow a rename silently.
     func identity(of url: URL) -> FileIdentity? {
         Self.fileStat(url).map { FileIdentity(device: $0.st_dev, inode: $0.st_ino) }
     }
@@ -111,7 +92,7 @@ struct RecordingReader: RecordingReading {
     }
 
     /// Whether the file's UTType conforms to `public.audio` — the cheap listing half of the
-    /// adoption gate (ADR-0015). Read from the file's own content type, so it follows the real type
+    /// adoption gate. Read from the file's own content type, so it follows the real type
     /// rather than trusting the extension alone; a file with no resolvable audio type is not adopted.
     private static func conformsToAudio(_ url: URL) -> Bool {
         guard let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType else { return false }

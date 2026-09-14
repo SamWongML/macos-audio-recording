@@ -1,19 +1,10 @@
-//
-//  LibraryStoreTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The Library/Recording store dropout (ADR-0006): listing the folder and reconciling a fresh scan
+/// The Library/Recording store dropout: listing the folder and reconciling a fresh scan
 /// against what is already held. The `DispatchSource` watch and the activation re-read are thin
 /// wrappers over these two functions, which are what the tests pin.
-///
-/// Reconciling is **bookkeeping**, not audio — which Recording object survives a refresh, which is
-/// re-read, which drops out — so most of it runs against `StubRecordingReader` and never touches a
-/// file. What is left on disk below is the handful of cases where the file genuinely is the subject.
 @MainActor
 struct LibraryStoreTests {
 
@@ -38,7 +29,7 @@ struct LibraryStoreTests {
     }
 
     @Test func aRenamedFileIsFollowedSilentlyNotDroppedAndReadded() {
-        // ADR-0006 / issue #53: a rename is followed silently, so the open Recording is not closed.
+        // / a rename is followed silently, so the open Recording is not closed.
         // The file is the same (same inode) at a new path — reconcile must relocate the existing
         // object, keeping its live Trim, rather than drop it and adopt a stranger.
         let reader = StubRecordingReader()
@@ -57,7 +48,7 @@ struct LibraryStoreTests {
     }
 
     @Test func aFileThatChangedLengthIsReAdoptedNotFollowed() {
-        // ADR-0021: keeping the object preserved a *reading*, and a reading of a file still being
+        // keeping the object preserved a *reading*, and a reading of a file still being
         // written is not worth keeping. The length is the whole condition.
         let reader = StubRecordingReader()
         let adoptedEarly = reader.place("growing", seconds: 1)
@@ -72,7 +63,7 @@ struct LibraryStoreTests {
 
     @Test func aGrownFileIsReAdoptedEvenWhenItHasAlsoBeenRenamed() {
         // The rename path carries the same condition, and asks it about the *new* path — the
-        // surviving object still holds the old one (ADR-0021).
+        // surviving object still holds the old one.
         let reader = StubRecordingReader()
         let adoptedEarly = reader.place("growing", seconds: 1)
         let renamed = adoptedEarly.url.deletingLastPathComponent().appendingPathComponent("Interview.caf")
@@ -111,7 +102,7 @@ struct LibraryStoreTests {
     }
 
     @Test func aURLTheGateDeclinesYieldsNoRow() {
-        // A url the reader will not adopt — not audio at all (ADR-0015) — simply does not list.
+        // A url the reader will not adopt — not audio at all — simply does not list.
         let reader = StubRecordingReader()
         let good = reader.place("good")
         let notes = good.url.deletingLastPathComponent().appendingPathComponent("notes.txt")
@@ -131,7 +122,7 @@ struct LibraryStoreTests {
     }
 
     /// The sidebar's order and `RecordingDay`'s grouping are one notion of a Recording's date
-    /// (ADR-0031) — so the store sorts the Recordings it read, not the urls it listed. The reader
+    /// — so the store sorts the Recordings it read, not the urls it listed. The reader
     /// hands them over oldest-first here, which is what makes the sort visible.
     @Test func theStoreOrdersRecordingsNewestFirst() {
         let reader = StubRecordingReader()
@@ -157,11 +148,8 @@ struct LibraryStoreTests {
     // MARK: - On disk, where the file is the subject
 
     @Test func persistingTheTrimAndGainDoesNotCostTheRecordingItsObject() throws {
-        // The other side of ADR-0021: re-adoption keys on the file's **data length**, and Trim,
+        // The other side of re-adoption keys on the file's **data length**, and Trim,
         // Gain and Dropouts all ride in extended attributes, which sit outside it. If they did not,
-        // every gesture-end would silently drop the open Recording's object — and with it the very
-        // live Trim and built envelope ADR-0006's same-object rule exists to protect. This one is
-        // measured against the real file system on purpose: it is a claim about `st_size`.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("settled.caf"), seconds: 5)
@@ -180,10 +168,8 @@ struct LibraryStoreTests {
     }
 
     @Test func aRealFileThatGrewInPlaceIsReAdopted() throws {
-        // ADR-0021 / issue #80, against a real growing file: a master adopted while capture was
+        // / against a real growing file: a master adopted while capture was
         // still writing it reads a `frameCount` that is already wrong, and the same-object rule
-        // would preserve that wrong reading forever. The stub pins the bookkeeping; this pins that
-        // a `stat` of a file growing under us actually reports the change.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let url = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("growing.caf"), seconds: 1)
@@ -201,7 +187,7 @@ struct LibraryStoreTests {
     }
 
     @Test func aNonAudioFileIsNotAdopted() throws {
-        // The adoption gate lists only files whose UTType conforms to public.audio (ADR-0015). A
+        // The adoption gate lists only files whose UTType conforms to public.audio. A
         // plain-text file types as text, not audio, so it is never a Recording — and only a real
         // file has a real content type to be read from.
         let dir = try AudioFixtures.makeScratchDirectory()
@@ -214,7 +200,7 @@ struct LibraryStoreTests {
 
     @Test func aTypedButUndecodableFileIsAdoptedInACantOpenState() throws {
         // A `.caf` types as public.audio, so it is adopted and listed — but garbage in it won't
-        // decode, so it lists in a "can't open" state rather than vanishing (ADR-0015), and stays
+        // decode, so it lists in a "can't open" state rather than vanishing, and stays
         // in the folder to be trashed. Only `AVAudioFile` can refuse it, so this needs the file.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -259,7 +245,7 @@ struct LibraryStoreTests {
     }
 
     @Test func renamingFromInsideTheAppKeepsTheOpenRecording() throws {
-        // The other half of ADR-0006's rename story: the app doing what Finder does. The object
+        // The other half of 's rename story: the app doing what Finder does. The object
         // must survive — same envelope, same live Trim — or the editor closes on its own rename.
         // A real `moveItem`, because that is the half of `rename` that is not pure.
         let dir = try AudioFixtures.makeScratchDirectory()
@@ -288,10 +274,6 @@ struct LibraryStoreTests {
     /// relocates the object and the telling has to come with it, or the dock — which shows a phase
     /// only while `subjectURL` matches the Recording on screen — swaps the progress bar and Cancel
     /// button for `An Export is already running.` and the encode finishes unseen.
-    ///
-    /// A real `moveItem` and a real `RecordingReader`, like the rename case above: this is the wiring
-    /// between the store's relocate and the coordinator's subject, and a stub on either side would
-    /// leave it unpinned.
     @Test func aRenameDuringAnExportKeepsTheTellingWithItsRecording() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

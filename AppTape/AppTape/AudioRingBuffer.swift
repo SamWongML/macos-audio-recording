@@ -1,28 +1,9 @@
-//
-//  AudioRingBuffer.swift
-//  AppTape
-//
-
 import Synchronization
 
 /// A lock-free single-producer / single-consumer ring of `Float` samples: the realtime
 /// IOProc writes, the non-realtime writer thread reads. It is the reason the IOProc never
-/// blocks (ADR-0003) — the tap thread copies its buffer in and returns, and a stalled disk
+/// blocks — the tap thread copies its buffer in and returns, and a stalled disk
 /// can never reach into the audio callback.
-///
-/// **Overrun is a drop, never an overwrite.** No ring is large enough to be a guarantee,
-/// and a realtime thread may not block, so when a write would not fit the whole block is
-/// dropped and a counter advances (a counted dropout is diagnosable; a silently mangled file
-/// is not). Dropping whole writes keeps the stream frame-aligned. Sized at ~10 s so a disk
-/// stall or an indexing storm cannot reach that path in practice.
-///
-/// Producer and consumer each own one monotonic index and only ever advance it; the other
-/// side's index is read with acquire ordering against the peer's release, which publishes
-/// the sample writes/reads that happened before it. A torn count is impossible because each
-/// index has exactly one writer.
-/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
-/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
-/// a piece of the capture spine.
 nonisolated final class AudioRingBuffer: @unchecked Sendable {
     private let storage: UnsafeMutableBufferPointer<Float>
     private let capacity: Int

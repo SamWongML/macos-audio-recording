@@ -1,12 +1,7 @@
-//
-//  CaptureReducerTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
-/// The reducer encodes ADR-0016: a Recording begins at the first sound, the head
+/// The reducer encodes a Recording begins at the first sound, the head
 /// is elided, interior silence is kept, and arm-then-never-play saves nothing.
 struct CaptureReducerTests {
     @Test func silenceBeforeFirstSoundIsElidedAndCountsNothing() {
@@ -36,7 +31,7 @@ struct CaptureReducerTests {
         var reducer = CaptureReducer()
         _ = reducer.receive(frameCount: 512, firstNonSilentFrame: 0)
         // A silent chunk *after* the master has begun is appended, not elided —
-        // it lands as real zero-frames so Trim points do not shift (ADR-0016).
+        // it lands as real zero-frames so Trim points do not shift.
         #expect(reducer.receive(frameCount: 512, firstNonSilentFrame: nil) == .append)
         #expect(reducer.receive(frameCount: 512, firstNonSilentFrame: 300) == .append)
         #expect(reducer.masterFrames == 512 * 3)

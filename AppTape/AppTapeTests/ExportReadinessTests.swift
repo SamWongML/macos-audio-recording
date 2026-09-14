@@ -1,20 +1,10 @@
-//
-//  ExportReadinessTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
-/// The one decision that refuses an Export (ADR-0012, ADR-0015, ADR-0034, ADR-0041, ADR-0042).
-///
-/// Five ordered rules that used to live in two places with three wordings and two units, and in
-/// neither place could be reached without a window. Every input here is a scalar or a bare
-/// `SourceFormat`, so the whole matrix is exercised with no `Recording`, no file and no main actor —
-/// which is also why the suite carries no `@MainActor`, like `QualityPresetTests` and `DiskSpaceTests`.
+/// The one decision that refuses an Export.
 struct ExportReadinessTests {
     private let stereo48 = SourceFormat(sampleRate: 48_000, channelCount: 2, bitsPerChannel: 32)
-    /// The source ADR-0041 needed a doctored Library to photograph: the three AAC rungs refuse it.
+    /// The source needed a doctored Library to photograph: the three AAC rungs refuse it.
     private let hiRes96 = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 32)
 
     /// An ordinary settled Recording with a Trim in it, at a rung that can encode it. Every rule
@@ -34,7 +24,7 @@ struct ExportReadinessTests {
         #expect(evaluate().blocker == nil)
     }
 
-    // MARK: - Each rule, and the sentence it prints (ADR-0042)
+    // MARK: - Each rule, and the sentence it prints
 
     @Test func eachRuleRefusesWithItsOwnSentence() {
         #expect(evaluate(isOpenable: false).blocker == .unopenable)
@@ -83,7 +73,7 @@ struct ExportReadinessTests {
         #expect(evaluate(frames: 0).blocker == .emptyTrim)
     }
 
-    /// A file the decoder cannot open (ADR-0015). It, too, was refused only as arithmetic: an
+    /// A file the decoder cannot open. It, too, was refused only as arithmetic: an
     /// unopenable Recording reads back as zero frames, so it fell into the Trim rule and was told the
     /// wrong thing for the right reason. Stated, it wins first — and note the frame count here is
     /// positive, which is what the old arrangement could not survive.
@@ -98,11 +88,11 @@ struct ExportReadinessTests {
     @Test func aTrimWithNoFramesIsRefusedHoweverManySecondsItClaims() {
         #expect(evaluate(frames: 0).blocker == .emptyTrim)
         // One frame is an Export. The rule is "nothing in the Trim", not "not enough in the Trim" —
-        // ADR-0015 keeps a sub-0.2 s adopted file exportable at its whole length.
+        // keeps a sub-0.2 s adopted file exportable at its whole length.
         #expect(evaluate(frames: 1) == .ready)
     }
 
-    // MARK: - The specific reason, carried but not printed (ADR-0041 / ADR-0042)
+    // MARK: - The specific reason, carried but not printed (/ )
 
     @Test func anUnencodableReasonCarriesTheRungsOwnWordsAndPrintsTheGenericLine() {
         let blocker = evaluate(format: hiRes96).blocker
@@ -110,15 +100,15 @@ struct ExportReadinessTests {
             Issue.record("expected an unencodable blocker, got \(String(describing: blocker))")
             return
         }
-        // The rung's sentence, whole — this is what ADR-0041 prints beside the rung at full strength.
+        // The rung's sentence, whole — this is what prints beside the rung at full strength.
         #expect(detail.contains("48 kHz"))
         #expect(detail.contains("96 kHz"))
-        // And the dock's, which names the situation only: ADR-0042's trade, asserted.
+        // And the dock's, which names the situation only: 's trade, asserted.
         #expect(blocker?.sentence == "This quality can't encode this file.")
         #expect(blocker?.sentence.contains("96 kHz") == false)
     }
 
-    /// Master/ALAC is the universal rung (ADR-0015), so the same source that refuses three rungs is
+    /// Master/ALAC is the universal rung, so the same source that refuses three rungs is
     /// ready on the fourth. The refusal is about the *effective preset*, never about the file alone.
     @Test func theSameSourceIsReadyOnARungThatCanEncodeIt() {
         #expect(evaluate(preset: .master, format: hiRes96) == .ready)

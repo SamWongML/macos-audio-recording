@@ -1,20 +1,9 @@
-//
-//  CaptureRunTests.swift
-//  AppTapeTests
-//
-
 import Foundation
 import Testing
 @testable import AppTape
 
 /// One press's whole life, with Core Audio, a `statfs`, a notification centre and a window replaced
 /// by doubles, and with time handed in rather than waited for.
-///
-/// The three things that were untestable before the dropout and are the reason for it: ADR-0010's
-/// **generation rule** — a slow or cancelled bring-up must not attach to a later press, which used
-/// to be one line hand-copied to eight sites; the **wedge**, armed only after the first successful
-/// capture so a ~90 s TCC prompt is never mistaken for a hang (ADR-0008); and **six ends**, each
-/// telling the user a different thing (ADR-0007/0009).
 @MainActor
 struct CaptureRunTests {
 
@@ -28,7 +17,7 @@ struct CaptureRunTests {
         let builder: FakeCaptureBuilder
         let runway: StubRunway
         let reporter: CaptureReportLog
-        /// The growing master's length, and nothing else: the run's one file read (ADR-0044).
+        /// The growing master's length, and nothing else: the run's one file read.
         let reader: StubRecordingReader
         let run: CaptureRun
 
@@ -66,7 +55,7 @@ struct CaptureRunTests {
                                           frameCount: 48_000, sampleRate: 48_000)
     }
 
-    /// 48 kHz stereo Float32 → 8 bytes/frame, ADR-0009's worked rate.
+    /// 48 kHz stereo Float32 → 8 bytes/frame, 's worked rate.
     static let rate: Double = 8 * 48_000
     /// Free bytes that put Runway exactly `seconds` from the floor.
     static func freeBytes(runway seconds: TimeInterval) -> Int64 {
@@ -75,7 +64,7 @@ struct CaptureRunTests {
     /// One 20 Hz tick, the cadence `RecordingController` drives the run at.
     static func tick(_ index: Int) -> TimeInterval { Double(index) / 20 }
 
-    // MARK: - The generation rule (ADR-0010)
+    // MARK: - The generation rule
 
     @Test func aSecondPressDuringBringUpOrphansTheFirstAttemptsCapture() {
         let rig = Rig()
@@ -84,7 +73,7 @@ struct CaptureRunTests {
         #expect(rig.builder.isBuilding())
 
         // The second click is the cancel gesture: the UI returns to idle at once, because the
-        // blocked Core Audio call cannot be interrupted (ADR-0010).
+        // blocked Core Audio call cannot be interrupted.
         rig.run.stop()
         #expect(rig.run.isRecording == false)
 
@@ -114,12 +103,12 @@ struct CaptureRunTests {
         let rig = Rig()
         rig.run.start(Rig.source, now: 0)
         // The writer thread infers denial while the main actor has not yet picked up the bring-up —
-        // the gap ADR-0008's 3 s window leaves open. Nothing here may depend on `attach` having run.
+        // the gap 's 3 s window leaves open. Nothing here may depend on `attach` having run.
         rig.builder.hooks(forBuild: 0).onDenialInferred()
 
         #expect(rig.run.permissionRecovery)
         #expect(rig.run.isRecording == false)
-        #expect(rig.run.startBlocker == nil)   // the panel carries one blocking reason (ADR-0009)
+        #expect(rig.run.startBlocker == nil)   // the panel carries one blocking reason
 
         // And the capture that arrives afterwards is orphaned rather than left running.
         let orphan = rig.builder.finish()
@@ -164,12 +153,12 @@ struct CaptureRunTests {
         #expect(first.stopCount == 1)   // not finalized twice
     }
 
-    // MARK: - The wedge (ADR-0008/0010)
+    // MARK: - The wedge (/0010)
 
     @Test func theFirstBringUpIsCancellableNotTimed() {
         let rig = Rig()
         rig.run.start(Rig.source, now: 0)
-        // ADR-0008 measured 60 + 30 s of legitimate blocking while a human reads the TCC prompt, and
+        // measured 60 + 30 s of legitimate blocking while a human reads the TCC prompt, and
         // the human is the variable — so no number may end this attempt.
         for i in 1...(90 * 20) { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.isRecording)
@@ -208,7 +197,7 @@ struct CaptureRunTests {
         #expect(rig.run.startBlocker == nil)
     }
 
-    // MARK: - The six ends (ADR-0007/0010)
+    // MARK: - The six ends (/0010)
 
     @Test func aUserStopRequestsAuthorizationOnceAndOpensTheEditor() {
         let rig = Rig()
@@ -243,7 +232,7 @@ struct CaptureRunTests {
         rig.builder.hooks(forBuild: 0).onEnded(reason)
 
         // The reason is named because the four ask different things of the user, and a generic
-        // "Recording stopped" makes them open the app to find out which (ADR-0010).
+        // "Recording stopped" makes them open the app to find out which.
         #expect(rig.reporter.reported == [.end(reason, Rig.result.url)])
         #expect(rig.run.isRecording == false)
     }
@@ -259,7 +248,7 @@ struct CaptureRunTests {
 
     @Test func armThenNeverPlaySavesNothingAndTellsNothing() {
         let rig = Rig()
-        let capture = rig.startCapturing()   // the default outcome carries no file (ADR-0016)
+        let capture = rig.startCapturing()   // the default outcome carries no file
         rig.run.stop()
 
         #expect(capture.stopCount == 1)
@@ -278,7 +267,7 @@ struct CaptureRunTests {
         #expect(rig.run.hasCompletedACapture)
     }
 
-    // MARK: - The Runway guard, composed (ADR-0009)
+    // MARK: - The Runway guard, composed
 
     @Test func aPressBelowTheFloorIsRefusedAndStartsNoBringUp() {
         let rig = Rig(freeBytes: RunwayGuard.floorBytes - 1)
@@ -292,7 +281,7 @@ struct CaptureRunTests {
 
     @Test func aPressInsideTheAmberTierBeginsAmber() {
         // One hour of Runway: above the floor, inside the 3-hour tier. Beginning nominal here would
-        // flash green for the seconds before the first real poll (ADR-0009).
+        // flash green for the seconds before the first real poll.
         let rig = Rig(freeBytes: Self.freeBytes(runway: 60 * 60))
         rig.run.start(Rig.source, now: 0)
         #expect(rig.run.runwayTier == .amber)
@@ -394,7 +383,7 @@ struct CaptureRunTests {
 
     @Test func elapsedSitsAtZeroThroughTheArmedWindow() {
         let rig = Rig()
-        rig.startCapturing()   // armed, but the Source has made no sound yet (ADR-0016)
+        rig.startCapturing()   // armed, but the Source has made no sound yet
 
         for i in 1...100 { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.elapsed == 0)
@@ -425,7 +414,7 @@ struct CaptureRunTests {
         for i in 1...(CaptureRun.meterColumnCount + 10) { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.currentLevel > 0)
 
-        // A soft fault publishes an all-zero chunk: exactly 0, never a stale ghost (issue #59).
+        // A soft fault publishes an all-zero chunk: exactly 0, never a stale ghost.
         capture.currentLevel = 0
         let resumeAt = CaptureRun.meterColumnCount + 11
         for i in resumeAt...(resumeAt + CaptureRun.meterColumnCount) { rig.run.tick(now: Self.tick(i)) }
@@ -445,7 +434,7 @@ struct CaptureRunTests {
         rig.startCapturing()
         rig.builder.hooks(forBuild: 0).onMasterCreated(growingRecording.url)
 
-        // The one being written is not exportable: its Trim end is undefined until Stop (ADR-0012).
+        // The one being written is not exportable: its Trim end is undefined until Stop.
         #expect(rig.run.isCapturing(growingRecording))
         #expect(rig.run.isStillArriving(growingRecording))
         #expect(rig.run.isCapturing(settledRecording) == false)
@@ -467,7 +456,7 @@ struct CaptureRunTests {
         #expect(rig.run.masterByteCount == 1_024)
 
         // The same gate `elapsed` sits behind, for a reason of its own: a byte count arriving
-        // twenty times a second is ambient motion (ADR-0028), not a fact changing.
+        // twenty times a second is ambient motion, not a fact changing.
         rig.reader.byteCounts[master] = 2_048
         rig.run.tick(now: 0.10)
         rig.run.tick(now: 0.15)
@@ -479,7 +468,7 @@ struct CaptureRunTests {
     }
 
     @Test func theMastersSizeCostsOneStatPerClockTickRatherThanOnePerTick() {
-        // The point of moving the read out of the view body (ADR-0044): it happens on the clock's
+        // The point of moving the read out of the view body: it happens on the clock's
         // cadence, not on the meter's, and not once per evaluation of a `Master` row.
         let rig = Rig()
         let master = URL(filePath: "/Library/Google Chrome 2026-09-13 at 21.51.03.caf")
@@ -497,7 +486,7 @@ struct CaptureRunTests {
         rig.reader.byteCounts[master] = 4_096
         rig.startCapturing()
 
-        // Armed, and the Source has made no sound: there is no file yet to weigh (ADR-0016), so
+        // Armed, and the Source has made no sound: there is no file yet to weigh, so
         // the row reads an em dash rather than a zero.
         for i in 1...20 { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.masterByteCount == nil)
@@ -526,9 +515,7 @@ struct CaptureRunTests {
 
     @Test func onlyTheFileBeingCapturedHasACurrentFigure() {
         // A large file being copied into the Library is growing too, and the reader can weigh it —
-        // but nothing is watching that one, so there is no figure to be current about (ADR-0031).
-        // The run publishes one length, about the url it is writing, and says nothing at all about
-        // the other Recording — which is what leaves the brief's em dash in place.
+        // but nothing is watching that one, so there is no figure to be current about.
         let arriving = Recording.stub("Interview")
         let master = Recording.stub()
         let rig = Rig()

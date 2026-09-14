@@ -1,13 +1,8 @@
-//
-//  LevelMeterTests.swift
-//  AppTapeTests
-//
-
 import Foundation
 import Testing
 @testable import AppTape
 
-/// The per-row level meter's mapping (issue #59). The property the acceptance criterion turns
+/// The per-row level meter's mapping. The property the acceptance criterion turns
 /// on is the boundary: a dead tap reads *exactly* zero.
 struct LevelMeterTests {
     @Test func aDeadTapReadsExactlyZero() {
@@ -41,11 +36,9 @@ struct LevelMeterTests {
         #expect(LevelMeter.fill(forLinearPeak: 0.5) < LevelMeter.fill(forLinearPeak: 1.0))
     }
 
-    // MARK: - Publish or hold (issue #100)
+    // MARK: - Publish or hold
     //
     // The engine drains far faster than audio arrives — a 5 ms nap on an empty ring against
-    // ~170 ms of audio per real chunk — so whether an empty drain may zero the published level
-    // is the whole difference between a live meter and a dead one.
 
     @Test func aRealChunkPublishesItsPeak() {
         let decision = LevelMeter.publication(producedSamples: 1024, peak: 0.7,

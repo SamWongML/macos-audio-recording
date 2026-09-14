@@ -1,8 +1,3 @@
-//
-//  Format.swift
-//  AppTape
-//
-
 import Foundation
 
 /// Time and size formatting shared by the editor's surfaces.

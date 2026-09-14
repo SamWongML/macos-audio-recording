@@ -1,18 +1,13 @@
-//
-//  FaultNotifier.swift
-//  AppTape
-//
-
 import AppKit
 import Foundation
 import UserNotifications
 
-/// The four unrequested ends share ADR-0009's notification channel, and each names its reason
-/// (ADR-0010). The reason is named because the four ask different things of the user — free up
+/// The four unrequested ends share 's notification channel, and each names its reason
+///. The reason is named because the four ask different things of the user — free up
 /// space, nothing, nothing, start again — and a generic "Recording stopped" would make them open
 /// the app to find out which. Clicking the notification opens the editor on that Recording; **when
 /// authorization is absent the editor opens directly instead**, without a permission prompt stacked
-/// onto a failure (the mistake ADR-0009 avoided by keeping the request off the audio grant).
+/// onto a failure (the mistake avoided by keeping the request off the audio grant).
 enum FaultNotifier {
     /// The Recording URL carried in a notification's `userInfo`, read back on click to open the editor.
     static let openEditorURLKey = "com.apptape.fault.recordingURL"
@@ -21,7 +16,7 @@ enum FaultNotifier {
     /// editor — the Recording is still running, and freeing space is the only action it asks for.
     static let revealLibraryKey = "com.apptape.fault.revealLibrary"
 
-    /// Requested at the end of the first *completed* Recording (ADR-0009), so a later unrequested end
+    /// Requested at the end of the first *completed* Recording, so a later unrequested end
     /// has a channel — never at a fault, and never as a prompt the user did not invite. Once only.
     @MainActor private static var didRequestAuthorization = false
 
@@ -33,7 +28,7 @@ enum FaultNotifier {
     }
 
     /// Tell the user a Recording ended for a reason they did not choose. Posts a notification when
-    /// authorized; opens the editor directly when not (ADR-0010). No-op for the two requested ends.
+    /// authorized; opens the editor directly when not. No-op for the two requested ends.
     static func recordingEnded(reason: RecordingEndReason, recordingURL: URL) {
         guard reason.isUnrequested, let body = reason.notificationBody else { return }
         let center = UNUserNotificationCenter.current()
@@ -57,18 +52,18 @@ enum FaultNotifier {
         }
     }
 
-    /// The 30-minute Runway warning (ADR-0009): posted once when the guard crosses 30 minutes,
+    /// The 30-minute Runway warning: posted once when the guard crosses 30 minutes,
     /// telling the user to free space — the only action the warning asks for. Unlike an end it opens
     /// nothing while it goes unheard, because the Recording is still running; so when authorization is
     /// absent there is simply no channel and nothing shows, and amber and the floor still stand.
     /// Authorization is never requested here — that stays at the end of the first completed Recording
-    /// (ADR-0009), so a warning during the very first Recording may find no channel yet, by design.
+    ///, so a warning during the very first Recording may find no channel yet, by design.
     static func runwayLow() {
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
-                // Time-framed to match the Recording's Runway (ADR-0009) and parallel to the
+                // Time-framed to match the Recording's Runway and parallel to the
                 // `.diskGuard` end's own copy ("Recording stopped" / "Your disk is almost full…"):
                 // the title is what happens, the body names the disk and the one action it asks for.
                 let content = UNMutableNotificationContent()
@@ -87,7 +82,7 @@ enum FaultNotifier {
         }
     }
 
-    /// Reveal the Library in Finder — the action both the refusal and the warning offer (ADR-0009),
+    /// Reveal the Library in Finder — the action both the refusal and the warning offer,
     /// there being no Settings pane to send the user to. Selects the folder when it exists, else opens
     /// its parent, since the Library is created lazily at the first sound.
     @MainActor
@@ -113,8 +108,8 @@ final class FaultNotificationDelegate: NSObject, UNUserNotificationCenterDelegat
         [.banner, .sound]
     }
 
-    /// The click: open the editor on the Recording the notification named (ADR-0010), or — for the
-    /// 30-minute Runway warning — reveal the Library in Finder so the user can free space (ADR-0009).
+    /// The click: open the editor on the Recording the notification named, or — for the
+    /// 30-minute Runway warning — reveal the Library in Finder so the user can free space.
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse) async {
         let userInfo = response.notification.request.content.userInfo

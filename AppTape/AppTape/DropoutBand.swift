@@ -1,12 +1,7 @@
-//
-//  DropoutBand.swift
-//  AppTape
-//
-
 import SwiftUI
 
-/// Diagonal hatching clipped to a rect. Hatch rather than a colour is deliberate (ADR-0010): red is
-/// the transport (ADR-0004), amber is the Runway (ADR-0009), and a third hue would re-buy that
+/// Diagonal hatching clipped to a rect. Hatch rather than a colour is deliberate: red is
+/// the transport, amber is the Runway, and a third hue would re-buy that
 /// accessibility trade for something less urgent. Hatch also reads as *no data here* rather than
 /// *warning*, which is exactly what a Dropout means.
 struct HatchPattern: Shape {

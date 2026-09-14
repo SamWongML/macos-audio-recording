@@ -1,27 +1,10 @@
-//
-//  ExportCoordinator.swift
-//  AppTape
-//
-
 import AppKit
 import Foundation
 import Observation
 import UniformTypeIdentifiers
 
 /// Runs one Export, non-blocking, and holds the state the inspector's Export control renders
-/// (ADR-0012). It is the single place that owns the whole non-modal flow:
-///
-/// 1. **Save panel first** — the user picks the destination before any encoding starts.
-/// 2. **Pre-flight** — a `statfs` byte-check on the *destination* volume refuses an over-large
-///    Export before a byte is written (ADR-0009 is a Runway clock; this is deliberately not).
-/// 3. **Encode to a sibling temp** in the destination directory, at `.utility` QoS so it cannot
-///    preempt a live capture's IOProc, reporting real frame counts for a determinate bar.
-/// 4. **Atomic swap** — `replaceItemAt:` finishes, so the chosen file is untouched until success.
-///
-/// It is **app-wide and one-at-a-time**: the running state *is* the Export button, so a second
-/// Export has nowhere to present itself. Parameters are **snapshotted at launch** (`ExportRequest`),
-/// so a later Trim or preset edit never reaches a running encode. Navigating away **cancels
-/// unwarned** — the destination is untouched, so a cancel costs only redoable work.
+///. It is the single place that owns the whole non-modal flow:
 @MainActor
 @Observable
 final class ExportCoordinator {
@@ -38,24 +21,14 @@ final class ExportCoordinator {
 
     /// Which Recording the current telling belongs to — the **object**, not the path it had when
     /// the Export was launched. A rename moves the path and the store relocates the same object
-    /// (ADR-0006/-0020), so a stored url was left naming a file that no longer exists: the dock lost
+    /// (/-0020), so a stored url was left naming a file that no longer exists: the dock lost
     /// the running Recording's own progress bar and Cancel button mid-encode while the encode, which
-    /// reads a file it already has open, ran to completion unseen (issue #127). Held rather than
+    /// reads a file it already has open, ran to completion unseen. Held rather than
     /// copied, so the telling stays attached to its subject wherever the subject goes.
-    ///
-    /// Private, and read only through `subjectURL`: the question this answers is *where is my
-    /// subject*, never *which object is it*. Cleared by `cancel`, which every path out of a telling
-    /// goes through, so nothing is kept alive behind an idle dock.
     private var subject: Recording?
 
     /// Where the subject is now. The inspector shows running/success/failure only when this matches
     /// the Recording on screen; every other selection reads idle.
-    ///
-    /// **A path comparison, deliberately, over an object comparison.** The Recording on screen may be
-    /// a *fresh reading* of the same file — ADR-0021 re-adopts a file whose length changed, and the
-    /// editor rebinds its selection to the new object without navigating anywhere — and that one is
-    /// still looking at the Export it started. Asking which object it is would take the progress bar
-    /// away from it exactly as the stored url took it away from a rename.
     var subjectURL: URL? { subject?.url }
 
     @ObservationIgnored private var encoder: ExportEncoder?
@@ -68,17 +41,6 @@ final class ExportCoordinator {
 
 #if DEBUG
     /// Park the coordinator in one phase, for a preview or a test.
-    ///
-    /// The four phases are reachable in the running app only by starting a real Export through the
-    /// save panel — which is why ADR-0012's claim that they all render at **one height** went unseen
-    /// until a two-second job moved the dock twice (issue #78), and why nothing could check that
-    /// navigating away cancels a *running* Export rather than merely an idle one.
-    ///
-    /// A method rather than an initializer because both callers need it **after** the surface is
-    /// established: a preview builds the dock around it, and a test has to open the editor on a
-    /// Recording first — opening is itself a selection change, which cancels (ADR-0012), so a
-    /// coordinator born running would be idle again before the case began. Debug-only; the app's own
-    /// path is `export`.
     func enter(phase: Phase, subject: Recording?) {
         self.phase = phase
         self.subject = subject
@@ -86,7 +48,7 @@ final class ExportCoordinator {
 #endif
 
     /// The parameters an Export is launched with — snapshotted from the Recording at click, before
-    /// the save panel, so a later Trim or preset edit never reaches the running encode (ADR-0012).
+    /// the save panel, so a later Trim or preset edit never reaches the running encode.
     /// A value carried as one thing rather than threaded as loose arguments; the chosen destination
     /// is the one piece that arrives later, from the panel.
     private struct Snapshot {
@@ -97,7 +59,7 @@ final class ExportCoordinator {
         let preset: QualityPreset
         let estimatedBytes: Double
         /// The Loudness and Gain settings, snapshotted at click like every other parameter
-        /// (ADR-0012/-0013): the app-wide normalize toggle and this Recording's manual Gain. A later
+        /// (/-0013): the app-wide normalize toggle and this Recording's manual Gain. A later
         /// toggle flip or Gain nudge never reaches the running measure-then-encode.
         let normalize: Bool
         let gainDB: Double
@@ -105,28 +67,14 @@ final class ExportCoordinator {
 
     /// Starts an Export of `recording`'s Trim at `preset`. Presents the save panel, pre-flights, then
     /// encodes off the main thread. Snapshots every parameter now.
-    ///
-    /// **`capture` is taken as a parameter rather than held.** One of the five refusal rules is
-    /// whether this Recording is the one being written (ADR-0012), and this object cannot see capture.
-    /// Storing it would mean `static let shared = ExportCoordinator()` naming
-    /// `RecordingController.shared.run` at static-init time — a global reaching a global before the
-    /// app has a root — and would cost the six dock previews and `EditorModelTests` the bare
-    /// `ExportCoordinator()` they all build. ADR-0045 declined `ExportCoordinator(preference:)` on the
-    /// same grounds. Both call sites already hold a `CaptureState`.
     func export(recording: Recording, preset: QualityPreset, capture: any CaptureState) {
         // **Not the one-at-a-time rule** — that is `ExportReadiness`'s `.alreadyRunning`, below. This
         // guards `.succeeded` and `.failed` too: those are tellings awaiting dismissal rather than
-        // Exports in flight, and the inspector's `Retry…` depends on the difference, calling `cancel()`
-        // first so this reopens.
         guard case .idle = phase else { return }
 
         let (startFrame, frameCount) = recording.trimmedFrameRange
-        // **The belt-and-suspenders gate this comment has always claimed to be** (ADR-0046). It used
+        // **The belt-and-suspenders gate this comment has always claimed to be**. It used
         // to hold two of the five rules and speak a wording of its own; the dock held all five and
-        // counted the Trim in seconds where this counts frames. One decision now, and the sentence the
-        // user reads in the dock is the sentence a bypassing caller gets here. ADR-0015's faithful-or-
-        // refuse is inside it: no preset the source's format cannot encode reaches the encoder, where
-        // `AudioConverter` would silently resample or downmix.
         if let reason = ExportReadiness.evaluate(isOpenable: recording.isOpenable,
                                                  isCapturing: capture.isCapturing(recording),
                                                  trimmedFrameCount: frameCount,
@@ -149,14 +97,14 @@ final class ExportCoordinator {
         presentSavePanel(defaultName: snapshot.name) { [weak self] destination in
             guard let self, let destination else { return }
             // The Recording rides alongside the snapshot rather than inside it: the snapshot is the
-            // *encode's* parameters, frozen at click (ADR-0012), and this is the telling's subject,
+            // *encode's* parameters, frozen at click, and this is the telling's subject,
             // which is the one thing that must stay live.
             self.begin(snapshot, subject: recording, destination: destination)
         }
     }
 
     /// Cancels a running Export and clears any telling back to idle. Used by the in-progress
-    /// Cancel button, by navigating away (ADR-0012), and to dismiss a finished success/failure.
+    /// Cancel button, by navigating away, and to dismiss a finished success/failure.
     /// The destination is left untouched: a running encode writes only to the sibling temp, which
     /// its own cancelled path discards.
     func cancel() {
@@ -170,24 +118,13 @@ final class ExportCoordinator {
     // MARK: - Launch
 
     private func begin(_ snapshot: Snapshot, subject: Recording, destination: URL) {
-        // Pre-flight the destination volume. Refuse rather than fill it (ADR-0012).
+        // Pre-flight the destination volume. Refuse rather than fill it.
         let free = DiskSpace.freeBytes(forVolumeContaining: destination)
         guard DiskSpace.hasRoom(estimatedBytes: snapshot.estimatedBytes, freeBytes: free) else {
             let need = ExportSizeEstimate.sizeText(bytes: snapshot.estimatedBytes)
             let have = free.map { "\(ExportSizeEstimate.sizeText(bytes: Double($0))) free" } ?? "less free"
             // **Two lines, and the two numbers are the payload.** The failed phase renders inside
-            // the Export dock's one declared height beside `Try Again…` (ADR-0025), which leaves
-            // room for two `.caption` lines. `Not enough space to export (needs about 5.41 MB,
-            // 2.96 MB free).` needs three there, so it rendered as `Not enough space to / export
-            // (needs about…` and lost both figures — the whole point of the sentence — while
-            // issue #73 had photographed the long form intact and recorded it as correct
-            // (issue #103, finding 2). The sentence was shortened rather than the dock made
-            // taller: a phase the user may never see should not set the height of the three they
-            // see constantly. Measured on the running app twice — the first shortening still lost
-            // the *free* figure, because two `.caption` lines beside `Try Again…` hold about 22
-            // characters each. The button was shortened to `Retry…` to buy the rest, exactly as
-            // #78 shortened `Reveal in Finder` to `Reveal` so the succeeded phase would fit the
-            // same height. Keep any future wording inside two lines at `.caption`.
+            // the Export dock's one declared height beside `Try Again…`, which leaves
             fail(message: "Not enough space: needs \(need), \(have).",
                  name: snapshot.name, for: subject)
             return
@@ -226,7 +163,7 @@ final class ExportCoordinator {
         }
     }
 
-    /// The atomic finish (ADR-0012): swap the temp into place with `replaceItemAt:` when a file is
+    /// The atomic finish: swap the temp into place with `replaceItemAt:` when a file is
     /// already there, or a plain move when the chosen name is new — both atomic renames within the
     /// destination directory, so the chosen file is never a partial write. Runs off-main.
     nonisolated static func commit(temp: URL, to destination: URL) throws {
@@ -254,7 +191,7 @@ final class ExportCoordinator {
         guard job == jobID else { return }
         encoder = nil
         phase = .failed(message: message)
-        // Told louder: when not frontmost, also a notification (ADR-0012).
+        // Told louder: when not frontmost, also a notification.
         if !NSApp.isActive {
             ExportNotifier.exportFailed(recordingName: name, detail: message)
         }

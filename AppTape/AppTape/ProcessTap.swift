@@ -1,25 +1,10 @@
-//
-//  ProcessTap.swift
-//  AppTape
-//
-
 import CoreAudio
 import Foundation
 
 /// Owns one Core Audio process tap, its private tap-only aggregate device, and the realtime
-/// IOProc that reads it — aimed at a Source's helper processes **by object ID** (ADR-0001).
+/// IOProc that reads it — aimed at a Source's helper processes **by object ID**.
 /// The IOProc does one thing: copy the delivered samples into the ring buffer and return.
-/// It never blocks, never allocates, never logs (ADR-0003).
-///
-/// The tap is requested as a stereo mixdown, so a 6-channel output device does not silently
-/// yield 6-channel Recordings; its actual `format` is read back from `kAudioTapPropertyFormat`
-/// and is the format the master is written with — never assumed (ADR-0003). The ring is sized
-/// from that format at ~10 s. Aiming by object ID keeps `processRestoreEnabled` (assigned
-/// explicitly; it defaults on), so a Source that quits and relaunches is picked up again
-/// within about a second with no re-aiming (ADR-0001).
-/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
-/// is `MainActor` (ADR-0022). The annotation is load-bearing — dropping it silently main-actors
-/// a piece of the capture spine.
+/// It never blocks, never allocates, never logs.
 nonisolated final class ProcessTap {
     /// The tap's delivered stream format — interleaved Float32 stereo in practice, but read,
     /// not assumed.
@@ -27,7 +12,7 @@ nonisolated final class ProcessTap {
     /// The realtime→writer dropout. The writer thread drains this.
     let ring: AudioRingBuffer
     /// The parallel host-time channel: one mark per delivered buffer, so the writer can reconcile
-    /// wall-clock gaps into Dropouts (ADR-0010).
+    /// wall-clock gaps into Dropouts.
     let timestampRing = TimestampRing()
 
     private var tapID: AudioObjectID = 0
@@ -46,7 +31,7 @@ nonisolated final class ProcessTap {
     }
 
     /// Builds and starts the tap. Blocking, and the call that can put up the TCC prompt, so
-    /// it must run off the main thread (issue #12 saw `AudioDeviceStart` block 90 s while the
+    /// it must run off the main thread (saw `AudioDeviceStart` block 90 s while the
     /// prompt was up).
     init(processObjectIDs: [AudioObjectID], ringCapacitySeconds: Double = 10) throws {
         // Stereo mixdown of exactly the resolved helper processes, aimed by object ID.
@@ -60,9 +45,7 @@ nonisolated final class ProcessTap {
         description.isProcessRestoreEnabled = true
 
         // Everything below works in locals; a half-built tap must be destroyed on any throw,
-        // and `stop()` cannot run before the stored `let`s exist. One `defer` unwinds whatever
-        // was created unless `committed` flips true once the tap is running — so each guard
-        // just throws, and the teardown is written once.
+        // and `stop` cannot run before the stored `let`s exist. One `defer` unwinds whatever
         var tap = AudioObjectID(0)
         var aggregate = AudioObjectID(0)
         var proc: AudioDeviceIOProcID?
@@ -132,7 +115,7 @@ nonisolated final class ProcessTap {
             }
             // One mark per callback, stamping this buffer's first frame with its host time — but
             // only when the write landed, so a dropped buffer leaves the host-time jump the writer
-            // reads as an overrun Dropout (ADR-0010).
+            // reads as an overrun Dropout.
             if wroteAny {
                 let ts = inInputTime.pointee
                 let valid = ts.mFlags.contains(.hostTimeValid)
@@ -156,7 +139,7 @@ nonisolated final class ProcessTap {
     }
 
     /// Tears the whole thing down. Destroying and recreating tap and aggregate is the clean
-    /// recovery issue #12 verified; this is one half of it.
+    /// recovery verified; this is one half of it.
     func stop() {
         if let ioProc {
             AudioDeviceStop(aggregateID, ioProc)
@@ -170,14 +153,14 @@ nonisolated final class ProcessTap {
     }
 
     /// The bundle IDs the given HAL client object IDs belong to, read at capture start. A rebuild
-    /// holds these rather than the object IDs, which are dead if the Source relaunched (ADR-0007).
+    /// holds these rather than the object IDs, which are dead if the Source relaunched.
     static func bundleIDs(of objectIDs: [AudioObjectID]) -> Set<String> {
         Set(objectIDs.compactMap { CAProperty.string(of: $0, kAudioProcessPropertyBundleID) }
             .filter { !$0.isEmpty })
     }
 
     /// Re-resolve the Source's live HAL clients by bundle ID — the re-resolution a rebuild performs,
-    /// so a Source that quit and relaunched is picked up again at its new object IDs (ADR-0007).
+    /// so a Source that quit and relaunched is picked up again at its new object IDs.
     /// Pure Core Audio, no workspace: it re-scans the process table and keeps the clients whose
     /// bundle ID the Recording started from, which covers a relaunched helper (same bundle, new ID)
     /// and WebKit's GPU process (always `com.apple.WebKit.GPU`).

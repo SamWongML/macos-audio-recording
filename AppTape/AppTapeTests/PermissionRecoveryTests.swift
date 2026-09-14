@@ -1,12 +1,7 @@
-//
-//  PermissionRecoveryTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
-/// The recovery surface's two load-bearing facts (ADR-0008): the deep link is exactly the one
+/// The recovery surface's two load-bearing facts: the deep link is exactly the one
 /// verified to open the audio-capture pane, and the copy names "System Audio Recording Only"
 /// rather than the pane's own broader heading.
 struct PermissionRecoveryTests {

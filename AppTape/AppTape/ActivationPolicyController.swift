@@ -1,19 +1,10 @@
-//
-//  ActivationPolicyController.swift
-//  AppTape
-//
-
 import AppKit
 
 /// Flips the app between `.accessory` at rest and `.regular` while the editor
-/// window is open (ADR-0017). The flip is *existence-based*, not focus-based:
+/// window is open. The flip is *existence-based*, not focus-based:
 /// the app is `.regular` for exactly as long as an editor window is open,
 /// regardless of which app is frontmost, so ⌘-Tabbing to the app being recorded
 /// does not make the Dock icon and menu bar flicker away.
-///
-/// `LSUIElement` makes the app launch `.accessory` with no Dock-icon flash;
-/// SwiftUI 27 exposes no scene-level activation-policy API, so the flip stays an
-/// AppKit call in the app shell.
 @MainActor
 final class ActivationPolicyController {
     static let shared = ActivationPolicyController()

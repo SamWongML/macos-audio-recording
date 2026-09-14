@@ -1,14 +1,9 @@
-//
-//  AudioSource.swift
-//  AppTape
-//
-
 import CoreAudio
 
 /// One HAL client process, straight out of `kAudioHardwarePropertyProcessObjectList`.
 /// The tap is aimed at these **by object ID** (`id`), never by bundle ID: `bundleIDs`
 /// resolves app bundles only and misses WebKit's XPC audio service, which is half the
-/// reason this app exists (ADR-0001, issue #12).
+/// reason this app exists.
 struct AudioProcess: Identifiable, Hashable {
     var id: AudioObjectID
     var pid: pid_t
@@ -30,7 +25,7 @@ struct RunningApp: Hashable {
 
 /// A user-facing application the user can choose to capture. One Source fans out to the
 /// helper processes that own its real HAL clients — Chrome's audio service, WebKit's GPU
-/// process — mapped back up onto the visible app (ADR-0001).
+/// process — mapped back up onto the visible app.
 struct Source: Identifiable, Hashable {
     var id: String { bundleID }
     var bundleID: String
@@ -45,16 +40,10 @@ struct Source: Identifiable, Hashable {
 
 /// The pure mapping from raw HAL processes onto the apps a user would name. No Core Audio,
 /// no AppKit — the whole resolution is a function of its inputs, so it is unit-tested
-/// directly (issue #6's heuristics, promoted out of the prototype).
+/// directly ('s heuristics, promoted out of the prototype).
 enum SourceResolution {
     /// Maps a HAL client's bundle ID back to the app a user would name, or `nil` if it
     /// belongs to no visible `.regular` app.
-    ///
-    /// The plain prefix rule (`com.google.Chrome.helper` → `com.google.Chrome`) covers
-    /// Chrome and other helper-bundle apps. WebKit is the exception the rule cannot reach:
-    /// every WebKit client's audio runs through `com.apple.WebKit.GPU`, whose bundle ID
-    /// says nothing about who owns it — only its localized name ("Safari Graphics and
-    /// Media") does.
     static func owningBundleID(of process: AudioProcess, among apps: [RunningApp]) -> String? {
         if process.bundleID == "com.apple.WebKit.GPU" {
             guard let name = process.appName else { return nil }

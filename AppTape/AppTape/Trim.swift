@@ -1,34 +1,8 @@
-//
-//  Trim.swift
-//  AppTape
-//
-
 import Foundation
 
 /// A **Trim**: the two points that select which part of a Recording is Exported (CONTEXT.md).
 /// Choosing them never alters the Recording, so a Trim can be widened, narrowed, or reset at
-/// any time — it lives only as two numbers, persisted in an extended attribute (ADR-0006).
-///
-/// **Invalid states are unrepresentable.** Every mutation goes through this type, so no call
-/// site ever clamps, and the three invariants below hold by construction:
-///
-/// - `0 <= start`
-/// - `end <= duration`
-/// - `end - start >= minimumLength` (unless the Recording is itself shorter than that, in
-///   which case the Trim is the whole thing and neither point can move — `isFixed`)
-///
-/// This shape exists because the ad-hoc version — clamping written out by hand at five
-/// separate call sites (drag, keyboard nudge, Mark In, Mark Out, and the xattr reader), each a
-/// pair of nested `min`/`max` — held *none* of them: two constraints applied in sequence, and
-/// whichever ran second won, so either could push the value straight through the other.
-/// Fuzzing that logic found four distinct failures — past the end, before the beginning,
-/// crossed handles, and a Recording shorter than the minimum making the rule unsatisfiable —
-/// plus a `NaN` that propagated silently through `min`/`max` and would have been written into
-/// the xattr, breaking the Recording permanently on the next open. The fix is not a better
-/// pair of clamps: it is to clamp **once**, into an interval that is provably non-empty, and to
-/// have exactly one place that knows how. (Settled in issue #7's prototype; see its README.)
-/// Explicitly `nonisolated`: the capture spine reads a Trim back off a file on its writer thread,
-/// and the target's default isolation is `MainActor` (ADR-0022).
+/// any time — it lives only as two numbers, persisted in an extended attribute.
 nonisolated struct Trim: Equatable {
     /// An Export has to contain something.
     static let minimumLength = 0.2
@@ -38,7 +12,7 @@ nonisolated struct Trim: Equatable {
     let duration: Double
 
     /// A Recording shorter than the minimum cannot be trimmed at all — the whole thing is the
-    /// Trim, and neither handle moves. Adopted-file limits (issue #30) own what else such a
+    /// Trim, and neither handle moves. Adopted-file limits own what else such a
     /// file should do.
     var isFixed: Bool { duration < Self.minimumLength }
 
@@ -50,7 +24,7 @@ nonisolated struct Trim: Equatable {
     }
 
     /// Sanitising initialiser: takes any two numbers from anywhere — an xattr written by an
-    /// older build, a file since replaced by a shorter one (ADR-0006 permits it) — and lands on
+    /// older build, a file since replaced by a shorter one (permits it) — and lands on
     /// a valid Trim rather than trusting them or trapping.
     init(start: Double, end: Double, duration: Double) {
         self = Trim(duration: duration)
@@ -93,7 +67,7 @@ nonisolated struct Trim: Equatable {
     mutating func nudgeStart(by delta: Double) { setStart(start + delta) }
     mutating func nudgeEnd(by delta: Double) { setEnd(end + delta) }
 
-    /// Reset Trim restores the full range (ADR-0006 / issue #7: no undo stack — the range *is*
+    /// Reset Trim restores the full range (/ no undo stack — the range *is*
     /// the state, and widening it back is the undo).
     mutating func reset() {
         start = 0

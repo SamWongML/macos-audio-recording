@@ -1,14 +1,9 @@
-//
-//  DropoutReconcilerTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
 /// The writer reconciles host-time gaps into padded Dropouts: integer frames, cause `overrun` or
 /// `rebuild`, trusting `mHostTime` only when valid, and a gap beyond 30 s ends the Recording
-/// (ADR-0010).
+///.
 struct DropoutReconcilerTests {
     private let rate = 48_000.0
     private func seconds(ofFrames frames: Int) -> Double { Double(frames) / 48_000.0 }
@@ -68,7 +63,7 @@ struct DropoutReconcilerTests {
     }
 
     /// A gap beyond 30 s ends the Recording rather than padding ~12 GB of zeros — the sleep end
-    /// arriving by another route (ADR-0010). The chunk is discarded; nothing is padded.
+    /// arriving by another route. The chunk is discarded; nothing is padded.
     @Test func aGapBeyondThirtySecondsEnds() {
         var r = DropoutReconciler(sampleRate: rate)
         _ = r.account(hostTimeSeconds: 0, hostTimeValid: true, newFrames: 48_000, rebuildInFlight: false)

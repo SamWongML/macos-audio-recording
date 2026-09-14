@@ -1,15 +1,10 @@
-//
-//  ExportEncoder.swift
-//  AppTape
-//
-
 import AudioToolbox
 import Foundation
 import Synchronization
 
-/// One export's parameters, snapshotted at launch (ADR-0012): the master to read, the temp file to
+/// One export's parameters, snapshotted at launch: the master to read, the temp file to
 /// write, the trimmed frame range, the preset, and the Loudness/Gain settings — whether to normalize
-/// Loudness and the manual Gain in dB (ADR-0013). A value, so later edits to Trim, preset, the toggle
+/// Loudness and the manual Gain in dB. A value, so later edits to Trim, preset, the toggle
 /// or the Gain slider never reach a running encode. These two default to a **faithful export** (no
 /// normalization, 0 dB Gain), so the plain path stays untouched.
 struct ExportRequest {
@@ -19,31 +14,18 @@ struct ExportRequest {
     let frameCount: Int64
     let preset: QualityPreset
     /// When true, the encode first measures the trimmed range (BS.1770-5) and applies the clamped
-    /// Loudness correction; when false, only the manual Gain applies (ADR-0013).
+    /// Loudness correction; when false, only the manual Gain applies.
     var normalize: Bool = false
-    /// The manual Gain offset in dB, always applied — it rides on top of any correction (ADR-0013).
+    /// The manual Gain offset in dB, always applied — it rides on top of any correction.
     var gainDB: Double = 0
 }
 
 /// The encode itself: a **hand-rolled `ExtAudioFileRead`/`Write` loop** over the master's trimmed
-/// frames (ADR-0012). Hand-rolled rather than an opaque `AVAssetExportSession` for one reason —
+/// frames. Hand-rolled rather than an opaque `AVAssetExportSession` for one reason —
 /// exact frame counts, so the inspector's progress bar shows real progress of the real file rather
 /// than an estimate. It reads the master as Float32 through an `ExtAudioFile` client format and
 /// writes the compressed `.m4a`, letting the framework's `AudioConverter` do the codec work with
 /// **no resampler and no downmix** (the client format carries the source's own rate and channels).
-///
-/// This is the **Export/Loudness math dropout** (ADR-0013): when `normalize` is set, `run` first makes
-/// a **measure pass** over the same trimmed frames (a hand-rolled BS.1770-5 `LoudnessMeter`), folds
-/// the clamped correction and the manual Gain into **one linear scalar**, and every sample the write
-/// loop emits passes through `applyGain(_:)` — a single multiply, never a limiter, so composing the
-/// two gains is one operation rather than two normalization passes. With `normalize` off and Gain at
-/// 0 the scalar is exactly 1 and the loop writes the trimmed master bit-faithfully.
-///
-/// The measure and encode passes report through one `onProgress`, so a normalized Export shows one
-/// continuous measure-then-encode bar (ADR-0012/-0013).
-///
-/// Realtime-unsafe by design and run at `.utility` off the main thread (ADR-0012): it never joins
-/// the audio workgroup, so it cannot preempt a live capture's IOProc.
 final class ExportEncoder: @unchecked Sendable {
     /// ~0.34 s of stereo 48 kHz per read — large enough to keep syscalls down, small enough that a
     /// cancel is honoured within a fraction of a second.
@@ -59,7 +41,7 @@ final class ExportEncoder: @unchecked Sendable {
     private let cancelledFlag = Atomic<Bool>(false)
 
     /// Requests cancellation. The loop notices at the next chunk boundary and throws `.cancelled`;
-    /// the caller then discards the temp, leaving the destination untouched (ADR-0012).
+    /// the caller then discards the temp, leaving the destination untouched.
     func cancel() { cancelledFlag.store(true, ordering: .releasing) }
     var isCancelled: Bool { cancelledFlag.load(ordering: .acquiring) }
 
@@ -70,7 +52,7 @@ final class ExportEncoder: @unchecked Sendable {
 
         var description: String {
             switch self {
-            // The app's one wording for this fact (ADR-0046), not a third copy of it. Reachable only
+            // The app's one wording for this fact, not a third copy of it. Reachable only
             // by a caller that built an `ExportRequest` directly — `ExportCoordinator` refuses on the
             // same rule before a save panel opens.
             case .emptyRange: return ExportReadiness.Reason.emptyTrim.sentence
@@ -88,7 +70,7 @@ final class ExportEncoder: @unchecked Sendable {
         guard request.frameCount > 0 else { throw Failure.emptyRange }
 
         // MARK: Gain — measure (if normalizing) and fold the correction + Gain into one scalar.
-        // The measure pass leads the one continuous bar (ADR-0013). An unmeasurable range yields a
+        // The measure pass leads the one continuous bar. An unmeasurable range yields a
         // 0 dB correction and the encode still completes.
         var correctionDB = 0.0
         let encodeStart: Double
@@ -124,7 +106,7 @@ final class ExportEncoder: @unchecked Sendable {
                                           clientSize, &client), "preparing to read")
         try check(ExtAudioFileSeek(sourceRef, request.startFrame), "seeking to the Trim")
 
-        // MARK: Destination — the compressed .m4a at the temp path.
+        // MARK: Destination — the compressed.m4a at the temp path.
         let sourceMeta = SourceFormat(sampleRate: rate, channelCount: channels,
                                       bitsPerChannel: Int(sourceFormat.mBitsPerChannel))
         var fileFormat = request.preset.fileFormat(for: sourceMeta)
@@ -169,15 +151,15 @@ final class ExportEncoder: @unchecked Sendable {
         }
     }
 
-    /// The Export/Loudness dropout (ADR-0013). Multiplies every sample by the one linear `scale` that
+    /// The Export/Loudness dropout. Multiplies every sample by the one linear `scale` that
     /// folds the clamped Loudness correction and the manual Gain — **a single scalar multiply, never
     /// a limiter or a per-sample clamp** — so the two gains compose without double-normalizing and
-    /// the whole path stays the pure multiply ADR-0013's no-double-normalize stance leans on. The
+    /// the whole path stays the pure multiply 's no-double-normalize stance leans on. The
     /// scalar is exactly 1 for a faithful export (no normalization, 0 dB Gain), and the loop is
     /// skipped entirely then. The correction can never breach full scale (its ceiling is −3 dBTP);
     /// only an uncapped positive Gain can, and there the framework's float→int conversion saturates
     /// on the way to ALAC/AAC rather than wrapping — so no nonlinearity is inserted here. The `× 1.02`
-    /// size estimate never moves with any of this (ADR-0012).
+    /// size estimate never moves with any of this.
     private func applyGain(_ buffer: UnsafeMutableBufferPointer<Float>, sampleCount: Int) {
         guard scale != 1 else { return }   // faithful passthrough
         let s = scale

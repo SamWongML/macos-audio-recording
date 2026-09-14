@@ -1,17 +1,10 @@
-//
-//  RecordingDayTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
 /// The sidebar's day grouping. With many Recordings a bare `21:51` cannot tell today's Spotify from
 /// last Tuesday's, and the same Source repeats within a day — so the sidebar groups by the day a
-/// Recording was *made*, which ADR-0031 settled is its creation, not its last write.
-///
-/// Untested until now, because grouping needs Recordings and a Recording needed a file.
+/// Recording was *made*, which settled is its creation, not its last write.
 @MainActor
 struct RecordingDayTests {
     private let calendar = Calendar.current
@@ -35,7 +28,7 @@ struct RecordingDayTests {
     }
 
     @Test func withinADayTheOrderIsTheOneItWasGiven() {
-        // The store has already sorted newest-first (ADR-0031), and grouping must not undo that —
+        // The store has already sorted newest-first, and grouping must not undo that —
         // it buckets by day and keeps each bucket in the order it arrived.
         let later = Recording.stub("later", recordedAt: midnight(daysAgo: 0, plusMinutes: 800))
         let earlier = Recording.stub("earlier", recordedAt: midnight(daysAgo: 0, plusMinutes: 400))
@@ -76,7 +69,7 @@ struct RecordingDayTests {
         #expect(days[1].title == expectedDate)
     }
 
-    /// ADR-0031's own consequence, and nothing checked it: `recordedAt` is when capture *started*,
+    /// 's own consequence, and nothing checked it: `recordedAt` is when capture *started*,
     /// so a Recording that ran across midnight is filed under the day it began. Reading the last
     /// write instead filed it under the day it stopped.
     @Test func aRecordingThatRanAcrossMidnightIsFiledUnderTheDayItBegan() {

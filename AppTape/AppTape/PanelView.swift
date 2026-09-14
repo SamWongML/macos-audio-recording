@@ -1,28 +1,20 @@
-//
-//  PanelView.swift
-//  AppTape
-//
-
 import AppKit
 import Combine
 import SwiftUI
 
 /// The hand-rolled panel's transport surface: the list *is* the panel and a row *is* the
-/// record control — no button chrome (issue #6, variant H). Pressing a Source aims the tap at
+/// record control — no button chrome (variant H). Pressing a Source aims the tap at
 /// its helper processes and starts a Recording; the pressed row then *is* the running Recording
 /// — a pulsing `record.circle.fill` in a reserved trailing lane, over a live level meter — while
-/// the one-click stop lives on the status item itself (issue #8, ADR-0004). The panel stays open
+/// the one-click stop lives on the status item itself. The panel stays open
 /// through a start so that transition is seen; it dismisses the ordinary transient way (outside
 /// click, Escape, a right-click on the status item).
-///
-/// It honours **Reduce Transparency** — an opaque background instead of the popover's vibrant
-/// material — and **Reduce Motion**, which stills the record glyph's pulse (issue #59).
 struct PanelView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = SourceModel()
-    /// The transport, accepted from the status item that hosts this panel (ADR-0045). Concrete, not
+    /// The transport, accepted from the status item that hosts this panel. Concrete, not
     /// an interface: the panel reads nine members of it and is one of the two surfaces that
     /// *commands* capture, so an interface here would be a layer over the shell rather than a dropout
     /// under it — the editor's `CaptureState` is the read-only half, and this is not it.
@@ -47,7 +39,7 @@ struct PanelView: View {
             footer
         }
         .frame(width: 280)
-        // Reduce Transparency (issue #59): swap the popover's vibrant material for an opaque
+        // Reduce Transparency: swap the popover's vibrant material for an opaque
         // window background. At rest the fill is clear so the material shows through as before.
         .background(reduceTransparency ? Color(nsColor: .windowBackgroundColor) : Color.clear)
         .onAppear {
@@ -59,7 +51,7 @@ struct PanelView: View {
         .onReceive(tick) { _ in model.refresh() }
         .onReceive(recTick) { _ in if recorder.isRecording { recNudge &+= 1 } }
         // An unrelated key handler, exactly the kind a real control adds: it silently takes
-        // the popover's free Escape away (ADR-0011), which is why the app owns Escape in
+        // the popover's free Escape away, which is why the app owns Escape in
         // MenuBarController. Kept to hold that guarantee honest as the panel grows.
         .onKeyPress(.space) { .ignored }
     }
@@ -96,10 +88,10 @@ struct PanelView: View {
 
     // MARK: - Blocking banner
 
-    /// The panel's one blocking-message surface (ADR-0009). **At most one reason is ever set**: a
+    /// The panel's one blocking-message surface. **At most one reason is ever set**: a
     /// refusal below the floor and a denial each clear the other, and a successful start clears both,
     /// so the two never compete here. What should happen *if* two blocking reasons ever did compete is
-    /// ADR-0009's deferral to issue #22, not decided by this ordering — which only picks a branch when,
+    /// 's deferral to not decided by this ordering — which only picks a branch when,
     /// by construction, just one arm can be taken.
     @ViewBuilder private var blockingBanner: some View {
         if let blocker = recorder.startBlocker {
@@ -109,7 +101,7 @@ struct PanelView: View {
         }
     }
 
-    /// Shown when a start is refused below the 2 GB floor (ADR-0009). It names the free space and the
+    /// Shown when a start is refused below the 2 GB floor. It names the free space and the
     /// floor, and its action opens Finder at the Library rather than a Settings pane — there being
     /// none to send the user to. Retry, as with the denial banner, is simply pressing record again.
     @ViewBuilder private func diskBlockerBanner(_ blocker: DiskGuardBlocker) -> some View {
@@ -118,7 +110,7 @@ struct PanelView: View {
         }
     }
 
-    /// Shown when a denied System Audio Recording grant was inferred (ADR-0008). It names
+    /// Shown when a denied System Audio Recording grant was inferred. It names
     /// "System Audio Recording Only" — not the pane's own broader heading — and the deep-link
     /// button lands on the audio-capture pane. Retry is not a button here: it is pressing record
     /// again, which is where the copy sends the user.
@@ -176,7 +168,7 @@ struct PanelView: View {
                                   icon: model.icon(for: source),
                                   glyph: glyph,
                                   // Only the recording row carries live meter data; every other row's
-                                  // meter is dead and reads zero (issue #59).
+                                  // meter is dead and reads zero.
                                   meterColumns: isTarget ? recorder.meterColumns : [],
                                   reduceMotion: reduceMotion)
                             .opacity(capturable ? 1 : 0.4)
@@ -192,8 +184,8 @@ struct PanelView: View {
 
     /// While recording, the transport is busy: a press cannot start a second Recording (one
     /// Source at a time), so rows are inert until stop. On a start the panel stays open — the
-    /// pressed row becomes the record control, showing bring-up then the live meter (issue #59);
-    /// a start refused below the floor (ADR-0009) also stays open, for its banner.
+    /// pressed row becomes the record control, showing bring-up then the live meter;
+    /// a start refused below the floor also stays open, for its banner.
     private func pick(_ source: Source) {
         guard !recorder.isRecording else { return }
         recorder.start(source)
@@ -215,10 +207,10 @@ struct PanelView: View {
     }
 }
 
-/// One Source in the list. The row *is* the record control (issue #6, ADR-0011): icon, name,
+/// One Source in the list. The row *is* the record control: icon, name,
 /// then a fixed lane holding the live level meter and — in a reserved trailing sub-lane the
 /// meter insets around, so it stays legible over the waveform — the record glyph. `circle` at
-/// rest; a pulsing `record.circle.fill` once this row is the one recording (issue #59).
+/// rest; a pulsing `record.circle.fill` once this row is the one recording.
 private struct SourceRow: View {
     let source: Source
     let icon: NSImage?
@@ -260,7 +252,7 @@ private struct SourceRow: View {
     }
 
     /// The live level meter. Empty (a dead or absent tap) draws nothing, which reads as exactly
-    /// zero (issue #59) — so a non-recording row is flat and the recording row flattens the moment
+    /// zero — so a non-recording row is flat and the recording row flattens the moment
     /// its tap goes silent.
     @ViewBuilder private var meter: some View {
         if meterColumns.contains(where: { $0 > 0 }) {
@@ -276,17 +268,17 @@ private struct SourceRow: View {
         return Image(systemName: RowRecordGlyph.symbolName(glyph))
             .font(.system(size: 15))
             .foregroundStyle(filled ? Color.red : Color.secondary)
-            // The in-flight/recording pulse (issue #59), stilled under Reduce Motion.
+            // The in-flight/recording pulse, stilled under Reduce Motion.
             .symbolEffect(.pulse, options: .repeating, isActive: RowRecordGlyph.pulses(glyph) && !reduceMotion)
     }
 }
 
 /// The row's live level meter, drawn as a compact scroll of vertical bars — one per recent meter
-/// fill, oldest at the leading edge — mirrored around the centre line (issue #59). Deliberately
+/// fill, oldest at the leading edge — mirrored around the centre line. Deliberately
 /// its own `Shape` rather than the audio-envelope `WaveformPath`: the input is a single 0...1 fill
 /// per column, already dB-scaled by `LevelMeter`, not a reduced min/max/rms envelope, so nothing is
 /// faked into an `Envelope.Column`. A `Shape`, not a `Canvas`, because a `Canvas` draws nothing
-/// inside a lazy list row on macOS 27 (issue #7, see `WaveformView`).
+/// inside a lazy list row on macOS 27 (see `WaveformView`).
 private struct LevelMeterShape: Shape {
     /// Meter fills 0...1, oldest first.
     var fills: [Double]

@@ -1,13 +1,8 @@
-//
-//  TrimTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// `Trim` makes invalid states unrepresentable (ADR-0006, issue #7). These pin the three
+/// `Trim` makes invalid states unrepresentable. These pin the three
 /// invariants — handles never cross, the 0.2 s minimum, and no `NaN` reaching the xattr —
 /// with worked examples and then with a deterministic fuzz over millions of reachable states.
 struct TrimTests {
@@ -48,7 +43,7 @@ struct TrimTests {
     }
 
     // A Recording shorter than the minimum: the whole thing is the Trim, and it is fixed.
-    // Reachable simply by pointing the app at a shorter file with the same name (ADR-0006).
+    // Reachable simply by pointing the app at a shorter file with the same name.
 
     @Test func aRecordingShorterThanTheMinimumIsFixed() {
         var trim = Trim(duration: 0.1)

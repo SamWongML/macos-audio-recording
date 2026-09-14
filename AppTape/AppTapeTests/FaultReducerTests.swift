@@ -1,12 +1,7 @@
-//
-//  FaultReducerTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
-/// The soft/hard fault split (ADR-0010): a 10 s soft one-shot that never ends a Recording and
+/// The soft/hard fault split: a 10 s soft one-shot that never ends a Recording and
 /// re-arms on the next non-zero sample; hard attempts spaced 1/2/4 s and armed at the first
 /// callback; a format mismatch that ends without spending an attempt; restore beating rebuild.
 struct FaultReducerTests {

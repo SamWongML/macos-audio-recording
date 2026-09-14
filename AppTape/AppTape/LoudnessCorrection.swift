@@ -1,17 +1,7 @@
-//
-//  LoudnessCorrection.swift
-//  AppTape
-//
-
 import Foundation
 
-/// The Export loudness contract's fixed numbers (ADR-0013). The target and ceiling are identical
+/// The Export loudness contract's fixed numbers. The target and ceiling are identical
 /// across all four Quality Presets — Loudness and quality are independent axes.
-///
-/// This file is `nonisolated` throughout: these are the value types the BS.1770 pass produces and
-/// the editor consumes, so they sit on both sides of the actor boundary. Left implicitly main-actor
-/// under this target's `SWIFT_DEFAULT_ACTOR_ISOLATION` they would be one added member away from
-/// dragging the pass back onto the main thread (ADR-0022).
 nonisolated enum LoudnessTarget {
     /// Target integrated loudness, in LUFS.
     static let integratedLUFS = -16.0
@@ -27,19 +17,16 @@ nonisolated enum LoudnessTarget {
 nonisolated struct LoudnessMeasurement: Equatable {
     /// Integrated loudness in LUFS, or `nil` when the range is **unmeasurable** — silent under the
     /// −70 LKFS gate, or shorter than one 400 ms gating block. An undefined measurement drives a
-    /// 0 dB correction, never an invented one (ADR-0013).
+    /// 0 dB correction, never an invented one.
     let integratedLUFS: Double?
     /// Maximum true peak in dBTP. `-.infinity` for pure silence.
     let truePeakDBTP: Double
 }
 
 /// The **single fixed linear gain** a normalized Export (and matching playback) applies to a
-/// trimmed range (ADR-0013). It is one clamped scalar, never a limiter: amplify toward the target
+/// trimmed range. It is one clamped scalar, never a limiter: amplify toward the target
 /// capped at +12 dB, attenuate uncapped, and where the gain would breach the −3 dBTP ceiling it is
 /// clamped down and the range lands short of the loudness target rather than reshaping the waveform.
-///
-/// The manual **Gain** (CONTEXT.md) is a separate axis that rides on top of this — it is not folded
-/// in here, so each figure stays legible as its own decibel value.
 nonisolated struct LoudnessCorrection: Equatable {
     /// How the correction landed relative to the target, so the inspector can caption *why* it fell
     /// short. The three land-short cases are distinct on purpose: the cap guards hiss, the ceiling
@@ -59,7 +46,7 @@ nonisolated struct LoudnessCorrection: Equatable {
     let decibels: Double
     let gainResult: GainResult
 
-    /// Computes the clamped gain for a measurement against the fixed contract (ADR-0013). Defaults
+    /// Computes the clamped gain for a measurement against the fixed contract. Defaults
     /// are the shipped numbers; parameters exist so a test can drive the boundary directly.
     static func compute(for measurement: LoudnessMeasurement,
                         target: Double = LoudnessTarget.integratedLUFS,
@@ -99,7 +86,7 @@ nonisolated struct LoudnessCorrection: Equatable {
     // MARK: - Rendering (dB, never LUFS)
 
     /// The correction as its own decibel figure (`+4.2 dB`), or `No correction` when undefined. The
-    /// figure is **always dB** — the measured LUFS is never shown to the user (ADR-0013).
+    /// figure is **always dB** — the measured LUFS is never shown to the user.
     var figureText: String {
         gainResult == .undefined ? "No correction" : Self.signedDecibels(decibels)
     }
@@ -128,7 +115,7 @@ nonisolated struct LoudnessCorrection: Equatable {
     }
 
     /// The one linear scalar that composes the Loudness correction and the manual Gain — a single
-    /// multiply, so stacking the two never double-normalizes (ADR-0013). Play applies exactly this
+    /// multiply, so stacking the two never double-normalizes. Play applies exactly this
     /// as `AVAudioUnitEQ.globalGain`; Export applies exactly this in its write loop.
     static func linearScalar(correctionDB: Double, gainDB: Double) -> Float {
         Float(pow(10.0, (correctionDB + gainDB) / 20.0))

@@ -1,15 +1,10 @@
-//
-//  LoudnessExportTests.swift
-//  AppTapeTests
-//
-
 import AVFoundation
 import AudioToolbox
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The normalized Export path end to end (ADR-0013): the encode measures the trimmed range, applies
+/// The normalized Export path end to end: the encode measures the trimmed range, applies
 /// one clamped gain, and — with manual Gain on top — a single combined multiply, never a second
 /// normalization pass. The lossless Master preset is used on purpose: the written file's loudness is
 /// the input's, scaled, so re-measuring it proves *where* the correction landed to within a fraction
@@ -86,7 +81,7 @@ struct LoudnessExportTests {
     }
 
     @Test func aSilentRangeStillExportsWithNoCorrection() throws {
-        // Undefined loudness → 0 dB correction, and Export still completes (ADR-0013).
+        // Undefined loudness → 0 dB correction, and Export still completes.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = dir.appendingPathComponent("silent.caf")

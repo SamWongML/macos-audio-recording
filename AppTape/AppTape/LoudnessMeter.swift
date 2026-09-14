@@ -1,26 +1,11 @@
-//
-//  LoudnessMeter.swift
-//  AppTape
-//
-
 import AudioToolbox
 import Foundation
 
 /// A **hand-rolled ITU-R BS.1770-5 / EBU R128 pass** over a trimmed range of Float32 frames
-/// (ADR-0013). It is deliberately *not* `MusicUnderstanding.LoudnessResult`: that type applies no
+///. It is deliberately *not* `MusicUnderstanding.LoudnessResult`: that type applies no
 /// gain and takes no time-range, so it cannot measure a Trim or drive the correction. This one is
 /// fully specified by BS.1770-5 Annexes 1–2 and small — K-weighting, 400 ms gated blocks, and a 4×
 /// oversampled true peak — run over the same trimmed Float32 the encode already reads.
-///
-/// `LoudnessAnalyzer` is the streaming core: push interleaved Float32 chunks and call `finish()`, so
-/// the file path never holds an hour of audio in memory and a test can push one buffer. `LoudnessMeter`
-/// is the file entry point Export and the inspector preview share.
-///
-/// **Everything in this file is `nonisolated`, and that is load-bearing** (ADR-0022). The target sets
-/// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so an unannotated type here would be main-actor
-/// isolated — and a `Task.detached` that calls into it would hop straight back to the main thread and
-/// hold it for the whole BS.1770 pass. This is the longest-running pure computation in the app; it
-/// must never be reachable on the main actor.
 nonisolated enum LoudnessMeter {
     /// Reads the master's trimmed range as interleaved Float32 (the encode's own client format) and
     /// measures it. `onProgress` reports `0...1` across the read, so a normalized Export can show one
@@ -98,21 +83,7 @@ nonisolated enum LoudnessMeter {
     }
 }
 
-/// The streaming BS.1770-5 measurement (ADR-0013). Two things run in parallel over the frames:
-///
-/// - **Loudness.** Each channel is K-weighted (a rate-adaptive shelf + high-pass cascade, Annex 1),
-///   then squared and accumulated into 100 ms sub-blocks. Four consecutive sub-blocks form one
-///   400 ms gating block stepped every 100 ms (75 % overlap). At `finish()` the blocks are gated —
-///   absolute at −70 LKFS, then relative at −10 LU below the gated mean — and the surviving blocks'
-///   mean power becomes the integrated loudness.
-/// - **True peak.** The *raw* (un-weighted) signal is 4× oversampled through the BS.1770-4 Annex 2
-///   polyphase FIR; the largest interpolated magnitude is the dBTP the ceiling clamps against.
-///
-/// A range with no block that clears the absolute gate — silence, or a Trim shorter than one 400 ms
-/// block — has no integrated loudness, reported as `nil`.
-///
-/// `nonisolated` for the reason in `LoudnessMeter`'s note: this is the loop that would otherwise
-/// hold the main thread (ADR-0022).
+/// The streaming BS.1770-5 measurement. Two things run in parallel over the frames:
 nonisolated final class LoudnessAnalyzer {
     private let channels: Int
     private let weights: [Double]
@@ -167,7 +138,7 @@ nonisolated final class LoudnessAnalyzer {
         }
     }
 
-    /// Gates the blocks and forms the integrated loudness (ADR-0013). `nil` when unmeasurable.
+    /// Gates the blocks and forms the integrated loudness. `nil` when unmeasurable.
     func finish() -> LoudnessMeasurement {
         let truePeak = maxPeak > 0 ? 20 * log10(Double(maxPeak)) : -.infinity
         guard !blockPowers.isEmpty else {
@@ -271,7 +242,7 @@ nonisolated final class LoudnessAnalyzer {
 // MARK: - Biquad
 
 /// One second-order section, Direct Form II Transposed. Coefficients are normalised so `a0 == 1`.
-/// `nonisolated`, like everything else the BS.1770 pass touches (ADR-0022) — a main-actor biquad
+/// `nonisolated`, like everything else the BS.1770 pass touches — a main-actor biquad
 /// would drag the whole filter cascade back onto the main thread one sample at a time.
 nonisolated struct Biquad {
     let b0, b1, b2, a1, a2: Double

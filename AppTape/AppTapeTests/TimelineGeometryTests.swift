@@ -1,18 +1,8 @@
-//
-//  TimelineGeometryTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The lane's one mapping between points and seconds (ADR-0023, ADR-0031, ADR-0047).
-///
-/// It was five conversions in two files, none of them reachable without a window, and the pure
-/// statics that were extracted *for* testing — the tick ladder — had no test naming them. Every
-/// input here is a scalar, so the whole matrix runs with no `Recording`, no file and no main actor,
-/// which is also why this suite carries no `@MainActor`, like `TrimTests` and `ExportReadinessTests`.
+/// The lane's one mapping between points and seconds.
 struct TimelineGeometryTests {
     /// The lane at the editor's default window size, over a 90 s Recording.
     private let lane = TimelineGeometry(width: 760, duration: 90)
@@ -130,9 +120,6 @@ struct TimelineGeometryTests {
     // MARK: - The clamp that used to invert
 
     /// The review's "the `x` clamp inverts when `width < 212`", made into cases.
-    ///
-    /// `min(max(106, x), width - 106)` is an empty interval below 212 pt, and the upper bound won:
-    /// the loupe stopped tracking, then went negative, then sat 119 pt off the lane's leading edge.
     @Test func theLoupeNeverLeavesALaneNarrowerThanItself() {
         let boxWidth = 212.0
         for width in [1.0, 40.0, 100.0, 105.0, 211.0, 212.0] {
@@ -167,7 +154,7 @@ struct TimelineGeometryTests {
 
     // MARK: - Dropout bands
 
-    /// A Dropout that is sub-pixel on an always-fits-the-width lane still has to be visible (ADR-0010).
+    /// A Dropout that is sub-pixel on an always-fits-the-width lane still has to be visible.
     @Test func aSubPixelDropoutKeepsItsFloor() {
         #expect(lane.points(from: 10, to: 10.0001, minimum: 3) == 3)
         #expect(abs(lane.points(from: 0, to: 45, minimum: 3) - 380) < 1e-9)
@@ -188,16 +175,16 @@ struct TimelineGeometryTests {
         }
     }
 
-    // MARK: - The ruler's ladder (ADR-0023, ADR-0031)
+    // MARK: - The ruler's ladder
 
-    /// **No duration means no ticks, not one tick at zero** (ADR-0031).
+    /// **No duration means no ticks, not one tick at zero**.
     @Test func anEmptyRecordingGetsNoTicks() {
         #expect(TimelineGeometry(width: 760, duration: 0).ticks.isEmpty)
         #expect(TimelineGeometry(width: 760, duration: -5).ticks.isEmpty)
         #expect(TimelineGeometry(width: 760, duration: .nan).ticks.isEmpty)
     }
 
-    /// ADR-0023's rule, which had never been asserted: no two labels within 64 pt, wherever the
+    /// 's rule, which had never been asserted: no two labels within 64 pt, wherever the
     /// ladder has a rung that can deliver it.
     @Test func noTwoTickLabelsComeWithinTheMinimumSpacing() {
         for width in [212.0, 400.0, 760.0, 1200.0, 2400.0] {
@@ -213,7 +200,7 @@ struct TimelineGeometryTests {
         }
     }
 
-    /// **A known limit, pinned rather than hidden.** ADR-0023's ladder stops at an hour, so a
+    /// **A known limit, pinned rather than hidden.** 's ladder stops at an hour, so a
     /// Recording long enough that even hourly ticks crowd — an adopted file of about 56 minutes per
     /// point of lane, so roughly 3 hours 20 at the editor's 212 pt minimum — gets ticks closer
     /// together than the 64 pt the ADR asks for. The ladder saturates rather than trapping, which
@@ -227,7 +214,7 @@ struct TimelineGeometryTests {
                 "the limit this test documents has gone away — tighten the assertion above")
     }
 
-    /// The interval always comes off ADR-0023's ladder, and never climbs past its top.
+    /// The interval always comes off 's ladder, and never climbs past its top.
     @Test func theIntervalIsAlwaysARungOfTheLadder() {
         for duration in [0.5, 30, 90, 3600, 86_400, 1e7] {
             let g = TimelineGeometry(width: 760, duration: duration)

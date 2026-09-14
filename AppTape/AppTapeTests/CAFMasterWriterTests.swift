@@ -1,8 +1,3 @@
-//
-//  CAFMasterWriterTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import AVFoundation
 import AudioToolbox
@@ -10,9 +5,9 @@ import AudioToolbox
 
 /// The write path is where the crash guarantee lives, so it is exercised end to end against
 /// real Core Audio: a written master must be a valid, playable CAF, carry its Source, and be
-/// readable *before* it is closed (ADR-0003, ADR-0006).
+/// readable *before* it is closed.
 struct CAFMasterWriterTests {
-    /// Interleaved Float32 stereo at 48 kHz — the tap's delivered format (issue #12).
+    /// Interleaved Float32 stereo at 48 kHz — the tap's delivered format.
     private func stereoFloat32(_ sampleRate: Double = 48_000) -> AudioStreamBasicDescription {
         AudioStreamBasicDescription(
             mSampleRate: sampleRate,
@@ -88,7 +83,7 @@ struct CAFMasterWriterTests {
     }
 
     @Test func writesWhateverFormatTheTapReports() throws {
-        // Not assumed to be 48 kHz: a 44.1 kHz tap format is written verbatim (ADR-0003).
+        // Not assumed to be 48 kHz: a 44.1 kHz tap format is written verbatim.
         let url = tempURL()
         defer { try? FileManager.default.removeItem(at: url) }
 

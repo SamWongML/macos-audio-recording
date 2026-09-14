@@ -1,8 +1,3 @@
-//
-//  RecordingDoubles.swift
-//  AppTapeTests
-//
-
 import AVFoundation
 import Foundation
 import Testing
@@ -10,7 +5,7 @@ import Testing
 
 /// The `Recording.stub(…)` every suite builds its Recordings with lives in the app target now, in
 /// `PreviewFixtures.swift` under `#if DEBUG`, because the previews need the same fixture and two
-/// definitions of "an ordinary Recording" would drift apart (ADR-0045). Nothing about its call sites
+/// definitions of "an ordinary Recording" would drift apart. Nothing about its call sites
 /// changed.
 
 /// A reader over an in-memory Library: the test says what the folder holds and what each file
@@ -22,9 +17,9 @@ final class StubRecordingReader: RecordingReading {
     /// The folder's contents, in listing order. `RecordingReader` returns them unordered, so a
     /// test that cares about order is testing the store's sort, not this.
     var files: [URL] = []
-    /// What each file reads as. A url listed but absent here is one the gate declines (ADR-0015).
+    /// What each file reads as. A url listed but absent here is one the gate declines.
     var adopted: [URL: Recording] = [:]
-    /// What each file's length reads as *now* — the number ADR-0021's staleness check turns on.
+    /// What each file's length reads as *now* — the number 's staleness check turns on.
     /// `place` keeps it agreeing with the Recording; `grow` is what makes them disagree.
     var byteCounts: [URL: Int64] = [:]
     var identities: [URL: FileIdentity] = [:]
@@ -60,7 +55,7 @@ final class StubRecordingReader: RecordingReading {
     }
 
     /// The file grew, and a fresh read of it is `replacement` — a master mid-capture, or a large
-    /// file still being copied in (ADR-0021). The url keeps its identity: it is the same file.
+    /// file still being copied in. The url keeps its identity: it is the same file.
     func grow(_ recording: Recording, to replacement: Recording) {
         byteCounts[recording.url] = (recording.openedByteCount ?? 0) + 1
         adopted[recording.url] = replacement

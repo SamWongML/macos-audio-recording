@@ -1,22 +1,17 @@
-//
-//  QualityPreset.swift
-//  AppTape
-//
-
 import AudioToolbox
 import CoreAudioTypes
 import Foundation
 
 /// The source's own format, as far as Export cares: rate, channel count, and the bit depth of
 /// one sample. Read off the master (or an adopted file) — **never** assumed to be 48 kHz stereo,
-/// because ADR-0006 adopts hand-placed files and the tap's own rate is whatever the Source ran at.
+/// because adopts hand-placed files and the tap's own rate is whatever the Source ran at.
 /// Export resamples nothing and downmixes nothing, so this format is also the *output's* rate and
 /// channel count; the preset only chooses the codec and the bitrate.
 struct SourceFormat: Equatable {
     var sampleRate: Double
     var channelCount: Int
     /// Bits in one channel of one source sample. The captured master is Float32 (32), so
-    /// Master quality's estimate lands on ADR-0005's measured 46%-of-master figure; an adopted
+    /// Master quality's estimate lands on 's measured 46%-of-master figure; an adopted
     /// 16- or 24-bit file scales from its own depth.
     var bitsPerChannel: Int
 }
@@ -24,19 +19,8 @@ struct SourceFormat: Equatable {
 /// A **Quality Preset** (CONTEXT.md): a named audio-quality setting offered at Export, whose
 /// quality is what determines the exported file's size. There are exactly four, all producing
 /// `.m4a` at the master's native rate and channel count with **no resampler and no downmix**
-/// (ADR-0005, ADR-0012) — the preset chooses codec and bitrate and nothing else. VBR-constrained
+/// — the preset chooses codec and bitrate and nothing else. VBR-constrained
 /// where the codec is lossy.
-///
-/// The rung names are deliberate: the top rung is **Master quality**, 24-bit ALAC, and is *not*
-/// called Lossless, because on macOS there is no lossless path from the Float32 master and the
-/// word would be a claim the file does not honour (ADR-0005).
-///
-/// Explicitly `nonisolated` (ADR-0022), and load-bearing rather than decorative. An unannotated type
-/// in this target is main-actor isolated, and `Sendable` alone does not lift a type's *members* out
-/// of that — so `encodability(for:)` was main-actor while `fileFormat(for:)` next to it was not, and
-/// which was which could not be read off the source. Nothing here touches UI or disk: it is codec
-/// names, bitrates, format arithmetic and refusal reasons. `ExportEncoder` already reads it from a
-/// `.utility` queue, and `ExportReadiness` calls `encodability(for:)` from one.
 nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
     case master
     case high
@@ -45,7 +29,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    /// AAC 256 is the default (issue #9): transparent for consumer audio and a quarter of the
+    /// AAC 256 is the default: transparent for consumer audio and a quarter of the
     /// master's cost.
     static let defaultPreset: QualityPreset = .high
 
@@ -72,7 +56,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
 
     /// The full non-editable subtitle: codec/bitrate plus the source's rate and channels, which
     /// Export carries through untouched. Shown under the picker so the parameters are always
-    /// visible and never editable (issue #9).
+    /// visible and never editable.
     func subtitle(for format: SourceFormat) -> String {
         "\(codecLabel) · \(Self.rateText(format.sampleRate)) \(Self.channelText(format.channelCount))"
     }
@@ -90,7 +74,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
 
     /// The effective bits-per-second used for the size estimate. Lossy rungs are their target
     /// bitrate, flat across sample rates as a constant-bitrate target is. The ALAC rung has no
-    /// target, so it is estimated as **46% of the source's uncompressed rate** — ADR-0005's
+    /// target, so it is estimated as **46% of the source's uncompressed rate** — 's
     /// measured figure (633 MB/hour at 48 kHz stereo Float32), scaled by the source's real rate,
     /// channels and depth so a 96 kHz or 24-bit source estimates from its own footprint.
     func estimatedBitsPerSecond(for format: SourceFormat) -> Double {
@@ -99,7 +83,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         return uncompressed * Self.alacFraction
     }
 
-    /// ALAC's measured share of the Float32 master (ADR-0005: 46%). The number a size or
+    /// ALAC's measured share of the Float32 master (46%). The number a size or
     /// duration policy should use for the Master-quality rung.
     static let alacFraction = 0.46
 
@@ -107,7 +91,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
 
     /// The compressed file-data format this preset writes: an ASBD carrying only the codec,
     /// rate and channel count. The encoder fills in the packetisation. ALAC additionally stamps
-    /// its source-bit-depth flag as 24-bit (ADR-0005) — the eight bits below the master's float
+    /// its source-bit-depth flag as 24-bit — the eight bits below the master's float
     /// are inaudible against post-mix consumer audio and this is where they are dropped.
     func fileFormat(for format: SourceFormat) -> AudioStreamBasicDescription {
         var asbd = AudioStreamBasicDescription()
@@ -125,12 +109,12 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         return asbd
     }
 
-    // MARK: - Faithful-or-refuse (ADR-0015)
+    // MARK: - Faithful-or-refuse
 
     /// Whether this preset can encode `format` **faithfully** — with no resample and no downmix
-    /// (ADR-0015). `.available` means the codec accepts the source's exact channel count and rate;
+    ///. `.available` means the codec accepts the source's exact channel count and rate;
     /// `.unavailable` carries a plain, source-specific reason, which the inspector shows in place of
-    /// the subtitle while blocking Export until a working rung is chosen. Adopted files (ADR-0006)
+    /// the subtitle while blocking Export until a working rung is chosen. Adopted files
     /// can carry rates and channel counts the encoders refuse; a captured master is always 48 kHz
     /// stereo, for which every rung is `.available`, so the plain path is untouched.
     enum Encodability: Equatable {
@@ -142,7 +126,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// AAC-LC and HE-AAC both cap at 48 kHz; ALAC takes any rate. Above this the three AAC rungs
-    /// refuse rather than let the framework silently resample (ADR-0015).
+    /// refuse rather than let the framework silently resample.
     static let aacMaxSampleRate: Double = 48_000
     /// AAC-LC and ALAC both encode up to 8 channels (mono through 7.1). Beyond that even Master
     /// refuses — the one exotic case with no faithful rung.
@@ -165,7 +149,7 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         return reason.map { .unavailable(reason: $0) } ?? .available
     }
 
-    /// The AAC family caps at 48 kHz; ALAC is unbounded, so only the AAC rungs ask this (ADR-0015).
+    /// The AAC family caps at 48 kHz; ALAC is unbounded, so only the AAC rungs ask this.
     private static func aacRateReason(_ format: SourceFormat, codec: String) -> String? {
         format.sampleRate > aacMaxSampleRate
             ? "\(codec) can't encode above 48 kHz — this file is \(rateText(format.sampleRate))."
@@ -196,8 +180,8 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The outcome of choosing a rung in the Export picker for an adopted file (ADR-0015). The
-    /// app-wide sticky preset owns the picker while it can encode the file (issue #9); when it can't,
+    /// The outcome of choosing a rung in the Export picker for an adopted file. The
+    /// app-wide sticky preset owns the picker while it can encode the file; when it can't,
     /// the pick is a **per-file display-over** that leaves the sticky untouched, and a rung the codec
     /// can't encode is ignored. Pure and disk-free so these display-over rules are unit-tested rather
     /// than living untested inside the inspector's binding.
@@ -240,9 +224,9 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
 
 extension AudioStreamBasicDescription {
     /// Interleaved, packed Float32 at a given rate and channel count — the client format the whole
-    /// Export path speaks (ADR-0012): the encode reads and writes it, and the Loudness measurement
+    /// Export path speaks: the encode reads and writes it, and the Loudness measurement
     /// reads it, always at the source's own rate and channels so nothing is resampled or downmixed.
-    /// `nonisolated` because both of those callers run off the main actor (ADR-0022) — pure
+    /// `nonisolated` because both of those callers run off the main actor — pure
     /// arithmetic over a C struct that must never pull a worker back onto the main thread.
     nonisolated static func interleavedFloat(rate: Double, channels: Int) -> AudioStreamBasicDescription {
         let bytesPerFrame = UInt32(channels * MemoryLayout<Float>.size)

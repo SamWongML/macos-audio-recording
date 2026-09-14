@@ -1,33 +1,6 @@
-//
-//  TimelineGeometry.swift
-//  AppTape
-//
-
 import Foundation
 
 /// The lane's one mapping between points and seconds.
-///
-/// The Recording always fits the width — one point is `duration ÷ width` (ADR-0023: *"the Recording
-/// always fits the width and there is no zoom, so the interval is a function of duration and width
-/// alone"*). That sentence used to be a comment, and the code under it carried a `visible` range
-/// whose lower bound was provably `0` at all seven sites that subtracted it. This type is that
-/// sentence made structural: two scalars in, every derived quantity out.
-///
-/// **The shape is `Trim`'s, one level up.** `Trim` owns clamping in the time domain and says why:
-/// *"The fix is not a better pair of clamps: it is to clamp **once**, into an interval that is
-/// provably non-empty, and to have exactly one place that knows how."* The lane had the same
-/// problem one domain over — the conversion itself was written five times, the divisor four, and
-/// every clamp was a hand-written nested `min`/`max` rather than the `Double.clamped(to:)` `Trim`
-/// already publishes. One of those clamps was inverted; see `centredBoxX(at:boxWidth:)`.
-///
-/// `Trim` also names the hazard this type now absorbs: *"`NaN` is reachable: the lane converts a
-/// pixel to a time with `px / width * span`, and a zero-width lane during a layout pass makes that
-/// `inf * 0`."* That was defended by a `max(geo.size.width, 1)` floor written at each
-/// `GeometryReader`, and by `Trim`'s own `isFinite` guard three files away. It is an invariant of
-/// this initialiser now, so no call site carries it.
-///
-/// Explicitly `nonisolated`, like `Trim` (ADR-0022): nothing here touches UI or disk, and an
-/// unannotated type in this target is main-actor isolated. The annotation is load-bearing.
 nonisolated struct TimelineGeometry: Equatable {
 
     /// The divisor's floor. A Recording with no audio yet still has to produce a finite mapping
@@ -60,7 +33,7 @@ nonisolated struct TimelineGeometry: Equatable {
         0...Swift.max(duration.isFinite ? duration : 0, minimumSpan)
     }
 
-    /// What the lane shows. There is no zoom (ADR-0023), so it is always the whole Recording — the
+    /// What the lane shows. There is no zoom, so it is always the whole Recording — the
     /// name is `visible` rather than `whole` only because that is what a zoomable timeline would
     /// call it, and if zoom is ever wanted this is the one member that changes.
     var visibleRange: ClosedRange<Double> { Self.wholeRange(duration: duration) }
@@ -74,34 +47,18 @@ nonisolated struct TimelineGeometry: Equatable {
     // MARK: - The mapping
 
     /// Seconds at a point along the lane, **clamped to the Recording**.
-    ///
-    /// It clamps because its result leaves the view: it reaches `Trim.setStart`/`setEnd` and
-    /// `AudioPlayer.seek`, and a drag that runs past the lane's edge must land on the Recording's
-    /// end rather than past it. A non-finite point reads `0` rather than propagating — `min`/`max`
-    /// pass `NaN` through silently, which is how one bad layout pass could have written `nan` into
-    /// a Trim xattr.
     func time(atX px: Double) -> Double {
         guard px.isFinite else { return 0 }
         return (px / width * span).clamped(to: 0...duration)
     }
 
     /// The point at a time, **deliberately unclamped**.
-    ///
-    /// The asymmetry with `time(atX:)` is correct and has never been written down before. This one
-    /// must be free to leave `0...width`: a Trim handle at the very end draws at exactly `width`,
-    /// a Dropout band's width is the difference of two of these, and clamping either would collapse a
-    /// band that runs off an edge instead of clipping it. Callers that need a bounded result ask
-    /// for one by name — `centredBoxX(at:boxWidth:)`, `labelX(at:reserving:)`.
     func x(atTime t: Double) -> Double {
         guard t.isFinite else { return 0 }
         return t / span * width
     }
 
     /// The distance between two times, in points, never below `minimum`.
-    ///
-    /// The floor is the caller's: a Dropout that is sub-pixel on an always-fits-the-width lane still
-    /// has to be visible (ADR-0010), while the same Dropout inside the loupe is drawn at true width
-    /// because the loupe exists to show raw detail.
     func points(from t0: Double, to t1: Double, minimum: Double) -> Double {
         Swift.max(minimum, x(atTime: t1) - x(atTime: t0))
     }
@@ -110,18 +67,6 @@ nonisolated struct TimelineGeometry: Equatable {
 
     /// Where to centre a box of `boxWidth` points so it follows `t` without overhanging either end
     /// of the lane.
-    ///
-    /// **The interval is non-empty by construction, and that is the whole point.** This was
-    /// `min(max(boxWidth / 2, position), width - boxWidth / 2)` — a lower bound applied first and
-    /// an upper bound applied last, over an interval that is empty whenever the lane is narrower
-    /// than the box. Below `boxWidth` the upper bound won unconditionally, so the loupe stopped
-    /// tracking the drag entirely and sat at a fixed `width - boxWidth / 2`; below `boxWidth / 2`
-    /// that number is **negative**, and a 100 pt lane put the loupe 119 pt off its own leading
-    /// edge — the one thing the clamp existed to prevent. The inner `max` was dead code at every
-    /// width where it mattered.
-    ///
-    /// On a lane too narrow to avoid both edges there is no correct answer, so the box centres:
-    /// it overhangs symmetrically rather than choosing an edge to fall off.
     func centredBoxX(at t: Double, boxWidth: Double) -> Double {
         let half = Swift.min(Swift.max(0, boxWidth) / 2, width / 2)
         return x(atTime: t).clamped(to: half...(width - half))
@@ -147,10 +92,10 @@ nonisolated struct TimelineGeometry: Equatable {
 
     // MARK: - The ruler
 
-    /// The round intervals a ruler is allowed to tick at (ADR-0023).
+    /// The round intervals a ruler is allowed to tick at.
     static let tickCandidates: [Double] = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600]
 
-    /// How far apart two tick labels must be before the ladder may stop climbing (ADR-0023).
+    /// How far apart two tick labels must be before the ladder may stop climbing.
     static let minimumTickSpacing: Double = 64
 
     /// The first interval on the ladder that keeps two labels at least `minimumTickSpacing` apart.
@@ -161,11 +106,6 @@ nonisolated struct TimelineGeometry: Equatable {
     }
 
     /// Every tick time, from zero.
-    ///
-    /// **No duration means no ticks, not one tick at zero** (ADR-0031). A lone `0:00` under an
-    /// empty lane is a ruler insisting there is a timeline here; there isn't one until the file
-    /// stops growing. That is arithmetic here; *whether the duration is trustworthy yet* is the
-    /// ruler's own judgement and stays there.
     var ticks: [Double] {
         guard duration > 0 else { return [] }
         return stride(from: 0.0, through: duration, by: tickInterval).map { $0 }

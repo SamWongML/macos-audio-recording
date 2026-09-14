@@ -1,15 +1,10 @@
-//
-//  ExportEncoderTests.swift
-//  AppTapeTests
-//
-
 import AVFoundation
 import AudioToolbox
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The encode loop end to end (ADR-0012): a real CAF master in, a real `.m4a` out, decoded back and
+/// The encode loop end to end: a real CAF master in, a real `.m4a` out, decoded back and
 /// checked. These are the tests that prove the dropout actually produces files — the four presets pick
 /// the codec, the trim range is honoured to the frame, nothing is resampled or downmixed, and
 /// cancellation throws before touching the destination.
@@ -111,7 +106,7 @@ struct ExportEncoderTests {
     }
 
     /// A mono CAF master, to prove Export preserves a source channel count the encoders accept
-    /// rather than upmixing it to stereo (ADR-0015: no invented up- or downmix).
+    /// rather than upmixing it to stereo (no invented up- or downmix).
     private func writeMono(at url: URL, seconds: Double, sampleRate: Double = 44_100) throws {
         let asbd = AudioStreamBasicDescription(
             mSampleRate: sampleRate, mFormatID: kAudioFormatLinearPCM,
@@ -133,7 +128,7 @@ struct ExportEncoderTests {
         try writeMono(at: source, seconds: 1.0)
         let dest = dir.appendingPathComponent("out.m4a")
 
-        // Master/ALAC preserves the mono source exactly (ADR-0015).
+        // Master/ALAC preserves the mono source exactly.
         try ExportEncoder().run(ExportRequest(source: source, destination: dest,
                                               startFrame: 0, frameCount: 44_100, preset: .master)) { _ in }
         let out = try AVAudioFile(forReading: dest)
@@ -142,7 +137,7 @@ struct ExportEncoderTests {
     }
 
     @Test func aSubMinimumFileExportsWhole() throws {
-        // A file shorter than the 0.2 s Trim minimum Exports its whole length (ADR-0015).
+        // A file shorter than the 0.2 s Trim minimum Exports its whole length.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = dir.appendingPathComponent("blip.caf")

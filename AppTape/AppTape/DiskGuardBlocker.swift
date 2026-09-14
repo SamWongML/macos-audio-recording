@@ -1,17 +1,9 @@
-//
-//  DiskGuardRefusal.swift
-//  AppTape
-//
-
 import Foundation
 
-/// The panel's blocking message when a start is refused below the 2 GB floor (ADR-0009). It reuses
-/// the message surface ADR-0008 introduced for a denied grant — the panel carries at most one
+/// The panel's blocking message when a start is refused below the 2 GB floor. It reuses
+/// the message surface introduced for a denied grant — the panel carries at most one
 /// blocking reason at a time — naming the free space and the floor, and its action opens Finder at
 /// the Library rather than a Settings deep link, there being no pane to send the user to.
-///
-/// Kept beside `PermissionRecovery` as the panel's other pinned copy, so the exact figures and the
-/// load-bearing wording are held by a test rather than buried in a view.
 struct DiskGuardBlocker: Equatable {
     /// Free space at the moment of refusal, so the copy can name the exact figure the user sees in
     /// Finder.
@@ -21,7 +13,7 @@ struct DiskGuardBlocker: Equatable {
 
     /// Names the free space and the 2 GB floor, and ends on the retry — which is simply pressing
     /// record again, as the denial banner does. "Free space" and "floor" are the refusal's own
-    /// bytes-and-floor language, which ADR-0009 sanctions here (the Runway *clock* is never spoken as
+    /// bytes-and-floor language, which sanctions here (the Runway *clock* is never spoken as
     /// free bytes, but the floor a start is refused against is a byte count and named as one).
     var message: String {
         "Only \(Self.formatted(freeBytes)) is free. AppTape keeps a "

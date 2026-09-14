@@ -1,13 +1,8 @@
-//
-//  LoudnessCorrectionTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The single clamped gain (ADR-0013). Every expected number is worked from the fixed contract by
+/// The single clamped gain. Every expected number is worked from the fixed contract by
 /// hand — target −16 LUFS, ceiling −3 dBTP, cap +12 dB — never recomputed the way `compute` does.
 struct LoudnessCorrectionTests {
     private func measurement(_ lufs: Double?, peak: Double) -> LoudnessMeasurement {
@@ -81,7 +76,7 @@ struct LoudnessCorrectionTests {
     }
 
     @Test func composingCorrectionAndGainIsOneMultiply() {
-        // gain(a) · gain(b) == gain(a + b): stacking never double-normalizes (ADR-0013).
+        // gain(a) · gain(b) == gain(a + b): stacking never double-normalizes.
         let composed = LoudnessCorrection.linearScalar(correctionDB: 4, gainDB: 0)
                      * LoudnessCorrection.linearScalar(correctionDB: 0, gainDB: 3)
         let combined = LoudnessCorrection.linearScalar(correctionDB: 4, gainDB: 3)

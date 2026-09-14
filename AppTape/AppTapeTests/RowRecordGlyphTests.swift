@@ -1,12 +1,7 @@
-//
-//  RowRecordGlyphTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
-/// The row-as-record-control glyph state machine (issue #59): `circle` → pulsing
+/// The row-as-record-control glyph state machine: `circle` → pulsing
 /// `record.circle.fill`, with the in-flight glyph held back until bring-up passes ~500 ms.
 struct RowRecordGlyphTests {
     @Test func aRowThatIsNotRecordingIsIdle() {

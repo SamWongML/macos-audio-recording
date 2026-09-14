@@ -1,14 +1,9 @@
-//
-//  ExportCoordinatorTests.swift
-//  AppTapeTests
-//
-
 import AVFoundation
 import Testing
 import Foundation
 @testable import AppTape
 
-/// The non-modal export flow's file handling (ADR-0012). The save panel and the state machine are
+/// The non-modal export flow's file handling. The save panel and the state machine are
 /// AppKit-bound, but the two properties the acceptance criteria hinge on are testable directly: the
 /// atomic swap finishes to the chosen file, and a cancel/failure leaves that file **untouched**
 /// because the encode only ever writes the sibling temp.
@@ -61,7 +56,7 @@ struct ExportCoordinatorTests {
         try Data("ORIGINAL".utf8).write(to: dest)
 
         // A cancelled encode throws before writing a usable temp; the flow then discards the temp
-        // and never commits, so the destination is exactly as it was (ADR-0012).
+        // and never commits, so the destination is exactly as it was.
         let temp = dir.appendingPathComponent(".apptape-export-\(UUID().uuidString).m4a")
         let encoder = ExportEncoder()
         encoder.cancel()
@@ -74,18 +69,15 @@ struct ExportCoordinatorTests {
         #expect(try Data(contentsOf: dest) == Data("ORIGINAL".utf8))   // untouched
     }
 
-    /// **The gate in front of the save panel** (ADR-0046). `export` used to hold two of the five
+    /// **The gate in front of the save panel**. `export` used to hold two of the five
     /// refusal rules, in a wording of its own, and neither was reachable by a test because reaching
     /// them meant getting past `presentSavePanel`. They are `ExportReadiness`'s now, and every case
     /// here returns *before* any AppKit is touched — which is exactly what each one asserts.
-    ///
-    /// `@MainActor` at the suite: `ExportCoordinator` and `Recording` both are (ADR-0022), and this
-    /// test target does not carry the app's `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
     @MainActor
     struct Refusals {
         /// The state the running app reaches by pressing Export on the Recording being written. The
-        /// coordinator had **no rule for it at all** before ADR-0046 — the dock alone refused it,
-        /// so any other caller could have encoded a `.caf` still growing under it (ADR-0012).
+        /// coordinator had **no rule for it at all** before — the dock alone refused it,
+        /// so any other caller could have encoded a `.caf` still growing under it.
         @Test func aCapturingRecordingIsRefusedBeforeTheSavePanel() {
             let coordinator = ExportCoordinator()
             let recording = Recording.stub()
@@ -96,7 +88,7 @@ struct ExportCoordinatorTests {
             #expect(coordinator.subjectURL == recording.url)
         }
 
-        /// A `public.audio`-typed file the decoder cannot open (ADR-0015). The other rule the
+        /// A `public.audio`-typed file the decoder cannot open. The other rule the
         /// coordinator never had: it was refused only because such a file reads back as zero frames,
         /// so it was told *"Nothing in the Trim to export."* for the wrong reason. The frame count
         /// here is deliberately positive, which is what the old arrangement could not survive.
@@ -109,7 +101,7 @@ struct ExportCoordinatorTests {
         }
 
         /// The wording that used to differ: the dock said `Nothing in the Trim to export.` and this
-        /// said `There is nothing in the Trim to export.` ADR-0042's table is the one that ships.
+        /// said `There is nothing in the Trim to export.` 's table is the one that ships.
         @Test func anEmptyTrimIsRefusedInTheDocksWording() {
             let coordinator = ExportCoordinator()
             coordinator.export(recording: .stub(seconds: 0), preset: .high,
@@ -131,9 +123,9 @@ struct ExportCoordinatorTests {
             #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
         }
 
-        /// Faithful-or-refuse (ADR-0015) at the gate. The telling is the dock's **generic** sentence,
-        /// not the rung's specific one: ADR-0041 already states `AAC can't encode above 48 kHz` on the
-        /// rung above at full strength, and ADR-0042 has the dock name the situation and leave the
+        /// Faithful-or-refuse at the gate. The telling is the dock's **generic** sentence,
+        /// not the rung's specific one: already states `AAC can't encode above 48 kHz` on the
+        /// rung above at full strength, and has the dock name the situation and leave the
         /// specifics there. The specific reason is carried in the refusal, not discarded.
         @Test func anUnencodablePresetIsRefusedInTheDocksWording() {
             let coordinator = ExportCoordinator()
@@ -150,9 +142,9 @@ struct ExportCoordinatorTests {
                                              isExporting: false) == .ready)
         }
 
-        /// `guard case .idle` is **not** the one-at-a-time rule. It also holds a finished telling in
+        /// `guard case.idle` is **not** the one-at-a-time rule. It also holds a finished telling in
         /// place until it is dismissed, which is what the inspector's `Retry…` relies on — it calls
-        /// `cancel()` first, and only then does a second `export` get through.
+        /// `cancel` first, and only then does a second `export` get through.
         @Test func aCallDuringASucceededTellingIsStillSwallowed() {
             let coordinator = ExportCoordinator()
             let recording = Recording.stub()
@@ -169,18 +161,7 @@ struct ExportCoordinatorTests {
         }
     }
 
-    /// **The telling's subject is the Recording, not the path it had at launch** (issue #127).
-    ///
-    /// A rename moves the file and the store relocates the *same object* (ADR-0006/-0020), so a
-    /// coordinator that had copied the url was left naming a file that no longer exists. The dock
-    /// asks `subjectURL == recording.url` before it renders a phase, so the running Recording lost
-    /// its own progress bar and Cancel button mid-encode and read `An Export is already running.`
-    /// instead, while the encode — snapshotted at launch, and reading a file it already has open —
-    /// ran to completion invisibly. Only the *telling* ever broke, which is why the fix is the
-    /// coordinator's identity and not the view's comparison.
-    ///
-    /// `@MainActor` at the suite for the reason `Refusals` carries it: `ExportCoordinator` and
-    /// `Recording` both are (ADR-0022), and this target does not carry the app's default isolation.
+    /// **The telling's subject is the Recording, not the path it had at launch**.
     @MainActor
     struct Subject {
         /// The case in the ticket: a rename mid-Export, from the sidebar or from Finder — both end
@@ -199,7 +180,7 @@ struct ExportCoordinatorTests {
         }
 
         /// And the subject is still asked *where it is*, not *which object it is* — because the
-        /// Recording on screen may be a fresh reading of the same file (ADR-0021): a different
+        /// Recording on screen may be a fresh reading of the same file: a different
         /// object at the same path, which the user has navigated nowhere to reach. Comparing
         /// objects would take the progress bar away from that one exactly as the url took it away
         /// from a rename.

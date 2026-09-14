@@ -1,8 +1,3 @@
-//
-//  RecordingFactsTests.swift
-//  AppTapeTests
-//
-
 import Testing
 import Foundation
 @testable import AppTape
@@ -13,7 +8,7 @@ import Foundation
 @MainActor
 struct RecordingFactsTests {
 
-    // MARK: - The Source: a stored xattr over a live parse (ADR-0006)
+    // MARK: - The Source: a stored xattr over a live parse
 
     @Test func theSourceXattrWinsOverTheFilename() {
         // Capture writes the xattr, so a Recording knows where it came from even when its name
@@ -24,7 +19,7 @@ struct RecordingFactsTests {
 
     @Test func withNoXattrAGeneratedNameParsesToItsSource() {
         // A Recording that lost its attributes — a round trip through a FAT volume or a share
-        // (ADR-0006) — still knows its Source, because capture's own filename carries it.
+        // — still knows its Source, because capture's own filename carries it.
         let recording = Recording.stub("Google Chrome 2026-09-13 at 21.51.03", storedSource: nil)
         #expect(recording.source == "Google Chrome")
     }
@@ -43,7 +38,7 @@ struct RecordingFactsTests {
     }
 
     @Test func displayNameIsTheSourceUntilTheUserNamesIt() {
-        // ADR-0020: while the filename is capture's, it says nothing the row is not already
+        // while the filename is capture's, it says nothing the row is not already
         // showing, so the row shows the Source. A rename is how you say *this one is the
         // interview*, so once the name is the user's it has to show.
         #expect(Recording.stub("Google Chrome 2026-09-13 at 21.51.03").displayName == "Google Chrome")
@@ -65,7 +60,7 @@ struct RecordingFactsTests {
     }
 
     /// The xattr, by contrast, is written once at capture and never rewritten — so it survives the
-    /// rename, which is exactly what the window's subtitle wants (ADR-0020).
+    /// rename, which is exactly what the window's subtitle wants.
     @Test func aRenamedFileKeepsTheSourceItsXattrRecorded() {
         let recording = Recording.stub("Google Chrome 2026-09-13 at 21.51.03", storedSource: "Google Chrome")
         recording.relocate(to: URL(filePath: "/Library/Interview.caf"))
@@ -73,7 +68,7 @@ struct RecordingFactsTests {
         #expect(recording.displayName == "Interview")
     }
 
-    // MARK: - The window's two lines (ADR-0020, issue #73 findings 2 and 32)
+    // MARK: - The window's two lines (findings 2 and 32)
 
     @Test func theWindowSubtitleNeverRepeatsTheTitle() {
         // Generated name: the title *is* the Source, so the subtitle says when instead.
@@ -138,7 +133,7 @@ struct RecordingFactsTests {
         #expect(reader.probeCount == probes)
     }
 
-    // MARK: - Staleness, as a pure question (ADR-0021)
+    // MARK: - Staleness, as a pure question
 
     @Test func aLengthThatMatchesStillDescribesTheFile() {
         let recording = Recording.stub(byteCount: 8_000)
@@ -158,7 +153,7 @@ struct RecordingFactsTests {
         #expect(!recording.stillDescribes(byteCount: 8_000))
     }
 
-    // MARK: - The Trim a duration implies (ADR-0015, issue #7)
+    // MARK: - The Trim a duration implies
 
     @Test func aSubMinimumRecordingHasAFixedWholeTrim() {
         // A file shorter than the Trim minimum is adopted and listed with the Trim fixed to the
@@ -174,7 +169,7 @@ struct RecordingFactsTests {
 
     @Test func theTrimmedFrameRangeRoundsSecondsToFrames() {
         // The one place the seconds→frames rounding lives, so Export and the Loudness measurement
-        // read exactly the same frames (ADR-0012/-0013).
+        // read exactly the same frames (/-0013).
         let recording = Recording.stub(seconds: 10, storedTrim: Trim(start: 1, end: 2, duration: 10))
         let (start, count) = recording.trimmedFrameRange
         #expect(start == 48_000)
@@ -182,7 +177,7 @@ struct RecordingFactsTests {
     }
 
     @Test func theTrimmedFrameRangeClampsIntoTheFile() {
-        // A Trim read against a duration the file no longer has — ADR-0006 permits pointing the app
+        // A Trim read against a duration the file no longer has — permits pointing the app
         // at a shorter file of the same name — must land inside the file rather than past its end.
         let recording = Recording.stub(seconds: 5, storedTrim: Trim(start: 1, end: 19, duration: 20))
         let (start, count) = recording.trimmedFrameRange

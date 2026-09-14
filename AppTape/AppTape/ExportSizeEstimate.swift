@@ -1,17 +1,12 @@
-//
-//  ExportSizeEstimate.swift
-//  AppTape
-//
-
 import Foundation
 
-/// The live `≈ MB` size estimate shown beside the waveform (issue #9). It is a **pure function of
+/// The live `≈ MB` size estimate shown beside the waveform. It is a **pure function of
 /// the preset, the source format, and the trimmed duration** — and of nothing else. That is the
 /// whole point of the type: Loudness and Gain never enter it, so the readout is invariant to them
-/// by construction rather than by remembering not to pass them (ADR-0012). It recomputes as a Trim
+/// by construction rather than by remembering not to pass them. It recomputes as a Trim
 /// handle drags because the duration it is given changes, not because anything here is stateful.
 enum ExportSizeEstimate {
-    /// Container and header overhead over the raw codec payload (issue #9's `× 1.02`).
+    /// Container and header overhead over the raw codec payload ('s `× 1.02`).
     static let overhead = 1.02
 
     /// Estimated bytes for exporting `duration` seconds at `preset`, from a source of `format`.
@@ -33,11 +28,6 @@ enum ExportSizeEstimate {
     /// `426 KB`, `12.4 MB`, `123 MB`, `1.90 GB` — three significant figures in decimal units, with
     /// the **unit following the number** rather than pinned to MB. Public so the pre-flight refusal
     /// can name both the estimate and the free space in the same units.
-    ///
-    /// The unit used to be MB always, so a short Trim read `≈ 0.000426 MB` and a Recording still
-    /// capturing read `≈ 0.0000561 MB` — three significant figures of a number nobody can hold
-    /// (issue #73, finding 23). Three rungs is enough: nothing this app exports is measured in
-    /// bytes, and nothing is measured in terabytes.
     static func sizeText(bytes: Double) -> String {
         let bytes = max(0, bytes)
         let kilobytes = bytes / 1_000

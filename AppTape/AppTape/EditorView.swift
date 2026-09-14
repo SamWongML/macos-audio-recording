@@ -1,40 +1,35 @@
-//
-//  EditorView.swift
-//  AppTape
-//
-
 import AppKit
 import SwiftUI
 
 /// The editor window: three columns — the Library as a leading sidebar, the waveform and Trim in
-/// the middle, and a permanently-visible trailing Export inspector (issue #7, variant Q with the
+/// the middle, and a permanently-visible trailing Export inspector (variant Q with the
 /// "permanent inspector" pane treatment). It has **exactly one pane control**, the system sidebar
 /// toggle `NavigationSplitView` installs for free on the leading edge, so there is nothing to
-/// mirror on the trailing edge; `SidebarCommands()`/`InspectorCommands()` are deliberately not
-/// added (they left the app with zero windows — issue #7, ADR-0017), and the title bar drops its
+/// mirror on the trailing edge; `SidebarCommands`/`InspectorCommands` are deliberately not
+/// added (they left the app with zero windows — ), and the title bar drops its
 /// toolbar background so the waveform reads to the window's edge.
 struct EditorView: View {
-    /// The editor's one coordinator, accepted rather than reached for (ADR-0045): the store, the
+    /// The editor's one coordinator, accepted rather than reached for: the store, the
     /// selection, playback, and the two Export objects the trailing column renders.
     var model: EditorModel
-    /// What capture is doing (ADR-0045). Accepted, not reached for, and this window is the one
+    /// What capture is doing. Accepted, not reached for, and this window is the one
     /// surface that passes it on: the transport reads it here, and the lane, the brief, the sidebar
     /// row and the Export dock are each handed it below.
     var capture: any CaptureState
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
     /// Whether the Library list holds the window's keyboard focus. Written, not just read:
-    /// picking a row is what puts focus here (issue #95).
+    /// picking a row is what puts focus here.
     @FocusState private var isSidebarFocused: Bool
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
-    /// The editor honours these itself; only `PanelView` used to (issue #73, finding 15). Reduce
+    /// The editor honours these itself; only `PanelView` used to. Reduce
     /// Motion rides the token set's `.motion(_:value:)` helper rather than being read here.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// The Recordings the sidebar is actually showing. Named, rather than filtered inline, because
     /// the footer counts it too: it used to count `store.recordings`, so a query matching nothing
-    /// left an empty list under the words `44 Recordings` (issue #73, finding 35).
+    /// left an empty list under the words `44 Recordings`.
     private var matches: [Recording] {
         model.store.recordings.filter {
             query.isEmpty || $0.displayName.localizedCaseInsensitiveContains(query)
@@ -45,7 +40,7 @@ struct EditorView: View {
     private var days: [RecordingDay] { RecordingDay.group(matches) }
 
     /// Whether the Library holds anything at all — *not* whether the query matched. The detail's
-    /// empty state asks this; `matches` is the sidebar's business (ADR-0034).
+    /// empty state asks this; `matches` is the sidebar's business.
     private var hasRecordings: Bool { !model.store.recordings.isEmpty }
 
     var body: some View {
@@ -62,7 +57,7 @@ struct EditorView: View {
         .task { model.activate() }
         .onChange(of: model.vanishedTick) {
             // The open Recording was deleted or moved out from under the editor: close the
-            // window rather than hold a stale one (ADR-0006).
+            // window rather than hold a stale one.
             dismissWindow(id: AppTapeApp.editorWindowID)
         }
         .editorActivationPolicy(cancelling: model.coordinator)
@@ -70,8 +65,8 @@ struct EditorView: View {
 
     // MARK: - Sidebar (the Library)
 
-    /// **No animation scope here, deliberately** (ADR-0028). A Recording arriving in the Library
-    /// does not slide in: the Library is a view of a folder (ADR-0006), and a row animating its own
+    /// **No animation scope here, deliberately**. A Recording arriving in the Library
+    /// does not slide in: the Library is a view of a folder, and a row animating its own
     /// arrival claims the app did something when the folder merely changed. The same reasoning
     /// covers a row leaving on a Move to Trash and a row re-sorting after a rename.
     private var sidebar: some View {
@@ -86,36 +81,16 @@ struct EditorView: View {
             }
         }
         // The two selection fills are **macOS's, and both are correct**: the accent while this
-        // list is the key window's first responder, a mid grey when it is not (ADR-0029). What
+        // list is the key window's first responder, a mid grey when it is not. What
         // was wrong was the focus, not the fill — see `selectionBinding`.
         .focused($isSidebarFocused)
         // **AppKit chooses the window's first key view exactly once, and at the shipped size it
-        // chooses before this list exists** (issue #113, ADR-0029). `-[NSWindow
-        // _setUpFirstResponder]` runs from inside `_doOrderWindow:` — the moment the window is
-        // first ordered on screen — walks the key view loop and makes the first focusable view the
-        // first responder. Whether the sidebar is in that loop yet is a race against SwiftUI
-        // installing it, and the restored window frame is what settles it: a frame whose *size*
-        // differs from the one the window was created at forces a layout pass before the order-in
-        // (measured: 48 ms between `setFrame` and `makeKeyAndOrderFront`, list present, focus
-        // lands here), and a frame of the same size is a pure move that forces nothing (1 ms, list
-        // absent, the window stays its own first responder). `.defaultSize` is 1200 × 680, so the
-        // second case is the shipped one — and `_setUpFirstResponder` never runs again, which is
-        // why re-activating the app does not repair it.
-        //
-        // So the sidebar claims the focus AppKit meant it to have, from the one place that knows
-        // the list exists: the list's own appearance. This is not the rejected fix — it does not
-        // force the emphasized *fill*; it moves the keyboard, and the fill then tells the truth,
-        // exactly as ADR-0029 requires. Guarded on the search field so a reopened window cannot
-        // pull focus off a field the user is typing in.
+        // chooses before this list exists**. `-[NSWindow
         .onAppear {
             if !isSearchFocused { isSidebarFocused = true }
         }
-        // **The query's silence is the sidebar's to explain; the Library's is not** (ADR-0034).
+        // **The query's silence is the sidebar's to explain; the Library's is not**.
         // Issue #73's finding 16 put a `No Recordings` state here, and it was true, but it made
-        // the empty Library the third of three statements in one window. It is superseded, not
-        // reverted: the footer below still says `0 Recordings` in this same column, and the
-        // detail now carries the sentence. A query that matches nothing has no other pane that
-        // could name it — the field is here — so that one stays.
         .overlay {
             if matches.isEmpty && !query.isEmpty {
                 ContentUnavailableView.search(text: query)
@@ -126,14 +101,14 @@ struct EditorView: View {
         .onKeyPress(.return) {
             // Return renames the selected row, as it does in a Finder list. Ignored while the
             // search field has focus, where Return means "search", and while a rename is already
-            // open, where Return belongs to the field's own submit (ADR-0020).
+            // open, where Return belongs to the field's own submit.
             guard !isSearchFocused, model.renamingURL == nil, let selection = model.selection
             else { return .ignored }
             model.beginRename(selection)
             return .handled
         }
         // Published only while the sidebar itself has focus: this is what gates File ▸ Move to
-        // Trash, so ⌘⌫ cannot fire out of the search field or a Trim drag (ADR-0020).
+        // Trash, so ⌘⌫ cannot fire out of the search field or a Trim drag.
         .focusedValue(\.librarySidebarRecording, model.selection?.url)
         .navigationSplitViewColumnWidth(min: 232, ideal: 268, max: 360)
         .safeAreaInset(edge: .bottom) {
@@ -151,7 +126,7 @@ struct EditorView: View {
             .padding(.horizontal, 12).padding(.vertical, 7)
             // Reduce Transparency: the vibrant `.bar` becomes an opaque window background, as
             // `PanelView` has always done. The map's Notes carry this constraint forward, and the
-            // editor was honouring neither of the two (issue #73, finding 15).
+            // editor was honouring neither of the two.
             .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
                                            : AnyShapeStyle(.bar))
         }
@@ -161,12 +136,8 @@ struct EditorView: View {
     /// an `NSTableView` and SwiftUI's `List` does not: with the sidebar search field focused, a
     /// click selected the row but left first responder in the field, so the row the user was
     /// looking straight at wore the unemphasized grey and ↑/↓ and Return still belonged to the
-    /// search (issue #95, ADR-0029). Nothing else in the window released the field — not the
+    /// search. Nothing else in the window released the field — not the
     /// waveform, not the inspector — only Tab or Escape.
-    ///
-    /// This setter is the right place because it is only ever driven by the list's own selection
-    /// UI: a click or an arrow key. It is not called when a query filters the selected row out of
-    /// view, so typing in the search field keeps its focus.
     private var selectionBinding: Binding<URL?> {
         Binding(get: { model.selection?.url },
                 set: { url in
@@ -178,87 +149,22 @@ struct EditorView: View {
     // MARK: - Detail (waveform, Trim, transport) + permanent inspector
 
     /// The trailing pane is an **ordinary column of the detail view, not a SwiftUI `.inspector`**
-    /// (ADR-0024).
-    ///
-    /// `.inspector` on a `NavigationSplitView` is a broken combination, and the evidence is not
-    /// ours alone: FB20061521 (*abnormal Sidebar and Columns state*) and FB20061260 (*the sidebar
-    /// toggle disappears when the sidebar is collapsed*) were filed in September 2025, still
-    /// reproduce on macOS 26.2 RC, have no Apple reply and no published workaround — and the
-    /// reporter's own conclusion is the one issue #85 reached independently by bisection: *the bug
-    /// only occurs if the inspector modifier is present; removing it resolves the issue.*
-    ///
-    /// Three symptoms in this app were that one bug wearing three costumes: the toggle flickering
-    /// into the toolbar for a frame while the leading sidebar animated; the leading sidebar
-    /// collapsing and returning when the trailing pane was shown; and the editor aborting in
-    /// `_NSViewLayout` under any constraint it could not satisfy — too little width, too little
-    /// height, or a bottom safe-area bar (issue #85).
-    ///
-    /// **The column is permanent and it is one fixed width.** `.inspector` gave a toggle and a
-    /// drag-to-resize divider for free, and an earlier pass in this branch rebuilt both by hand
-    /// once the modifier was gone. Neither is here now: issue #7's *permanently-visible inspector*
-    /// and *exactly one pane control* both stand, reached by a different mechanism. What the pane
-    /// holds is the Export ladder and the empty state that explains its absence — nothing a window
-    /// this size needs to put away, and a hideable pane is a second pane control, a stored
-    /// preference and an animation bought for that.
+    ///.
     private var detail: some View {
         HStack(spacing: 0) {
             detailContent
                 .frame(maxWidth: .infinity)
 
-            // **No hairline.** The `Divider()` that used to be here started below the title bar and
+            // **No hairline.** The `Divider` that used to be here started below the title bar and
             // ran to the window's bottom edge, and that asymmetry is what read as wrong. Research
-            // report 0006 found the hairline is not the norm at all: Xcode's inspector boundary is a
-            // material shift reaching the literal top edge, and Finder's preview column has no
-            // boundary drawn whatsoever — the panes are told apart by background colour. So the
-            // column takes `.controlBackgroundColor`, one step off the window's own background, and
-            // where a line should start and stop stops being a question (#78).
-            // `.toolbarBackgroundVisibility(.hidden)` is untouched by this.
-            //
-            // **The step needed a scrim, because macOS ships the same value for both roles.**
-            // `.controlBackgroundColor` and `.windowBackgroundColor` are *identical* — (255,255,255)
-            // in Light, (30,30,30) in Dark — so "one step off the window's background" was true only
-            // by accident of what the detail pane actually draws. In Dark it draws (43,42,42) and the
-            // column read (28,28,28): a clean step. In Light both resolve to pure white and the step
-            // measured **zero**, so the three-column editor read as two with cards floating at the
-            // right (issue #103, finding 6). The decision was sound and was verified in one
-            // appearance only.
-            //
-            // The scrim is deliberately *not* appearance-adaptive: the column wants to be **darker**
-            // than the detail in both appearances, so it is flat black at a low alpha rather than
-            // `.quaternary`, which is white on dark and would invert the step. In Dark it moves the
-            // column two units it does not need; in Light it makes the step exist. No new colour is
-            // owned by the app — ADR-0019 keeps chrome on system colours, and this is a system colour
-            // with a measured correction, not a third entry in `Palette`.
-            //
-            // **And the fill runs to the window's top edge, which is the whole of issue #111's fix**
-            // (ADR-0035). ADR-0034 emptied this column, and what was left read as a hole in Dark. It
-            // was not the alpha: five treatments were built into the running app and measured, and
-            // the one that changed what the column *is* changed no pixel of its colour. The fill
-            // used to begin at **y = 52 pt**, below the title bar, with a square top corner against a
-            // rounded window — a rectangle stuck to the right-hand side rather than a pane. Report
-            // 0006's primary source is that Apple does the opposite: Xcode's inspector dropout starts at
-            // the literal top of the window, and WWDC20's *Adopt the new look of macOS* calls
-            // dividers reaching the top of the window the point of `fullSizeContentView` — which is
-            // why issue #7 hid the toolbar background here in the first place.
-            //
-            // Measured on the running app, this moves nothing but the top edge: Dark stays
-            // `(40,40,40)` detail against `(27,27,27)` column, Light `(255,255,255)` against
-            // `(242,242,242)`. **ADR-0032 is untouched** — the scrim is still flat black, still not
-            // appearance-adaptive.
             inspectorColumn
                 .frame(width: Self.inspectorWidth)
                 // Width only, before this. `ExportInspector` stretches so the fill covered the
                 // column; `ContentUnavailableView` does not, so with nothing selected the fill
-                // collapsed to its intrinsic ~171 pt and the `HStack` centred it — a hard-edged slab
-                // in the right-hand third and no column at all. Three states shared the cause: no
-                // selection, can't-open, and the empty Library (issue #103, finding 3).
                 .frame(maxHeight: .infinity)
                 .background {
                     // `ignoresSafeArea` on the *background*, not on the column: the ladder keeps
                     // its inset from the title bar, only the paint goes under it. And a modifier
-                    // rather than a negative padding, because the title bar's 52 pt is a safe-area
-                    // inset — a hard-coded number is how a window that ever grows a second toolbar
-                    // row gets a stripe.
                     ZStack {
                         Color(nsColor: .controlBackgroundColor)
                         Color.black.opacity(Self.inspectorColumnScrim)
@@ -273,19 +179,6 @@ struct EditorView: View {
         if let recording = model.selection {
             // **The title lives here, above the branch, and that is the fix.** The Library's own
             // name for the Recording, not the filename. The title bar used to read
-            // `Google Chrome 2026-09-04 at 21.52.43` over the subtitle `Google Chrome` — the Source
-            // stated twice, once wrapped in the on-disk naming scheme — and for a hand-adopted file
-            // with no date and no Source xattr both lines were the same string (issue #73, findings
-            // 2 and 32). `windowSubtitle` says *when* instead, and adds the Source back only once
-            // the title has stopped being it.
-            //
-            // Issue #76 (`a46c49b`) put these on `editorDetail` and `cantOpenDetail` separately;
-            // `e19c1c4` then deleted them from the editor path along with this comment while #77
-            // was reopened, so every Recording the app could actually open left the window titled
-            // `AppTape` and only the undecodable ones were named — the state nobody wants to be in
-            // was the only one with a title (issue #103, finding 4). Two copies of a modifier is
-            // what let one of them be deleted, so there is one copy now, on the branch that knows a
-            // Recording exists. Nothing selected keeps the app's own name, which is correct.
             Group {
                 if recording.isOpenable {
                     editorDetail(recording)
@@ -296,22 +189,8 @@ struct EditorView: View {
             .navigationTitle(recording.displayName)
             .navigationSubtitle(recording.windowSubtitle)
         } else {
-            // **The window's one sentence** (ADR-0034). Report 0002 found no premium comparison app
+            // **The window's one sentence**. Report 0002 found no premium comparison app
             // with a bespoke empty state and Apple's own guidance is the only grounding there is:
-            // say what to do next. So it says it — once, here, on the surface the eye lands on,
-            // while the sidebar and the trailing column stay quiet.
-            //
-            // Two states, told apart: *nothing exists* and *nothing is picked* need different
-            // sentences, and until issue #106 the app could not tell them apart, so on a first run
-            // it told the user to choose from a Library that was empty. The condition is
-            // `store.recordings`, deliberately **not** `matches`: a query that hides every row
-            // leaves the Library full, and the sidebar is already naming the query in its own
-            // overlay. One `ContentUnavailableView` rather than an if/else, so the view keeps its
-            // identity when the first Recording arrives and the sentence changes under it.
-            //
-            // No button: the action is *pick a row*, or — on an empty Library — start a capture
-            // from the menu bar, which is outside this window entirely (ADR-0017). A control
-            // invented to fill a hole is not a decision (issue #77).
             ContentUnavailableView {
                 Label(hasRecordings ? "No Recording selected" : "No Recordings",
                       systemImage: "waveform")
@@ -323,16 +202,12 @@ struct EditorView: View {
         }
     }
 
-    /// The Export ladder, or nothing. **The column never explains itself** (ADR-0034): it used to
+    /// The Export ladder, or nothing. **The column never explains itself**: it used to
     /// carry a `Nothing to export` state whose two sentences each repeated the pane beside it —
     /// `Select a Recording in the Library` next to the detail's own `No Recording selected`, and
     /// `AppTape can't decode this file` next to `cantOpenDetail`'s. Every state that has no ladder
     /// already has the detail speaking, so nothing here goes unexplained. Showing a *disabled*
     /// ladder is still wrong for the original reason — it invites a click that can never work.
-    ///
-    /// `Color.clear` rather than `EmptyView`: the caller fixes the width and stretches the height
-    /// and paints the fill behind it (issue #103, finding 3), and a column that is present but
-    /// silent has to keep its own shape.
     @ViewBuilder
     private var inspectorColumn: some View {
         if let recording = model.selection, recording.isOpenable {
@@ -347,7 +222,7 @@ struct EditorView: View {
         }
     }
 
-    /// A `public.audio`-typed file the decoder can't open (ADR-0015). It is adopted and listed so it
+    /// A `public.audio`-typed file the decoder can't open. It is adopted and listed so it
     /// doesn't silently vanish, but nothing can be done with it except delete it — no waveform, no
     /// Trim, no Export inspector.
     private func cantOpenDetail(_ recording: Recording) -> some View {
@@ -363,20 +238,7 @@ struct EditorView: View {
     }
 
     /// Top to bottom: the ruled lane, the **brief**, then air, with the transport in the bottom
-    /// safe area (issue #77, ADR-0023).
-    ///
-    /// The lane is the only element allowed to take the leftover height (ADR-0019) — but it is
-    /// **capped**, which the ADR did not say and the running app did. Uncapped, a tall window gave
-    /// it four hundred points of one silhouette; the cap turns extra height into air below the
-    /// brief instead.
-    ///
-    /// **Everything above the bar has a height that does not depend on which Recording is shown.**
-    /// The Dropout line used to be its own conditionally-present row, and the brief dropped `Captured`
-    /// or `Master` when it had nothing to put there, so the stack was between three and five rows
-    /// tall depending on the file — and because the lane takes what is left, arrowing down the
-    /// Library made the lane shrink and grow under the pointer on every keystroke. The brief is now
-    /// always exactly five rows, Dropouts among them, and the lane resolves to the same height for
-    /// every Recording at a given window size.
+    /// safe area.
     @ViewBuilder
     private func editorDetail(_ recording: Recording) -> some View {
         VStack(spacing: 0) {
@@ -396,22 +258,7 @@ struct EditorView: View {
             Spacer(minLength: Metrics.lg)
 
             // A plain last child behind the `Spacer`, laid out by hand — only its *appearance*
-            // follows the bottom-bar guidance (issue #77, ADR-0023).
-            //
-            // `ToolbarItem(placement: .bottomBar)` does not compile on macOS at all, so that
-            // route stays closed. The other two, `safeAreaInset(edge: .bottom)` and macOS 26's
-            // `safeAreaBar(edge: .bottom)`, used to **abort the app on open** — that was
-            // `.inspector` re-entering the layout pass until AppKit threw (issue #85's loop), and
-            // `.inspector` is gone (ADR-0024).
-            //
-            // **Both were measured against this code, and neither aborts any more — and neither is
-            // usable.** A bottom safe area is resolved against the **window**, not against the view
-            // it is attached to: applied here, the detail lays itself out at the full window width,
-            // runs underneath the trailing column, and the column draws on top of it. The bar spans
-            // the sidebar and the column too. The sidebar's own `.safeAreaInset` a few lines up
-            // works only because a split-view column *is* the window's width there; this pane is
-            // one part of a row and never is. So the transport stays hand-laid, for a new reason:
-            // not that the idiomatic route crashes, but that it docks to the wrong box (issue #85).
+            // follows the bottom-bar guidance.
             transport(recording)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -427,7 +274,7 @@ struct EditorView: View {
     static let inspectorColumnScrim: Double = 0.05
 
     /// The lane's height, floor and cap. The floor keeps a short window from crushing the waveform
-    /// to a line; the cap is what stops a tall one from stretching it into a smear (issue #77).
+    /// to a line; the cap is what stops a tall one from stretching it into a smear.
     static let laneMinimumHeight: Double = 168
     static let laneMaximumHeight: Double = 340
 
@@ -437,23 +284,10 @@ struct EditorView: View {
     static let clockFont = Font.system(.largeTitle, design: .monospaced)
 
     /// **The transport reserves the width of its widest readout instead of sizing to the Recording
-    /// in front of it** (issue #85). It is the same move the bar already made for `Reset`, which is
+    /// in front of it**. It is the same move the bar already made for `Reset`, which is
     /// kept in the layout when there is nothing to reset so the row does not reflow the moment a
     /// Trim is set — and the same one #78 made for the sidebar's fixed-width glyph rail and the
     /// Export dock's four same-height phases.
-    ///
-    /// Two things were wrong without it. The bar **reflowed under the pointer**: arrowing down the
-    /// Library moved `Reset` by the width of the difference between `0:07` and `20:00`, and playing
-    /// a long Recording moved it again the moment the clock crossed `10:00` and gained a digit. And
-    /// the window's width floor became **content-dependent** — the number below could not be one
-    /// number while the row it protects changed width with the file.
-    ///
-    /// The references are strings, not point values, so the widths stay in the font: a face change
-    /// moves them and nothing has to be re-measured by hand.
-    ///
-    /// `Format.time(_, precise: true)` is `m:ss.ff` below an hour and `h:mm:ss` at or above one, so
-    /// it is eight glyphs at its widest either way (`59:59.99`, `99:59:59`) — and the face is
-    /// monospaced, so any eight-glyph string reserves the same width.
     static let widestClock = "00:00.00"
 
     /// The Trim readout's two rows. `trimRangeText` is two `Format.time` figures around an en dash,
@@ -465,25 +299,11 @@ struct EditorView: View {
 
     /// The transport, pinned to the bottom of the detail pane rather than sitting under the lane.
     /// Its position no longer depends on how much the pane above it holds — the reasoning that
-    /// pinned the inspector's Export control (issue #76) — and the playhead clock lands where a
+    /// pinned the inspector's Export control — and the playhead clock lands where a
     /// clock belongs, as the largest type in the window.
-    ///
-    /// **No rule and no fill.** It had a hairline `Divider` over a `.bar` material, which is the
-    /// shape Apple's own Liquid Glass guidance names: *avoid adding custom darkening backgrounds
-    /// behind toolbars*, and glass belongs to the navigation layer, never painted onto content. A
-    /// bar earns its separation from air and alignment, not from a rule drawn across the pane.
-    /// (`ToolbarItem(placement: .bottomBar)` would be the sanctioned container and is **unavailable
-    /// on macOS** — it does not compile.) Nothing here takes glass either: ADR-0019 spends the
-    /// app's two Liquid Glass controls on this play button and the Export button, and two is the
-    /// rule.
-    ///
-    /// **This is the one place the Trim's numbers are stated.** They were on the ruler, as a span
-    /// bar *and* a readout stacked above a lane that already draws the range — three statements
-    /// inside sixty points. Here they sit beside the control that resets them, which is where the
-    /// peers put a selection's figures.
     private func transport(_ recording: Recording) -> some View {
         // A Recording whose audio is still arriving has no dependable length and nothing to play
-        // (ADR-0021): the lane says so, and the transport must not contradict it.
+        //: the lane says so, and the transport must not contradict it.
         let isStillArriving = capture.isStillArriving(recording)
         return HStack(spacing: Metrics.lg) {
             Button {
@@ -499,7 +319,7 @@ struct EditorView: View {
             .buttonBorderShape(.circle)
             .keyboardShortcut(.space, modifiers: [])
             .help("Plays the Trim, looping")
-            // The space shortcut goes inert with the button (ADR-0021).
+            // The space shortcut goes inert with the button.
             .disabled(isStillArriving)
 
             // Reserved rather than sized to the number in front of it: see `widestClock`.
@@ -523,19 +343,8 @@ struct EditorView: View {
 
             Spacer()
 
-            // **The trailing group is one group, whatever it is saying** (ADR-0027, ADR-0031).
+            // **The trailing group is one group, whatever it is saying**.
             //
-            // While this Recording is the one capturing, the figure is what has been captured so
-            // far. That slot was empty because the *listing's* length is stale — and it stays
-            // stale, because `LibraryStore` watches the directory and appending to a file does not
-            // touch its directory's mtime. But the engine knows the master's real frame count and
-            // publishes it four times a second, so there is an honest figure to state after all.
-            //
-            // It shares the Trim readout's reserved width **and its `Reset` slot**, which is the
-            // part that is easy to get wrong: written as two separate branches, the bar looked
-            // right in both states and *jumped by the width of `Reset`* at the moment capture
-            // ended — the exact reflow ADR-0027 reserved the width to prevent, reintroduced one
-            // control to the right of where it was fixed.
             if !isStillArriving || capture.isCapturing(recording) {
                 let capturing = capture.isCapturing(recording)
                 // Reserved the same way as the clock, and for the same reason. The two rows carry
@@ -551,8 +360,6 @@ struct EditorView: View {
                     VStack(alignment: .trailing, spacing: 1) {
                         // `Format.time`, **not** `RecordingController.elapsedText`. The menu bar's
                         // clock is `mm:ss` zero-padded (`00:27`) and every figure in the editor is
-                        // `m:ss` (`0:30`); the sidebar column showed both at once until this was
-                        // one function rather than two.
                         Text(capturing ? Format.time(capture.elapsed)
                                        : recording.isTrimmed ? recording.trimRangeText
                                                              : Format.time(recording.duration))
@@ -598,21 +405,11 @@ struct EditorView: View {
 // MARK: - The brief
 
 /// What this master **is**, and where it came from — the space below the lane, filled with the
-/// app's own data rather than with chrome (issue #77, ADR-0023).
-///
-/// It states nothing the Export inspector states. Length, Trim, Quality, the Loudness correction,
-/// Gain and the estimated size are all the inspector's, and a window that says the same fact in two
-/// panes is a window disagreeing with itself. What had no home anywhere was the master's provenance
-/// and shape, which is the one thing here.
-///
-/// **There is no loudness figure, and that is ADR-0013's doing, not an omission.** The obvious
-/// filler — *measures −21.4 LUFS, corrected to −16.0 at Export* — is forbidden in as many words:
-/// the figure shown is always dB, and the measured LUFS is never shown to the user. The correction
-/// in dB is already an inspector row, so there is nothing left for this block to add.
+/// app's own data rather than with chrome.
 private struct RecordingSummary: View {
     var recording: Recording
-    /// Accepted from the window (ADR-0045). The brief asks it for the growing master's figure and
-    /// for whether there is a dependable one to state at all (ADR-0031).
+    /// Accepted from the window. The brief asks it for the growing master's figure and
+    /// for whether there is a dependable one to state at all.
     var capture: any CaptureState
 
     private var isStillArriving: Bool { capture.isStillArriving(recording) }
@@ -625,36 +422,16 @@ private struct RecordingSummary: View {
             row("Captured", recording.recordedAt?.formatted(date: .long, time: .shortened) ?? "—")
             row("Format", formatText)
             // A file still being written has a byte count that is already out of date, and
-            // ADR-0021 is the whole record of what that costs. An em dash rather than a stale
-            // number — and rather than a missing row, which would change the pane's height.
-            // **What the master weighs right now, while it is being written** (ADR-0031). The em
-            // dash was right for the *listing's* byte count, which is out of date the moment it is
-            // read — but a bare `stat` of the growing file is current, so the row says what is
-            // actually on disk rather than declining to say anything. Still an em dash for a file
-            // merely arriving in the Library rather than being captured: nothing is watching that
-            // one, so there is no figure to be current about.
+            // is the whole record of what that costs. An em dash rather than a stale
             row("Master", masterText)
             // Dropouts were a separate line under the lane, present only for Recordings that have
             // any. That made the pane two different heights, and the lane above it took up the
-            // slack — so arrowing down the Library resized the waveform on every keystroke. It is
-            // a fact about the master like the four above it, so it is a row like them, and it is
-            // always here (ADR-0010, ADR-0023).
             dropoutRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The master's size, current while it is being written.
-    ///
-    /// The `stat` is still ADR-0031's, but the run performs it and publishes the result at 4 Hz
-    /// (ADR-0044), so this is an ordinary observable read. It used to be a `stat` in this body with
-    /// a discarded `recorder.elapsed` above it, whose only job was to make the body recompute
-    /// around a syscall observation cannot see. The cadence is unchanged, and deliberate: a byte
-    /// count ticking twenty times a second is ambient motion (ADR-0028), not a fact changing.
-    ///
-    /// A settled Recording states the length it was read at, not a fresh one — for a finalized
-    /// master they are the same number (ADR-0003), and for one that has grown since, ADR-0021 says
-    /// the answer is a re-adoption rather than a patched figure.
     private var masterText: String {
         if capture.isCapturing(recording) {
             let size = capture.masterByteCount?.formatted(.byteCount(style: .file))
@@ -698,13 +475,13 @@ private struct RecordingSummary: View {
         }
         // Each row states its own label and value. `.combine` collapses a two-`Text` row into one
         // element and drops the value with it — measured on the inspector's rows, which kept their
-        // label and had no `AXValueDescription` at all (issue #76).
+        // label and had no `AXValueDescription` at all.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(value)
     }
 
-    /// `48 kHz · Stereo · 32-bit float`. The captured master is Float32 (ADR-0003); an adopted file
+    /// `48 kHz · Stereo · 32-bit float`. The captured master is Float32; an adopted file
     /// states its own depth, so "float" is claimed only where it is true.
     private var formatText: String {
         let format = recording.sourceFormat
@@ -725,14 +502,7 @@ private struct RecordingSummary: View {
 /// of glyphs and duration. **The timestamp is gone** — the day is in the section header above and
 /// the exact minute is in the brief two panes to the right, so the row spends its width on the
 /// three things that tell two Recordings apart at a glance. The lane crowded because it was drawn
-/// for thirty-nine rows at once and read for one; the fix was to remove, not to arrange (ADR-0025).
-///
-/// The silhouette runs behind the row but is **masked away from both ends** — it fades in past the
-/// name and out again before the rail — so nothing is drawn under a glyph and nothing is truncated
-/// to make room for it. Drawn as a `WaveformPath` (`Shape`), because a `Canvas` inside a `List` row
-/// draws nothing on macOS 27 (issue #7). The mask keeps the waveform's drawn region at a fixed
-/// *fraction* of the row, so two Recordings' silhouettes stay comparable — the only reason it is
-/// here, given Sources repeat within a day.
+/// for thirty-nine rows at once and read for one; the fix was to remove, not to arrange.
 private struct LibraryRow: View {
     var recording: Recording
     var model: EditorModel
@@ -741,7 +511,7 @@ private struct LibraryRow: View {
     @State private var draft = ""
     @State private var blocker: LibraryLocation.NameValidationError?
     /// The row asks whether it is the one capturing, as the lane, the transport and the inspector
-    /// already do (ADR-0031) — accepted from the window, like `model` above it (ADR-0045).
+    /// already do — accepted from the window, like `model` above it.
     var capture: any CaptureState
 
     private var isRenaming: Bool { model.renamingURL == recording.url }
@@ -753,7 +523,7 @@ private struct LibraryRow: View {
     /// accent at full saturation while the sidebar has focus, with a mid grey when it does not —
     /// and `.primary` content is inverted for you on both. What macOS does *not* do is touch
     /// content that names its own colour, which is most of this row, so every colour below has to
-    /// survive **two** fills rather than one (ADR-0023).
+    /// survive **two** fills rather than one.
     private var isSelected: Bool { model.selection?.url == recording.url }
 
     var body: some View {
@@ -763,29 +533,16 @@ private struct LibraryRow: View {
         .frame(height: Metrics.sidebarRowHeight)
         // Not drawn under the name field: the silhouette is a comparison aid for browsing, and
         // behind editable text it is just noise.
-        //
-        // It **survives selection**, where ADR-0023 dropped it. Dropping it left the row the user is
-        // looking at as the one blank row in the column, with a lone scissors floating in the space
-        // the shape used to fill. The fill was never the problem — the *colour* was: `.secondary` at
-        // 50% is a mid grey, which is mud on the accent fill and nearly invisible on the grey one.
-        // Selected, the shape takes `.primary` at a lower alpha instead, which macOS inverts for
-        // both fills (ADR-0025).
-        //
-        // **Not drawn while the audio is still arriving either** (ADR-0031). The envelope is
-        // whatever was scanned off the file at its last adoption, and the silhouette draws it as
-        // *the whole Recording* — so a capturing row showed a picture of its first few seconds
-        // stretched across the row, the same lie in the sidebar that [#80] fixed in the lane. The
-        // row is not left blank by it: the live clock is what tells this one apart.
         .background(alignment: .leading) {
             if !isRenaming, recording.isOpenable, !isStillArriving { rowWaveform }
         }
         .contextMenu {
-            // Exactly three (issue #75). `Duplicate` is out of scope: a master is 1.4 GB/hour
-            // (ADR-0003), and a second Trim over one master has nowhere to live under ADR-0006.
+            // Exactly three. `Duplicate` is out of scope: a master is 1.4 GB/hour
+            //, and a second Trim over one master has nowhere to live under.
             RenameButton()
             Button("Reveal in Finder") { model.reveal(recording) }
             Divider()
-            // No confirm sheet — the Trash is the confirmation (ADR-0006).
+            // No confirm sheet — the Trash is the confirmation.
             Button("Move to Trash", role: .destructive) { model.trash(recording) }
         }
         // Feeds `RenameButton` above, and is why the menu item needs no action of its own.
@@ -795,11 +552,7 @@ private struct LibraryRow: View {
     private var content: some View {
         HStack(spacing: 8) {
             // The Source until the user names the Recording themselves, their name after
-            // (ADR-0020) — otherwise a rename would change nothing the Library shows.
-            //
-            // `fixedSize()` with the `Spacer` below is what stops the name growing into the middle
-            // of the row: the silhouette gets the space between them, rather than whatever the
-            // longest Source name happens to leave over.
+            // — otherwise a rename would change nothing the Library shows.
             Text(recording.displayName)
                 .font(Metrics.name)
                 .lineLimit(1)
@@ -812,17 +565,9 @@ private struct LibraryRow: View {
             if recording.isOpenable {
                 // A **fixed-width slot**, so the durations line up down the column whether a
                 // Recording is trimmed, has Dropouts, or neither. The glyphs are drawn at zero opacity
-                // rather than omitted: an `if` here shifted the duration by the width of a glyph on
-                // every row that differed, which is the ragged trailing lane #78 was filed about.
-                // Hidden from accessibility when invisible, so VoiceOver does not read a glyph that
-                // is not being shown.
                 HStack(spacing: 3) {
                     // `Signal` is indigo, and a focused selection fill is the accent blue: indigo on
                     // blue, so the glyph vanished on exactly the row being looked at. It fares no
-                    // better on the unfocused grey. Selected, it takes `.primary` — the behaviour
-                    // Mail's VIP star and Finder's tag dots already have. ADR-0019's
-                    // where-`Signal`-may-appear list is unchanged in substance: this is still the
-                    // scissors' colour, it simply yields where contrast would be lost (ADR-0023).
                     Image(systemName: "scissors")
                         .foregroundStyle(isSelected ? AnyShapeStyle(.primary)
                                                     : AnyShapeStyle(Palette.signal))
@@ -832,7 +577,7 @@ private struct LibraryRow: View {
 
                     // A subtle trailing glyph on Recordings with surfaced Dropouts — the Library is
                     // where a user arrives weeks later, when the moment's telling is long gone
-                    // (ADR-0010). Tertiary, not tinted: it is *no data here*, not a warning.
+                    //. Tertiary, not tinted: it is *no data here*, not a warning.
                     Image(systemName: "rectangle.dashed")
                         .foregroundStyle(isSelected ? AnyShapeStyle(.secondary)
                                                     : AnyShapeStyle(.tertiary))
@@ -844,25 +589,15 @@ private struct LibraryRow: View {
                 .font(.caption2)
                 .frame(width: 26, alignment: .trailing)
 
-                // **The capturing row counts up** (ADR-0031). `recording.duration` is the frame
+                // **The capturing row counts up**. `recording.duration` is the frame
                 // count read when the file was last listed, and the folder is not re-listed while
-                // a master grows — a `DispatchSource` on the directory does not fire for an append
-                // to a file inside it — so this sat at its adoption reading, near `0:00`, for the
-                // whole capture and only stepped when the app was next activated.
-                //
-                // Still `Format.time`, so the column keeps one number format: the engine's own
-                // `elapsedText` is the menu bar's zero-padded `mm:ss`, which put `00:27` in a
-                // column of `0:30`s.
                 Text(Format.time(isCapturing ? capture.elapsed : recording.duration))
                     .font(Metrics.metadata).monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(width: 42, alignment: .trailing)
             } else {
-                // A `public.audio`-typed file the decoder can't open (ADR-0015): listed so it
+                // A `public.audio`-typed file the decoder can't open: listed so it
                 // doesn't vanish, but marked so the user knows why it won't play — no duration, no
-                // silhouette. The extension stays even though the timestamp went: without it a
-                // `.wma` and a `.mid` rendered as byte-identical rows and the Library could not tell
-                // the user which was which (issue #73, finding 33).
                 Text("\(recording.url.pathExtension.uppercased()) · Can't open")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -872,10 +607,10 @@ private struct LibraryRow: View {
         }
     }
 
-    /// The name field, in the row rather than in a sheet — a rename is a file rename (ADR-0006),
+    /// The name field, in the row rather than in a sheet — a rename is a file rename,
     /// and Finder is the idiom the user already has for it. It takes focus as it appears, commits
     /// on Return, reverts on Escape, and on a name the Library refuses it stays open with what was
-    /// typed still in it, saying why (ADR-0020).
+    /// typed still in it, saying why.
     private var renameField: some View {
         TextField("Name", text: $draft)
             .textFieldStyle(.plain)
@@ -921,11 +656,6 @@ private struct LibraryRow: View {
     }
 
     /// Behind the row, in the window the name and the trailing rail leave between them.
-    ///
-    /// On a **selected** row it takes `.primary` at a lower alpha, which macOS renders white on a
-    /// focused selection and dark on an unfocused one — so one rule covers both fills. The alpha is
-    /// what keeps it a ground: at full strength `.primary` is the name's own colour and the shape
-    /// would compete with the text it sits behind (ADR-0025).
     private var rowWaveform: some View {
         WaveformPath(columns: recording.envelope.columns(
             over: TimelineGeometry.wholeRange(duration: recording.duration), count: 120))
@@ -952,7 +682,7 @@ private struct LibraryRow: View {
 
 extension FocusedValues {
     /// The Library sidebar's selected Recording, published **only while the sidebar has focus**.
-    /// ADR-0020 gates File ▸ Move to Trash on it: Rename and Reveal are harmless from anywhere,
+    /// gates File ▸ Move to Trash on it: Rename and Reveal are harmless from anywhere,
     /// but ⌘⌫ moves a file to the Trash, and firing that out of a search field the user is typing
     /// into is the one outcome worth spending a focus value on.
     @Entry var librarySidebarRecording: URL?
@@ -962,23 +692,14 @@ extension FocusedValues {
 // that does not ship has to be guarded where it is used as well as where it is defined.
 #if DEBUG
 
-/// The whole editor, over a Library that does not exist. It used to be `EditorView()`, which bound to
+/// The whole editor, over a Library that does not exist. It used to be `EditorView`, which bound to
 /// `EditorModel.shared` and `RecordingController.shared` and therefore listed whatever was in the real
-/// Library folder and opened Core Audio to do it (ADR-0045).
-///
-/// **Empty, and not by choice**: the preview host cannot render this window with rows in the sidebar.
-/// A populated Library dies in SwiftUI's own outline diffing —
-/// `TableViewListCore_Mac2.swift:5538`, inside `OutlineListCoordinator.recursivelyDiffRows` →
-/// `NSOutlineView.expandItem` — with three rows in one day as surely as with twelve across three, and
-/// whether the store lists before the view mounts or from its own `.task`. The running app renders
-/// the same `List` fine, and nothing here touches it. So the editor's populated states are previewed
-/// one component at a time — the lane, the brief and the dock, each in this file or its own — and
-/// this one stands for ADR-0034's empty state, which it renders correctly.
+/// Library folder and opened Core Audio to do it.
 #Preview("Editor · empty") {
     EditorView(model: .preview(recordings: []), capture: PreviewCapture.settled)
 }
 
-/// The two states of the brief's `Master` row that ADR-0031 is about, neither of which could be seen
+/// The two states of the brief's `Master` row that is about, neither of which could be seen
 /// before the brief accepted its capture state: a settled Recording states the length it was read at,
 /// and the one being written states what it weighs right now.
 #Preview("Brief · settled") {

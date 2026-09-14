@@ -1,12 +1,7 @@
-//
-//  AudioSourceTests.swift
-//  AppTapeTests
-//
-
 import Testing
 @testable import AppTape
 
-/// Source resolution maps raw HAL processes up onto the visible app (ADR-0001, issue #6):
+/// Source resolution maps raw HAL processes up onto the visible app:
 /// the prefix rule for helper bundles, the localized-name rule for WebKit's GPU process.
 struct AudioSourceTests {
     private let chrome = RunningApp(bundleID: "com.google.Chrome", name: "Google Chrome")

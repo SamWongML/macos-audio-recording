@@ -1,20 +1,9 @@
-//
-//  RowRecordGlyph.swift
-//  AppTape
-//
-
 import Foundation
 
-/// The record glyph a Source row shows, as a pure function of the recording state (issue #59).
-/// The row *is* the record control (issue #6, ADR-0011): no button chrome, just this glyph in a
+/// The record glyph a Source row shows, as a pure function of the recording state.
+/// The row *is* the record control: no button chrome, just this glyph in a
 /// reserved trailing lane the waveform insets around. `circle` at rest; a `record.circle.fill`
 /// that pulses once the row is the one recording.
-///
-/// The one subtlety the dropout captures is bring-up: the pulsing "in-flight" glyph appears only
-/// once bring-up has run past ~500 ms with no first sound, so a snappy start goes straight from
-/// `circle` to a recording glyph and never flashes a distinct in-flight state. (A first-ever
-/// Recording can block ~90 s behind the TCC prompt, ADR-0008 — there the in-flight glyph is the
-/// only sign the press was heard.)
 enum RowRecordGlyph {
     enum State: Equatable {
         /// Not this row's Recording: a plain `circle`, no pulse.
@@ -33,7 +22,7 @@ enum RowRecordGlyph {
 
     /// `isRecordingTarget` is whether this row is the Source being recorded; `sincePress` is the
     /// seconds since the record press (nil when this row is not the target); `hasFirstSound` is
-    /// whether the master has begun (the first sound heard, ADR-0016).
+    /// whether the master has begun (the first sound heard).
     static func state(isRecordingTarget: Bool, sincePress: TimeInterval?, hasFirstSound: Bool) -> State {
         guard isRecordingTarget else { return .idle }
         if hasFirstSound { return .recording }
