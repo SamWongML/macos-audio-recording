@@ -1,14 +1,10 @@
 import Foundation
 
-/// The dropout between `CaptureRun` — which owns 's six ends, 's denial inference,
-/// 's Runway guard and 's generation rule — and the world those decisions are made
-/// against: Core Audio, the file system, the notification centre and the editor window.
-
-// MARK: - Values crossing the dropout
+// MARK: - Values crossing the boundary
 
 /// What a finalized capture hands back: the file, if a Recording was made at all — nil is the
-/// arm-then-never-play case, where the Source never made a sound and nothing was saved —
-/// and the reason the Recording ended **itself**, which wins over the caller's.
+/// arm-then-never-play case, where the Source never made a sound and nothing was saved — and the
+/// reason the Recording ended itself, which wins over the caller's.
 nonisolated struct CaptureOutcome: Sendable {
     var result: CaptureResult?
     var selfEndReason: RecordingEndReason?
@@ -36,24 +32,17 @@ protocol Capturing: AnyObject {
     /// Master duration in seconds. Sits at 0 through the armed window, so the menu bar reads
     /// `00:00` until the first sound.
     var elapsed: TimeInterval { get }
-    /// The most recent chunk's linear peak, for the live meter. A dead tap reads **exactly 0**, so
+    /// The most recent chunk's linear peak, for the live meter. A dead tap reads exactly 0, so
     /// a soft-faulted Recording flattens the meter rather than freezing it.
     var currentLevel: Float { get }
-    /// The master's on-disk byte rate — the divisor in the Runway's `(free − 2 GB) ÷ rate`
-    ///. Not a constant across Recordings, which is why the guard takes it as an input.
+    /// The master's on-disk byte rate: the divisor in the Runway's `(free − 2 GB) ÷ rate`.
     var bytesPerSecond: Double { get }
-    /// Stop, drain the tail, close the file and write the Dropout mark — **off the main thread**,
+    /// Stop, drain the tail, close the file and write the Dropout mark — off the main thread,
     /// because all of that may block — then hand the outcome back on the main actor.
-    /// Also the orphan teardown: a capture the world has moved past is stopped, not discarded,
-    /// because a bring-up that never produced a first sound left no file to remove.
     func stop(then: @escaping @Sendable @MainActor (CaptureOutcome) -> Void)
-    /// Stop and finalize **on this thread**. The quit path only: the process is about to exit, so
-    /// the writer must finish draining, close the CAF and write the Dropouts xattr before
-    /// `applicationWillTerminate` returns.
+    /// Stop and finalize on this thread.
     func stopNow() -> CaptureResult?
-    /// Tear down and **remove** any file outright — the denial path. A Recording that
-    /// never held a non-zero sample is not a Recording, and putting pure silence in the Trash asks
-    /// the user a question about something they never made.
+    /// Tear down and remove any file outright — the denial path.
     func discard()
 }
 
@@ -72,9 +61,7 @@ protocol RunwayProbing {
     func freeBytesForLibraryVolume() -> Int64?
 }
 
-/// Everything the run says to the world when a Recording ends: the notification channel and the
-/// editor window (/0010). One interface, so the suite reads back *what was reported* rather
-/// than watching a notification centre it cannot drive.
+/// Everything the run says to the world when a Recording ends.
 @MainActor
 protocol CaptureReporting {
     /// Requested at the end of the first *completed* Recording, so a later unrequested end has a
@@ -91,8 +78,7 @@ protocol CaptureReporting {
 // MARK: - The production adapters
 
 /// `CaptureEngine` behind `Capturing`: this is the one place that knows the engine's teardown
-/// blocks and so belongs off the main thread. The engine is released as soon as an end is asked
-/// for, so a second end finds nothing to tear down twice.
+/// blocks and so belongs off the main thread.
 @MainActor
 final class CoreAudioCapture: Capturing {
     private var engine: CaptureEngine?
@@ -137,9 +123,7 @@ struct CoreAudioCaptureBuilder: CaptureBuilding {
         let name = source.name
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                // The hop lives here, not in the run. The engine calls these from its writer
-                // thread; each must not call back synchronously into the engine, which would
-                // deadlock that thread against its own finalization.
+                // The hop lives here, not in the run.
                 let engine = try CaptureEngine(
                     processObjectIDs: ids, sourceName: name,
                     onDenialInferred: { Task { @MainActor in hooks.onDenialInferred() } },

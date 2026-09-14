@@ -1,9 +1,6 @@
 import Foundation
 
 /// The record glyph a Source row shows, as a pure function of the recording state.
-/// The row *is* the record control: no button chrome, just this glyph in a
-/// reserved trailing lane the waveform insets around. `circle` at rest; a `record.circle.fill`
-/// that pulses once the row is the one recording.
 enum RowRecordGlyph {
     enum State: Equatable {
         /// Not this row's Recording: a plain `circle`, no pulse.

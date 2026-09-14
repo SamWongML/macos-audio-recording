@@ -1,13 +1,12 @@
 import Foundation
 
-/// Infers a denied *System Audio Recording* grant from the one symptom macOS gives, since it
-/// never reports the denial: a denied `AudioDeviceStart` returns `noErr`, installs the IOProc,
-/// and calls it at the normal rate **forever with every sample exactly zero** — byte-identical
-/// to a Source that happens to be quiet. So the denial is inferred, not read.
+/// Infers a denied *System Audio Recording* grant from the one symptom macOS gives, since it never
+/// reports the denial: a denied `AudioDeviceStart` returns `noErr`, installs the IOProc, and calls
+/// it at the normal rate forever with every sample exactly zero — byte-identical to a Source
+/// that happens to be quiet.
 nonisolated struct DenialDetector {
     /// Seconds of continuous all-zero-since-first-sample, while output runs, after which a denied
-    /// grant is inferred. Short because the denied state is unambiguous once output is confirmed
-    /// running — the app is producing sound and the tap hears none.
+    /// grant is inferred.
     static let threshold: TimeInterval = 3
 
     /// Latches true the instant denial is inferred; never clears within a Recording.
@@ -27,8 +26,7 @@ nonisolated struct DenialDetector {
         if inferred { return true }
         if disarmed { return false }
         if hasBegun {
-            // A real sound was heard: the grant exists. Disarm for good so no later silence,
-            // however long, is ever read as a denial.
+            // A real sound was heard: the grant exists.
             disarmed = true
             runStart = nil
             return false

@@ -2,9 +2,8 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// Trim and Gain ride in extended attributes on the file, so they persist across an
-/// editor reopen and travel with a Finder rename. Losing them degrades gracefully — a missing
-/// attribute reads as the full-length Trim and zero Gain.
+/// Trim and Gain ride in extended attributes on the file, so they persist across an editor reopen
+/// and travel with a Finder rename.
 @MainActor
 struct RecordingMetadataTests {
     private func tempURL() -> URL {
@@ -33,8 +32,7 @@ struct RecordingMetadataTests {
     }
 
     @Test func aTrimFromAShorterFileIsSanitisedNotTrusted() throws {
-        // permits pointing the app at a shorter file with the same name. A stored Trim
-        // that no longer fits must land on a valid Trim, never trap.
+        // permits pointing the app at a shorter file with the same name.
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 30)
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -93,8 +91,8 @@ struct RecordingMetadataTests {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 2)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        // Write junk directly under the Dropouts key — an unreadable value reads as a clean Recording,
-        // the safe direction, never a trap.
+        // Write junk directly under the Dropouts key — an unreadable value reads as a clean
+        // Recording, the safe direction, never a trap.
         let junk = "not json at all"
         junk.withCString { _ in
             _ = url.withUnsafeFileSystemRepresentation { path in

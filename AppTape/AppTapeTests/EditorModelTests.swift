@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import AppTape
 
-/// The editor's coordinator, and the rule it exists to keep: **the selection stays honest as the
-/// folder changes underneath it**.
+/// The editor's coordinator, and the rule it exists to keep: the selection stays honest as the
+/// folder changes underneath it.
 @MainActor
 struct EditorModelTests {
 
@@ -18,8 +18,7 @@ struct EditorModelTests {
         init() {
             let coordinator = ExportCoordinator()
             self.coordinator = coordinator
-            // A directory that does not exist, so `start` establishes no real folder watch. The
-            // stub ignores it and answers with what the test placed.
+            // A directory that does not exist, so `start` establishes no real folder watch.
             self.model = EditorModel(store: LibraryStore(directory: URL(filePath: "/AppTapeTests-\(UUID().uuidString)"),
                                                          reader: reader),
                                      player: AudioPlayer(),
@@ -80,9 +79,8 @@ struct EditorModelTests {
         #expect(rig.model.selection?.url == older.url)
     }
 
-    /// An empty Library selects nothing, and — the distinction that matters — does **not** report a
-    /// vanish. "Selection went nil" happens here too, and closing the window on it would close the
-    /// editor of a user who has simply deleted everything.
+    /// An empty Library selects nothing, and — the distinction that matters — does not
+    /// report a vanish.
     @Test func anEmptyLibraryDoesNotCloseTheEditor() {
         let rig = Rig()
 
@@ -94,9 +92,9 @@ struct EditorModelTests {
 
     // MARK: - What happens when the open Recording changes underneath
 
-    /// 's mechanism, and the reason `Recording` is a reference type: the store re-adopts a
-    /// file that grew, so the object the editor is rendering is now the stale one and the selection
-    /// has to rebind to the fresh object rather than to the same url.
+    /// the mechanism, and the reason `Recording` is a reference type: the store re-adopts a file
+    /// that grew, so the object the editor is rendering is now the stale one and the selection has
+    /// to rebind to the fresh object rather than to the same url.
     @Test func theOpenRecordingReAdoptedRebindsToTheFreshObject() {
         let rig = Rig()
         let opened = rig.reader.place("growing", seconds: 2)
@@ -115,15 +113,15 @@ struct EditorModelTests {
         #expect(rig.model.player.recording === grown)
     }
 
-    /// The open Recording disappearing from the folder is the one case that closes the window
-    ///: the selection goes, playback stops, a running Export is cancelled because the
-    /// editor has navigated away from it, and the tick is what the view closes on.
+    /// The open Recording disappearing from the folder is the one case that closes the window: the
+    /// selection goes, playback stops, a running Export is cancelled because the editor has
+    /// navigated away from it, and the tick is what the view closes on.
     @Test func theOpenRecordingVanishingClosesTheEditorAndCancelsTheExport() {
         let rig = Rig()
         let opened = rig.reader.place("about to vanish")
         rig.model.activate(selecting: opened.url)
-        // Parked *after* the open: opening is itself a selection change, which cancels,
-        // so an Export started before it would already be idle and the case would prove nothing.
+        // Parked *after* the open: opening is itself a selection change, which cancels, so an
+        // Export started before it would already be idle and the case would prove nothing.
         rig.coordinator.enter(phase: .running(fraction: 0.4), subject: opened)
 
         rig.reader.remove(opened)

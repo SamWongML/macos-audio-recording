@@ -12,14 +12,11 @@ protocol RecordingReading {
     func identity(of url: URL) -> FileIdentity?
 }
 
-/// The production reader: the real file system. `StubRecordingReader` in the suite is the second
-/// conformance, and the two of them are why the protocol above exists — a store reconciling a
-/// rename, a re-adoption and a vanish needs none of those to be real files.
+/// The production reader: the real file system.
 @MainActor
 struct RecordingReader: RecordingReading {
-    /// Every playable-looking file directly in `directory`, in whatever order the folder hands
-    /// them over. Hidden files and subdirectories are skipped (lists the folder, not a
-    /// tree), and a hidden name is why `LibraryLocation.rename` refuses a leading dot.
+    /// Every playable-looking file directly in `directory`, in whatever order the folder hands them
+    /// over.
     func audioFiles(in directory: URL) -> [URL] {
         let urls = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: [.isDirectoryKey],
@@ -27,15 +24,11 @@ struct RecordingReader: RecordingReading {
         return urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true }
     }
 
-    /// The adoption gate, and the one `AVAudioFile` open in the app. Nil when the file
-    /// is not audio at all — a stray `.txt`, an image — so it is simply not adopted. A file that is
-    /// typed as audio but will not decode (WMA, DRM, a corrupt header) still becomes a Recording,
-    /// in its `isOpenable == false` state, so the user can see why it did not play and delete it.
+    /// The adoption gate, and the one `AVAudioFile` open in the app.
     func adopt(_ url: URL) -> Recording? {
         guard Self.conformsToAudio(url) else { return nil }
 
-        // Read **before** the decode, not after. A file growing under us then records a length no
-        // greater than the one `frameCount` was derived from, so the next reconcile sees a mismatch
+        // Read before the decode, not after.
         let info = Self.fileStat(url)
         // Creation over modification, and why: `Recording.recordedAt`.
         let dates = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
@@ -50,7 +43,7 @@ struct RecordingReader: RecordingReading {
         let frameCount = file?.length ?? 0
         let duration = sampleRate > 0 ? Double(frameCount) / sampleRate : 0
         // A compressed adopted file may report 0 bits/channel; fall back to the master's 32 so the
-        // ALAC estimate stays sane (which presets an adopted file even offers is 's call).
+        // ALAC estimate stays sane (which presets an adopted file even offers is the call).
         let bits = file.map { Int($0.fileFormat.streamDescription.pointee.mBitsPerChannel) } ?? 0
 
         return Recording(url: url,
@@ -68,9 +61,7 @@ struct RecordingReader: RecordingReading {
                          dropouts: file == nil ? [] : RecordingMetadata.readDropouts(from: url))
     }
 
-    /// The file's data length, or nil if it cannot be stat'd. Extended attributes live outside it,
-    /// so writing the Trim, Gain or Dropouts xattr never changes this — which is what keeps 's
-    /// same-object guarantee intact for everything the app itself writes.
+    /// The file's data length, or nil if it cannot be stat'd.
     func byteCount(of url: URL) -> Int64? {
         Self.fileStat(url).map { Int64($0.st_size) }
     }
@@ -92,8 +83,7 @@ struct RecordingReader: RecordingReading {
     }
 
     /// Whether the file's UTType conforms to `public.audio` — the cheap listing half of the
-    /// adoption gate. Read from the file's own content type, so it follows the real type
-    /// rather than trusting the extension alone; a file with no resolvable audio type is not adopted.
+    /// adoption gate.
     private static func conformsToAudio(_ url: URL) -> Bool {
         guard let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType else { return false }
         return type.conforms(to: .audio)

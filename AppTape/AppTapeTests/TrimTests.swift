@@ -2,9 +2,7 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// `Trim` makes invalid states unrepresentable. These pin the three
-/// invariants — handles never cross, the 0.2 s minimum, and no `NaN` reaching the xattr —
-/// with worked examples and then with a deterministic fuzz over millions of reachable states.
+/// `Trim` makes invalid states unrepresentable.
 struct TrimTests {
     // The four failure classes the ad-hoc clamping produced, each now a valid Trim instead.
 
@@ -43,7 +41,6 @@ struct TrimTests {
     }
 
     // A Recording shorter than the minimum: the whole thing is the Trim, and it is fixed.
-    // Reachable simply by pointing the app at a shorter file with the same name.
 
     @Test func aRecordingShorterThanTheMinimumIsFixed() {
         var trim = Trim(duration: 0.1)
@@ -74,7 +71,7 @@ struct TrimTests {
 
     @Test func theSanitisingInitNeverTrapsOnGarbage() {
         // The old xattr reader checked end > start then applied min(end, duration), which could
-        // pull end below start and trap on `a...b`. This must land on a valid Trim instead.
+        // pull end below start and trap on `a...b`.
         let trim = Trim(start: 100, end: -100, duration: 5)
         #expect(trim.start <= trim.end)
         #expect(trim.range.lowerBound <= trim.range.upperBound)   // would trap if crossed
@@ -89,10 +86,7 @@ struct TrimTests {
 
     // MARK: - Fuzz
 
-    /// Every reachable Trim satisfies the invariants. A deterministic LCG drives a mix of
-    /// `setStart`/`setEnd`/`nudge`/`reset` with hostile inputs (`nan`, `±inf`, wild magnitudes)
-    /// across a range of durations, several rounds of mutation deep. Deterministic so a failure
-    /// reproduces and so the test does not depend on a clock.
+    /// Every reachable Trim satisfies the invariants.
     @Test func fuzzNeverViolatesTheInvariants() {
         let durations = [0.0, 0.05, 0.2, 0.5, 1.0, 30.0, 1200.0]
         let inputs: [Double] = [.nan, .infinity, -.infinity, -1e18, 1e18, -5, -0.3, -0.05,

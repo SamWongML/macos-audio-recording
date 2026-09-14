@@ -12,8 +12,8 @@ nonisolated struct CaptureResult: Sendable {
 }
 
 /// Drives one Recording end to end: it owns the tap, a non-realtime writer thread, the
-/// observation→decision reducer, and the lazily-created CAF master, and it holds off idle
-/// system sleep for the Recording's lifetime.
+/// observation→decision reducer, and the lazily-created CAF master, and it holds off idle system
+/// sleep for the Recording's lifetime.
 nonisolated final class CaptureEngine: @unchecked Sendable {
     let sampleRate: Double
     private let channels: Int
@@ -38,38 +38,26 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     private var activityToken: (any NSObjectProtocol)?
 
     /// Invoked at most once, from the writer thread, when a denied grant is inferred.
-    /// Passed in at init so it is set before the writer thread starts (no cross-thread race) and
-    /// never written again. It hops to the main actor and tears the engine down via `discard`;
-    /// it must not call back synchronously into the engine, which would deadlock the writer thread
-    /// against its own `finished` wait.
     private let onDenialInferred: (@Sendable () -> Void)?
 
     /// Invoked at most once, from the writer thread, when the master file is created at the first
-    /// sound — so the shell can learn which Library file is currently growing and refuse to export
-    /// it (the capturing Recording is not itself exportable). Best-effort like the denial
-    /// hook; it hops to the main actor and must not call back synchronously into the engine.
+    /// sound — so the shell can learn which Library file is currently growing and refuse to
+    /// export it (the capturing Recording is not itself exportable).
     private let onMasterCreated: (@Sendable (URL) -> Void)?
 
     /// Invoked at most once, from the writer thread after the file is finalized, when the Recording
-    /// **ended itself** — recovery exhausted, a format mismatch, a >30 s gap (the sleep end by
+    /// ended itself — recovery exhausted, a format mismatch, a >30 s gap (the sleep end by
     /// another route), or a write failing with the disk full (ENOSPC, the guard firing late between
-    /// polls). One of the four unrequested ends. Best-effort; it hops to the
-    /// main actor, which then reclaims the finalized file via `stop` and notifies. It must not call
-    /// back synchronously into the engine.
+    /// polls).
     private let onEnded: (@Sendable (RecordingEndReason) -> Void)?
 
-    /// Master frames committed so far, published by the writer thread for the main-thread
-    /// timer. Sits at 0 through the armed window, so the timer reads `00:00` until the first
-    /// sound. Once begun it counts padded Dropouts too, so the timeline stays wall-clock true.
+    /// Master frames committed so far, published by the writer thread for the main-thread timer.
     private let publishedFrames = Atomic<Int>(0)
     var masterFrameCount: Int { publishedFrames.load(ordering: .acquiring) }
     var elapsed: TimeInterval { sampleRate > 0 ? Double(masterFrameCount) / sampleRate : 0 }
 
     /// The most recent drained chunk's peak absolute sample (linear), published by the writer
-    /// thread for the panel's per-row live meter. A dead tap publishes **exactly 0** —
-    /// a soft-fault all-zero chunk carries a zero peak, and a famine (no callbacks) publishes 0 for
-    /// the empty drain — so the meter reads zero rather than a stale ghost. Stored as Float bits in
-    /// an atomic; written here, read on the main actor.
+    /// thread for the panel's per-row live meter.
     private let publishedLevelBits = Atomic<UInt32>(0)
     var currentLevel: Float { Float(bitPattern: publishedLevelBits.load(ordering: .acquiring)) }
 
@@ -78,9 +66,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     private var lastLevelPublishedAt: TimeInterval = 0
 
     /// The master's on-disk byte rate, the divisor in the Runway guard's `(free − 2 GB) ÷ rate`
-    ///. The master is interleaved Float32 (`CAFMasterWriter`), so the rate is
-    /// `channels × 4 bytes × sampleRate` — fixed at creation but not a constant across Recordings,
-    /// which is exactly why the guard takes it as an input rather than assuming 48 kHz stereo.
+    ///.
     var bytesPerSecond: Double { Double(channels * MemoryLayout<Float>.size) * sampleRate }
 
     // Writer-thread-only state. Reached by the main thread only after `finished` is signalled.
@@ -92,9 +78,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     /// The soft/hard fault policy.
     private var fault = FaultReducer()
 
-    /// Frames drained from the **current** tap's ring, for correlating host-time marks. Reset to 0
-    /// on every rebuild, because a new tap's ring numbering restarts at 0; the absolute host time in
-    /// the marks carries the gap across the rebuild instead.
+    /// Frames drained from the current tap's ring, for correlating host-time marks.
     private var tapConsumedFrames = 0
     /// The most recent host-time mark not past the frame being written — the interpolation reference.
     private var refMark: TimestampRing.Mark?
@@ -120,9 +104,8 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     /// healthy tap does under any load.
     private static let famineWindow: TimeInterval = 0.5
 
-    /// Arms capture: holds the idle-sleep token, creates and starts the tap (blocking, may
-    /// raise the TCC prompt — call off the main thread), and spins up the writer thread. No
-    /// file yet: the master is created lazily at the first sound.
+    /// Arms capture: holds the idle-sleep token, creates and starts the tap (blocking, may raise
+    /// the TCC prompt — call off the main thread), and spins up the writer thread.
     init(processObjectIDs: [AudioObjectID],
          sourceName: String,
          onDenialInferred: (@Sendable () -> Void)? = nil,
@@ -136,9 +119,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         self.onMasterCreated = onMasterCreated
         self.onEnded = onEnded
 
-        // Hold off the involuntary idle-sleep timer for the whole Recording. The
-        // system may still sleep for lid close, the Apple menu, or low battery — each an
-        // honest end — but not the idle timer the user did not choose in this moment.
+        // Hold off the involuntary idle-sleep timer for the whole Recording.
         activityToken = ProcessInfo.processInfo.beginActivity(
             options: .idleSystemSleepDisabled, reason: "AppTape is recording")
 
@@ -161,10 +142,8 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         thread.start()
     }
 
-    /// Stops the tap, lets the writer drain the tail and finalize the file, and returns what
-    /// was saved — or nil if the Source never made a sound. A left-click on the status item
-    /// lands here; the file it returns is already playable. Idempotent with a self-end: if the
-    /// writer already finalized the file on a fault, this simply reclaims the result.
+    /// Stops the tap, lets the writer drain the tail and finalize the file, and returns what was
+    /// saved — or nil if the Source never made a sound.
     @discardableResult
     func stop() -> CaptureResult? {
         shutdown()
@@ -176,12 +155,10 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     /// user stop or a still-open engine.
     var endReason: RecordingEndReason? { selfEndReason }
 
-    /// Ends the Recording as an inferred denial: tears the tap down and **removes**
-    /// any file outright — `removeItem`, not `trashItem`, because a Recording that never held a
-    /// non-zero sample is not a Recording and putting pure silence in the Trash asks the user a
-    /// question about something they never made. Head elision means the master is not
-    /// created until the first sound, so a denied Recording has produced no file to remove — this
-    /// is the belt-and-braces that guarantees no all-zero file is ever left behind regardless.
+    /// Ends the Recording as an inferred denial: tears the tap down and removes any file
+    /// outright — `removeItem`, not `trashItem`, because a Recording that never held a non-zero
+    /// sample is not a Recording and putting pure silence in the Trash asks the user a question
+    /// about something they never made.
     func discard() {
         shutdown()
         if let writer { try? FileManager.default.removeItem(at: writer.url) }
@@ -225,8 +202,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
 
             if !reducer.hasBegun {
                 // Denial watch, active only through the arming window (before the first sound) and
-                // fired at most once. Throttled off the 5 ms loop so the HAL property read is not
-                // hammered; the 3 s threshold is coarse enough that ~10 Hz sampling is ample.
+                // fired at most once.
                 if !denial.inferred, now - lastDenialCheck >= 0.1 {
                     lastDenialCheck = now
                     if denial.receive(hasBegun: false, isRunningOutput: anyRunningOutput(), now: now) {
@@ -234,20 +210,18 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
                     }
                 }
             } else {
-                // Fault recovery, from the first sound on (/0010). The reconciler already ran
-                // inside `drainOnce`; here we run the soft/hard split and any scheduled rebuild.
+                // Fault recovery, from the first sound on (/0010).
                 runFaultRecovery(produced: produced, now: now)
             }
         }
         // Tap is stopped here (not in shutdown), so it is only ever touched by this thread and the
-        // swap on rebuild never races. Then the ring only shrinks: drain whatever remains.
+        // swap on rebuild never races.
         tap.stop()
         while drainOnce(into: &scratch) > 0 {}
 
         writer?.close()
         if let writer, !reconciler.dropouts.isEmpty {
-            // The mark rides in an xattr, written once at finalize. Best-effort like the
-            // other metadata: a lost write reads back as a clean Recording.
+            // The mark rides in an xattr, written once at finalize.
             try? RecordingMetadata.writeDropouts(reconciler.dropouts, to: writer.url)
         }
         finished.signal()
@@ -258,9 +232,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     /// samples drained.
     private func drainOnce(into scratch: inout [Float]) -> Int {
         let produced = scratch.withUnsafeMutableBufferPointer { tap.ring.read(into: $0) }
-        // Publish the chunk's peak for the live meter, or hold the last one. The
-        // decision is `LevelMeter`'s, not this loop's: it is the meter's contract that is at stake,
-        // and it is the only part of this that can be tested without a tap.
+        // Publish the chunk's peak for the live meter, or hold the last one.
         let now = ProcessInfo.processInfo.systemUptime
         let peak = produced > 0 ? Self.peakMagnitude(in: scratch, sampleCount: produced) : 0
         switch LevelMeter.publication(producedSamples: produced, peak: peak,
@@ -348,10 +320,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         }
     }
 
-    /// Destroy the tap and build a fresh one, re-resolving the Source's processes. The
-    /// host-time gap this opens is padded as a `rebuild` Dropout by the reconciler. A rebuilt tap whose
-    /// format does not match the master ends the Recording at once; a rebuild that cannot even be
-    /// built is reported back as a hard fault, spending an attempt.
+    /// Destroy the tap and build a fresh one, re-resolving the Source's processes.
     private func rebuild() {
         pendingRebuildDropout = true
         tap.stop()
@@ -429,12 +398,6 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     }
 
     /// Append one slice to the master, ending the Recording as `.diskGuard` if the write fails.
-    /// After the format checks the CAF has already passed, a mid-stream write failure is the disk
-    /// full — the guard's 5 s poll firing late between polls. `AudioFile.h` has no named
-    /// disk-full status (its enum stops at `kAudioFileFileNotFoundError`), so ENOSPC arrives as a raw
-    /// pass-through status that cannot be matched cleanly; the handling is identical to the poll's, so
-    /// treating any write failure here as the floor keeps 's six ends six. Idempotent: once
-    /// the end is latched, later writes are skipped rather than re-firing it.
     private func attemptWrite(_ slice: UnsafeBufferPointer<Float>) {
         guard selfEndReason == nil, let writer else { return }
         do {
@@ -455,8 +418,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     }
 
     /// Whether any of the Source's HAL clients reports output right now — the discriminator the
-    /// denial inference and the soft fault both turn on (/0010). A plain property read, done
-    /// on this non-realtime thread, never in the IOProc.
+    /// denial inference and the soft fault both turn on (/0010).
     private func anyRunningOutput() -> Bool {
         for object in processObjectIDs {
             if (CAProperty.uint32(of: object, kAudioProcessPropertyIsRunningOutput) ?? 0) != 0 {
@@ -480,8 +442,6 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     }
 
     /// The first frame carrying any non-zero sample, or nil if the chunk is wholly silent.
-    /// This is the "first sound" detection that head elision turns on — done here, on the
-    /// non-realtime thread, never in the IOProc.
     private static func firstNonSilentFrame(in buffer: [Float], sampleCount: Int, channels: Int) -> Int? {
         var i = 0
         while i < sampleCount {

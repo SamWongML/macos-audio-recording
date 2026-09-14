@@ -2,8 +2,7 @@ import Foundation
 
 /// A stretch of silence padded into the master to stand in for audio that never reached it —
 /// because a buffer was dropped under load (`overrun`) or capture was interrupted and rebuilt
-/// (`rebuild`). It keeps the Recording wall-clock true so every Trim point set after it still
-/// lands where the audio was heard.
+/// (`rebuild`).
 nonisolated struct Dropout: Equatable, Sendable {
     nonisolated enum Cause: String, Sendable, CaseIterable {
         /// A dropped buffer: the realtime ring overran and the writer padded the hole.
@@ -18,12 +17,7 @@ nonisolated struct Dropout: Equatable, Sendable {
     var frames: Int
     var cause: Cause
 
-    /// Where the Dropout begins and ends, in seconds. **Both are positions**, which is why there is no
-    /// `seconds(sampleRate:)` beside them any more: it returned the Dropout's *length* from the same
-    /// shaped name and nothing had called it since `DropoutSurfacing` started comparing frames
-    /// directly. Three similar names, one of them measuring something else, is how a caller reaches
-    /// for the wrong one. A length in seconds is `DropoutSurfacing.totalSeconds`; nothing currently
-    /// wants one Dropout's own, and if something does it should say `duration` rather than `seconds`.
+    /// Where the Dropout begins and ends, in seconds.
     func startSeconds(sampleRate: Double) -> Double { sampleRate > 0 ? Double(start) / sampleRate : 0 }
 
     /// The lane and the loupe each drew a band from `startSeconds` to `Double(start + frames) /
@@ -33,14 +27,9 @@ nonisolated struct Dropout: Equatable, Sendable {
     }
 }
 
-/// When a Recording's Dropouts are worth telling the user about. Every Dropout is recorded; only ones a
-/// listener would notice are surfaced — a badge on something inaudible teaches the user to ignore
-/// it, which costs exactly the case it exists for.
+/// When a Recording's Dropouts are worth report the user about.
 enum DropoutSurfacing {
-    /// A single Dropout of 250 ms, **or a total of** 250 ms. The single rule catches one long gap; the
-    /// total catches fifty scattered micro-gaps that add up to real damage. It sits cleanly between
-    /// the two populations — a dropped buffer is ~10.67 ms and a rebuild Dropout is ≥ 1 s by
-    /// construction.
+    /// A single Dropout of 250 ms, or a total of 250 ms.
     static let thresholdSeconds: Double = 0.250
 
     static func totalFrames(_ dropouts: [Dropout]) -> Int { dropouts.reduce(0) { $0 + $1.frames } }
@@ -57,9 +46,7 @@ enum DropoutSurfacing {
         return Double(totalFrames(dropouts)) >= threshold
     }
 
-    /// Dropouts big enough to draw as a band in the lane — individually at or over the threshold. A
-    /// rebuild Dropout (≥ 1 s) always qualifies; a dropped-buffer Dropout (~11 ms) never does, so it is
-    /// summarised in one editor line rather than littering the lane.
+    /// Dropouts big enough to draw as a band in the lane — individually at or over the threshold.
     static func laneVisible(_ dropouts: [Dropout], sampleRate: Double) -> [Dropout] {
         guard sampleRate > 0 else { return [] }
         let threshold = thresholdSeconds * sampleRate

@@ -9,9 +9,7 @@ struct CaptureRunTests {
 
     // MARK: - Fixtures
 
-    /// The run under test with its three doubles, wired together. Explicitly `@MainActor`: a
-    /// nested type does not inherit its enclosing type's isolation, and this test target does not
-    /// carry the app's `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
+    /// The run under test with its three doubles, wired together.
     @MainActor
     struct Rig {
         let builder: FakeCaptureBuilder
@@ -55,7 +53,7 @@ struct CaptureRunTests {
                                           frameCount: 48_000, sampleRate: 48_000)
     }
 
-    /// 48 kHz stereo Float32 → 8 bytes/frame, 's worked rate.
+    /// 48 kHz stereo Float32 → 8 bytes/frame, the worked rate.
     static let rate: Double = 8 * 48_000
     /// Free bytes that put Runway exactly `seconds` from the floor.
     static func freeBytes(runway seconds: TimeInterval) -> Int64 {
@@ -102,8 +100,8 @@ struct CaptureRunTests {
     @Test func aDenialBeforeTheCaptureArrivesStillRaisesRecovery() {
         let rig = Rig()
         rig.run.start(Rig.source, now: 0)
-        // The writer thread infers denial while the main actor has not yet picked up the bring-up —
-        // the gap 's 3 s window leaves open. Nothing here may depend on `attach` having run.
+        // The writer thread infers denial while the main actor has not yet picked up the bring-up
+        // — the gap the 3 s window leaves open.
         rig.builder.hooks(forBuild: 0).onDenialInferred()
 
         #expect(rig.run.permissionRecovery)
@@ -158,8 +156,8 @@ struct CaptureRunTests {
     @Test func theFirstBringUpIsCancellableNotTimed() {
         let rig = Rig()
         rig.run.start(Rig.source, now: 0)
-        // measured 60 + 30 s of legitimate blocking while a human reads the TCC prompt, and
-        // the human is the variable — so no number may end this attempt.
+        // measured 60 + 30 s of legitimate blocking while a human reads the TCC prompt, and the
+        // human is the variable — so no number may end this attempt.
         for i in 1...(90 * 20) { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.isRecording)
         #expect(rig.builder.isBuilding())
@@ -280,8 +278,7 @@ struct CaptureRunTests {
     }
 
     @Test func aPressInsideTheAmberTierBeginsAmber() {
-        // One hour of Runway: above the floor, inside the 3-hour tier. Beginning nominal here would
-        // flash green for the seconds before the first real poll.
+        // One hour of Runway: above the floor, inside the 3-hour tier.
         let rig = Rig(freeBytes: Self.freeBytes(runway: 60 * 60))
         rig.run.start(Rig.source, now: 0)
         #expect(rig.run.runwayTier == .amber)
@@ -468,8 +465,8 @@ struct CaptureRunTests {
     }
 
     @Test func theMastersSizeCostsOneStatPerClockTickRatherThanOnePerTick() {
-        // The point of moving the read out of the view body: it happens on the clock's
-        // cadence, not on the meter's, and not once per evaluation of a `Master` row.
+        // The point of moving the read out of the view body: it happens on the clock's cadence, not
+        // on the meter's, and not once per evaluation of a `Master` row.
         let rig = Rig()
         let master = URL(filePath: "/Library/Google Chrome 2026-09-13 at 21.51.03.caf")
         rig.startCapturing()
@@ -486,8 +483,8 @@ struct CaptureRunTests {
         rig.reader.byteCounts[master] = 4_096
         rig.startCapturing()
 
-        // Armed, and the Source has made no sound: there is no file yet to weigh, so
-        // the row reads an em dash rather than a zero.
+        // Armed, and the Source has made no sound: there is no file yet to weigh, so the row reads
+        // an em dash rather than a zero.
         for i in 1...20 { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.masterByteCount == nil)
         #expect(rig.reader.probeCount == 0)
@@ -507,15 +504,14 @@ struct CaptureRunTests {
         rig.startCapturing()
         rig.builder.hooks(forBuild: 0).onMasterCreated(master)
 
-        // The reader has no length for it — the same nil a real `stat` returns when it fails. An
-        // em dash is the honest answer; `0 bytes and growing` would not be.
+        // The reader has no length for it — the same nil a real `stat` returns when it fails.
         rig.run.tick(now: 0.05)
         #expect(rig.run.masterByteCount == nil)
     }
 
     @Test func onlyTheFileBeingCapturedHasACurrentFigure() {
-        // A large file being copied into the Library is growing too, and the reader can weigh it —
-        // but nothing is watching that one, so there is no figure to be current about.
+        // A large file being copied into the Library is growing too, and the reader can weigh it
+        // — but nothing is watching that one, so there is no figure to be current about.
         let arriving = Recording.stub("Interview")
         let master = Recording.stub()
         let rig = Rig()

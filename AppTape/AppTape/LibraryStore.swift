@@ -2,11 +2,9 @@ import AppKit
 import Foundation
 import Observation
 
-/// The **Library/Recording store** dropout: the one thing the editor renders and mutates, and the
-/// one thing that touches the folder. makes the Library an ordinary visible folder with
-/// no index of its own, so Finder is a legitimate second UI and this cannot assume it owns the
-/// directory. It therefore watches the folder with a `DispatchSource` and re-reads on activation,
-/// and reconciles the result against what it already holds:
+/// The Library/Recording store dropout: the one thing the editor renders and mutates, and the
+/// one thing that touches the folder. makes the Library an ordinary visible folder with no index of
+/// its own, so Finder is a legitimate second UI and this cannot assume it owns the directory.
 @MainActor
 @Observable
 final class LibraryStore {
@@ -17,9 +15,7 @@ final class LibraryStore {
     /// test can point it at a scratch folder.
     let directory: URL
 
-    /// The one thing that reads a file. Accepted rather than created, so the reconcile below is a
-    /// pure function of what the reader says the folder holds — which is what lets the suite drive
-    /// a rename, a re-adoption and a vanish with no disk at all.
+    /// The one thing that reads a file.
     @ObservationIgnored private let reader: any RecordingReading
 
     @ObservationIgnored private var source: DispatchSourceFileSystemObject?
@@ -27,9 +23,7 @@ final class LibraryStore {
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var started = false
 
-    /// The production wiring: the real folder and the real reader. Its own initializer rather than
-    /// a default argument, because a default argument is evaluated in a nonisolated context and the
-    /// reader is main-actor isolated — the same reason `RecordingController` has two.
+    /// The production wiring: the real folder and the real reader.
     convenience init() {
         self.init(directory: LibraryLocation.directory, reader: RecordingReader())
     }
@@ -54,32 +48,24 @@ final class LibraryStore {
         }
     }
 
-    /// Re-list the folder and reconcile, preserving surviving `Recording` objects. Also (re-)opens
-    /// the watch if the folder has since come into existence — it is created lazily at the first
-    /// captured frame, so it may not have existed when `start` first ran.
+    /// Re-list the folder and reconcile, preserving surviving `Recording` objects.
     func refresh() {
         let urls = reader.audioFiles(in: directory)
-        // Newest first, by the **one** notion of a Recording's date there is. The folder
-        // used to be sorted before any Recording existed, which meant re-deriving `recordedAt`'s
+        // Newest first, by the one notion of a Recording's date there is.
         recordings = Self.reconcile(existing: recordings, urls: urls, reader: reader)
             .sorted { ($0.recordedAt ?? .distantPast) > ($1.recordedAt ?? .distantPast) }
         for recording in recordings { EnvelopeLoader.load(recording) }
         if source == nil { beginWatching() }
     }
 
-    /// Move a Recording's file to the Trash and re-list. The Library is an ordinary folder
-    ///, so this is the same `trashItem` Finder does — best-effort, and the reconcile
-    /// then drops the row. The escape hatch for a can't-open adopted file, whose only action is to
-    /// be deleted.
+    /// Move a Recording's file to the Trash and re-list.
     func trash(_ recording: Recording) {
         try? FileManager.default.trashItem(at: recording.url, resultingItemURL: nil)
         refresh()
     }
 
-    /// Rename a Recording from inside the app. already made Finder a legitimate second
-    /// UI and a rename something the store follows silently; this is that same file rename,
-    /// initiated here. The rules live in `LibraryLocation.rename`, which is pure; this
-    /// does only the impure half and hands the outcome back so the row can tell a refusal.
+    /// Rename a Recording from inside the app. already made Finder a legitimate second UI and a
+    /// rename something the store follows silently; this is that same file rename, initiated here.
     @discardableResult
     func rename(_ recording: Recording, to proposed: String) -> LibraryLocation.RenameOutcome {
         let outcome = LibraryLocation.rename(recording.url.lastPathComponent,
@@ -99,9 +85,7 @@ final class LibraryStore {
 
     // MARK: - Pure core (tested)
 
-    /// Reconcile a fresh set of `urls` against the `Recording` objects already held. Order follows
-    /// `urls` — `refresh` sorts the result — and each surviving Recording keeps
-    /// its **same object** (so its envelope and any live Trim are not discarded):
+    /// Reconcile a fresh set of `urls` against the `Recording` objects already held.
     static func reconcile(existing: [Recording], urls: [URL],
                           reader: any RecordingReading) -> [Recording] {
         let byURL = Dictionary(existing.map { ($0.url, $0) }, uniquingKeysWith: { first, _ in first })

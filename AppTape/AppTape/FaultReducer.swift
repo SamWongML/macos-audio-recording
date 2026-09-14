@@ -1,8 +1,8 @@
 import Foundation
 
 /// The Capture Engine's fault-policy dropout: a pure value reducer, off the realtime thread, that
-/// turns observations of the tap's health into "rebuild" or "end", encoding the split
-/// draws between two kinds of fault.
+/// turns observations of the tap's health into "rebuild" or "end", encoding the split draws between
+/// two kinds of fault.
 nonisolated struct FaultReducer {
     enum Action: Equatable {
         case none
@@ -39,10 +39,8 @@ nonisolated struct FaultReducer {
     mutating func poll(now: TimeInterval) -> Action { hard.poll(now: now) }
 }
 
-/// The soft (ambiguous-silence) detector: all-zero for 10 s while output runs → one rebuild, ever,
-/// per audio epoch. Never ends a Recording. A twin of `DenialDetector`, but where denial disarms
-/// permanently at the first sound, this one re-arms on every return of audio, because a
-/// mid-Recording silence is exactly what it must survive without spending anything.
+/// The soft (ambiguous-silence) detector: all-zero for 10 s while output runs → one rebuild,
+/// ever, per audio epoch.
 nonisolated struct SoftFaultDetector {
     /// Ten seconds — ten times the ~1 s restore window, so it can never race the free recovery; and
     /// longer than essentially all in-content dead air, so a podcast's pauses make no Dropout.
@@ -55,11 +53,10 @@ nonisolated struct SoftFaultDetector {
     private var firedThisEpoch = false
 
     /// Fold in one observation. Returns true exactly once per epoch — on the tick the 10 s window
-    /// closes — telling the engine to fire the one soft rebuild.
+    /// closes — report the engine to fire the one soft rebuild.
     mutating func receive(allZero: Bool, isRunningOutput: Bool, now: TimeInterval) -> Bool {
         guard allZero else {
-            // Audio is back: re-arm the one-shot and reset the window. A momentary drop resets too,
-            // which is why real dead air between phrases never accumulates toward the threshold.
+            // Audio is back: re-arm the one-shot and reset the window.
             firedThisEpoch = false
             runStart = nil
             return false
@@ -82,10 +79,9 @@ nonisolated struct SoftFaultDetector {
 }
 
 /// The hard (unambiguous) fault coordinator: three rebuild attempts spaced 1 s / 2 s / 4 s, then
-/// exhaustion ends the Recording. A format mismatch ends immediately without spending an attempt.
-/// A genuine recovery (audio flowing again) cancels a pending rebuild and restores the full budget.
+/// exhaustion ends the Recording.
 nonisolated struct HardFaultCoordinator {
-    /// The backoff before attempt 1, 2, 3. The doubling keeps restore's first refusal on this path
+    /// The backoff before attempt 1, 2, 3. The doubling keeps restore's first blocker on this path
     /// too and puts the end about 1 + 2 + 4 = 7 s after an unrecoverable fault.
     static let backoffs: [TimeInterval] = [1, 2, 4]
 
@@ -100,8 +96,8 @@ nonisolated struct HardFaultCoordinator {
         if attemptsUsed >= Self.backoffs.count {
             return .end(.recoveryExhausted)
         }
-        // Only the first fault of a sequence sets the clock; a repeated report while already waiting
-        // does not restart it.
+        // Only the first fault of a sequence sets the clock; a repeated report while already
+        // waiting does not restart it.
         if pendingFireAt == nil {
             pendingFireAt = now + Self.backoffs[attemptsUsed]
         }

@@ -37,7 +37,6 @@ struct LevelMeterTests {
     }
 
     // MARK: - Publish or hold
-    //
     // The engine drains far faster than audio arrives — a 5 ms nap on an empty ring against
 
     @Test func aRealChunkPublishesItsPeak() {
@@ -61,7 +60,7 @@ struct LevelMeterTests {
 
     @Test func aSoftFaultedTapReadsZeroImmediately() {
         // An all-zero chunk is still a chunk: `producedSamples > 0` with a zero peak, so it
-        // publishes at once rather than waiting out the hold. This is the contract's other half.
+        // publishes at once rather than waiting out the hold.
         let decision = LevelMeter.publication(producedSamples: 1024, peak: 0,
                                               now: 100, lastPublishedAt: 99.99)
         #expect(decision == .publish(0))

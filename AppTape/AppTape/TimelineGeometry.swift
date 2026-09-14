@@ -3,9 +3,7 @@ import Foundation
 /// The lane's one mapping between points and seconds.
 nonisolated struct TimelineGeometry: Equatable {
 
-    /// The divisor's floor. A Recording with no audio yet still has to produce a finite mapping
-    /// during the layout pass that draws its empty lane, and `0.001` is small enough that no real
-    /// duration is perturbed by it.
+    /// The divisor's floor.
     static let minimumSpan: Double = 0.001
 
     /// The lane's floor. A `GeometryReader` reports `0` during the first layout pass, and `px / 0`
@@ -26,16 +24,12 @@ nonisolated struct TimelineGeometry: Equatable {
 
     // MARK: - The range
 
-    /// The whole Recording as a range, floored so a divisor taken from it is never zero. Static
-    /// because the sidebar's silhouette needs the same range without a lane to measure
-    /// (`EditorView.silhouette`), and it used to spell this out for itself.
+    /// The whole Recording as a range, floored so a divisor taken from it is never zero.
     static func wholeRange(duration: Double) -> ClosedRange<Double> {
         0...Swift.max(duration.isFinite ? duration : 0, minimumSpan)
     }
 
-    /// What the lane shows. There is no zoom, so it is always the whole Recording — the
-    /// name is `visible` rather than `whole` only because that is what a zoomable timeline would
-    /// call it, and if zoom is ever wanted this is the one member that changes.
+    /// What the lane shows.
     var visibleRange: ClosedRange<Double> { Self.wholeRange(duration: duration) }
 
     /// The divisor: the visible range's length, never zero.
@@ -46,13 +40,13 @@ nonisolated struct TimelineGeometry: Equatable {
 
     // MARK: - The mapping
 
-    /// Seconds at a point along the lane, **clamped to the Recording**.
+    /// Seconds at a point along the lane, clamped to the Recording.
     func time(atX px: Double) -> Double {
         guard px.isFinite else { return 0 }
         return (px / width * span).clamped(to: 0...duration)
     }
 
-    /// The point at a time, **deliberately unclamped**.
+    /// The point at a time, deliberately unclamped.
     func x(atTime t: Double) -> Double {
         guard t.isFinite else { return 0 }
         return t / span * width
@@ -73,8 +67,7 @@ nonisolated struct TimelineGeometry: Equatable {
     }
 
     /// Where to place a label that needs `labelWidth` points of room, so the last one cannot run
-    /// off the trailing edge. Unlike the box above, a label is pulled *in* rather than centred —
-    /// it is read left-to-right from its own origin.
+    /// off the trailing edge.
     func labelX(at t: Double, reserving labelWidth: Double) -> Double {
         let reserve = Swift.min(Swift.max(0, labelWidth), width)
         return x(atTime: t).clamped(to: 0...(width - reserve))
@@ -85,9 +78,8 @@ nonisolated struct TimelineGeometry: Equatable {
     /// How near a handle a press has to land, as a fraction of the lane.
     static let grabToleranceFraction: Double = 0.02
 
-    /// The grab radius in **seconds**, taken from a fixed fraction of the lane rather than a fixed
+    /// The grab radius in seconds, taken from a fixed fraction of the lane rather than a fixed
     /// number of seconds, so the target is the same physical size whatever the Recording's length.
-    /// It is the same always-fits-the-width reasoning the tick ladder uses.
     var grabTolerance: Double { span * Self.grabToleranceFraction }
 
     // MARK: - The ruler

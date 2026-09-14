@@ -2,8 +2,7 @@ import Testing
 @testable import AppTape
 
 /// The writer reconciles host-time gaps into padded Dropouts: integer frames, cause `overrun` or
-/// `rebuild`, trusting `mHostTime` only when valid, and a gap beyond 30 s ends the Recording
-///.
+/// `rebuild`, trusting `mHostTime` only when valid, and a gap beyond 30 s ends the Recording.
 struct DropoutReconcilerTests {
     private let rate = 48_000.0
     private func seconds(ofFrames frames: Int) -> Double { Double(frames) / 48_000.0 }

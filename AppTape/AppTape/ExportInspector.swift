@@ -1,19 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// The trailing Export inspector, **permanently visible** so the window has exactly one pane
-/// control. It shows the Trim's length, the four Quality Presets with their non-editable
-/// parameters, the live `≈ MB` size estimate, and the Export control — which *is* the running
-/// progress bar while an Export runs, in place, so a two-second job never seizes a sheet.
+/// The trailing Export inspector, permanently visible so the window has exactly one pane
+/// control.
 struct ExportInspector: View {
     var recording: Recording
-    /// What capture is doing. The dock asks it two questions: whether this Recording is
-    /// the one being written — which is a refusal of its own — and whether its audio is
-    /// still arriving, which is what nothing about the Trim's length may be claimed under.
+    /// What capture is doing.
     var capture: any CaptureState
 
     /// The sticky Quality Preset and the Loudness switch. `@Bindable` because the dock
-    /// writes them: the Toggle binds `normalizeLoudness` and picking a rung assigns `preset`.
+    /// writes them: the Toggle binds `normalizeLoudness` and picking a preset row assigns `preset`.
     @Bindable var preference: ExportPreference
     /// The running Export, one at a time and app-wide.
     var coordinator: ExportCoordinator
@@ -25,12 +21,10 @@ struct ExportInspector: View {
 
     private var format: SourceFormat { recording.sourceFormat }
 
-    /// **One height for all four Export phases**, so the dock cannot move as an Export runs.
+    /// One height for all four Export phases, so the dock cannot move as an Export runs.
     private static let exportControlHeight: Double = 34
 
-    /// The sticky Quality Preset can't always encode an adopted file. When it can't, the
-    /// user's pick is a **display-over for this file only** — held here, never written to the
-    /// app-wide sticky preference — and reset when the selection changes. Nil means "use the sticky".
+    /// The sticky Quality Preset can't always encode an adopted file.
     @State private var perFilePreset: QualityPreset?
 
     /// Whether this Recording's audio is still arriving, so nothing may be claimed about its
@@ -41,10 +35,7 @@ struct ExportInspector: View {
     /// otherwise the sticky preference.
     private var effectivePreset: QualityPreset { perFilePreset ?? preference.preset }
 
-    /// Whether an Export may start, and if not, what the dock says. The decision itself is
-    /// `ExportReadiness`'s — five ordered rules over six scalars, which the dock **renders** and
-    /// `ExportCoordinator` **refuses on**, so the two cannot drift apart again. This pane used to
-    /// hold its own copy, in seconds where the coordinator counted frames.
+    /// Whether an Export may start, and if not, what the dock says.
     private var readiness: ExportReadiness {
         .evaluate(isOpenable: recording.isOpenable,
                   isCapturing: capture.isCapturing(recording),
@@ -53,10 +44,7 @@ struct ExportInspector: View {
                   isExporting: coordinator.isExporting)
     }
 
-    /// Choosing a rung. Picking one the sticky preset can encode updates the app-wide preference
-    ///; picking one it can't — an adopted file the sticky doesn't fit — is a per-file
-    /// display-over that leaves the sticky untouched. A rung the codec can't encode is
-    /// never accepted here.
+    /// Choosing a preset row.
     private func pick(_ newValue: QualityPreset) {
         switch QualityPreset.PresetPick.resolve(picking: newValue, sticky: preference.preset,
                                                 format: format) {
@@ -66,11 +54,7 @@ struct ExportInspector: View {
         }
     }
 
-    /// Re-measure whenever the Recording, its Trim, or the toggle changes. The model
-    /// dedupes an unchanged key, so binding this to observed state is cheap.
-    /// `isStillArriving` is part of the key, not just a guard on the readout: the measurement is
-    /// *skipped* while the audio arrives (— the Trim bounds it would measure are undefined),
-    /// so Stop has to be a key change or the figure would never arrive at all.
+    /// Re-measure whenever the Recording, its Trim, or the toggle changes.
     private var correctionKey: String {
         "\(recording.url.path)|\(recording.trim.lowerBound)|\(recording.trim.upperBound)|\(preference.normalizeLoudness)|\(isStillArriving)"
     }
@@ -90,43 +74,40 @@ struct ExportInspector: View {
 
     var body: some View {
         Form {
-            // **No `Selection` section.** It stated the Trim's length and range forty points from a
+            // No `Selection` section. It stated the Trim's length and range forty points from a
             // transport that already states them, in a different colour — the window disagreeing
             Section("Quality") {
-                // All four rungs and all four estimates on screen at once, so the choice is
-                // *compared* rather than revealed one at a time by a menu. This is also the only
+                // All four preset rows and all four estimates on screen at once, so the choice is
+                // *compared* rather than revealed one at a time by a menu.
                 ForEach(QualityPreset.allCases) { preset in
                     presetRow(preset)
                 }
                 sourceFormatLine
             }
 
-            // Loudness and Gain sit below the rungs: they never move an estimate
-            //, so they read after the thing they do not affect.
+            // Loudness and Gain sit below the preset rows: they never move an estimate, so they read
+            // after the thing they do not affect.
             Section("Level") {
                 loudnessAndGainControls
             }
         }
         .formStyle(.grouped)
         // The trailing column now paints its own `.controlBackgroundColor` to separate itself from
-        // the detail pane (research report 0006), so the `Form` must not paint the window background
-        // it assumes it is sitting on back over it.
+        // the detail pane (research report 0006), so the `Form` must not paint the window
+        // background it assumes it is sitting on back over it.
         .scrollContentBackground(.hidden)
-        // The Export control is **pinned to the pane's bottom edge**, not scrolled with the Form.
-        // Inside the Form its position depended on how many rows happened to be above it — a
+        // The Export control is pinned to the pane's bottom edge, not scrolled with the Form.
         .safeAreaBar(edge: .bottom) {
             exportControl
-                // Idle ⇄ running ⇄ succeeded is the state change the user most needs to notice and
-                // least directly causes — the encode finishing is the app's news, not theirs. The
+                // Idle ⇄ running ⇄ succeeded is the state change the user most needs to notice
+                // and least directly causes — the encode finishing is the app's news, not theirs.
                 .motion(Metrics.motionState, value: coordinator.phase)
                 .frame(height: Self.exportControlHeight)
                 .padding(.horizontal, Metrics.lg)
                 .padding(.vertical, Metrics.md)
                 .frame(maxWidth: .infinity)
-        // **No fill of ours, and the bar brings one of its own** (#120,
-        // amending 's "no fill and no rule" for this one control). The `Material.bar` that
         }
-        // **No `.motion` here.** Four of them used to sit on this `Form`, and that is why the
+        // No `.motion` here. Four of them used to sit on this `Form`, and that is why the
         // trailing column travelled in from the top-left of the detail pane and took seconds to
         .onChange(of: ObjectIdentifier(recording)) { perFilePreset = nil }
         .onChange(of: correctionKey, initial: true) {
@@ -139,8 +120,8 @@ struct ExportInspector: View {
         }
     }
 
-    /// One Quality Preset rung: checkmark, name, codec, and its **own** size estimate — and, on a
-    /// rung that cannot encode, the plain reason why, *below* the control rather than inside it.
+    /// One Quality Preset preset row: checkmark, name, codec, and its own size estimate — and, on a
+    /// preset row that cannot encode, the plain reason why, *below* the control rather than inside it.
     private func presetRow(_ preset: QualityPreset) -> some View {
         let encodability = preset.encodability(for: format)
         let isSelected = preset == effectivePreset
@@ -159,8 +140,7 @@ struct ExportInspector: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(preset.displayName)
                         .foregroundStyle(.primary)
-                    // The **codec and bitrate only**, not the whole `subtitle(for:)`. The rate and
-                    // channel count in that string come from the *source*, so all four rungs would
+                    // The codec and bitrate only, not the whole `subtitle(for:)`.
                     if encodability.isAvailable {
                         Text(preset.codecLabel)
                             .font(.caption)
@@ -171,16 +151,15 @@ struct ExportInspector: View {
 
                 Spacer(minLength: Metrics.xs)
 
-                // **No estimate while the audio is still arriving**. The figure is
-                // reckoned from `trimmedDuration`, which for a growing master is the last folder
+                // No estimate while the audio is still arriving.
                 if encodability.isAvailable {
                 Text(isStillArriving ? "—"
                                      : ExportSizeEstimate.text(preset: preset, format: format,
                                                                duration: recording.trimmedDuration))
                     .font(.caption).monospacedDigit()
                     .foregroundStyle(.secondary)
-                    // The estimate re-reckons as the Trim moves: a figure that ticks, which is
-                    // what `.numericText` is for. `.interpolate` used to be applied here from
+                    // The estimate re-reckons as the Trim moves: a figure that ticks, which is what
+                    // `.numericText` is for.
                     .textTransition(.numericText())
                     .motion(Metrics.motionState, value: recording.trimmedDuration)
                 }
@@ -192,7 +171,7 @@ struct ExportInspector: View {
         .opacity(encodability.isAvailable ? 1 : 0.5)
         .help(encodability.reason ?? "")
         // Not `readAloud`: this is a button, and collapsing it to a label/value pair the way an
-        // inspector *row* wants would cost the button trait. The rung keeps its trait, states the
+        // inspector *row* wants would cost the button trait.
         .accessibilityLabel(preset.displayName)
         .accessibilityValue([encodability.reason ?? preset.codecLabel,
                              isStillArriving ? "size not yet known"
@@ -201,8 +180,7 @@ struct ExportInspector: View {
                                 .joined(separator: ", "))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
 
-            // The refusal, at full strength, outside everything that dims. Indented to the name's
-            // own left edge — 12 pt of checkmark slot plus the `HStack`'s spacing — so it still
+            // The blocker, at full strength, outside everything that dims.
             if let reason = encodability.reason {
                 Text(reason)
                     .font(.caption)
@@ -214,12 +192,12 @@ struct ExportInspector: View {
         }
     }
 
-    /// The leading slot every rung reserves for its checkmark, shared by the mark and by the
-    /// indent that keeps an unencodable rung's reason aligned under the preset's name.
+    /// The leading slot every preset row reserves for its checkmark, shared by the mark and by the
+    /// indent that keeps an unencodable preset row's reason aligned under the preset's name.
     private static let checkmarkSlotWidth: CGFloat = 12
 
-    /// The rate and channel count Export carries through untouched, said **once**: they are the
-    /// source's, identical on every rung, and asks for them to be visible, not repeated.
+    /// The rate and channel count Export carries through untouched, said once: they are the
+    /// source's, identical on every preset row, and asks for them to be visible, not repeated.
     private var sourceFormatLine: some View {
         Text(effectivePreset.subtitle(for: format)
             .replacingOccurrences(of: "\(effectivePreset.codecLabel) · ", with: "")
@@ -267,11 +245,9 @@ struct ExportInspector: View {
         }
     }
 
-    /// The Correction row in words. The rendered readout is a `VStack` of a figure and an optional
-    /// caption, which accessibility would otherwise publish as two loose `AXStaticText`s beside the
-    /// label instead of one row that reads as a sentence.
+    /// The Correction row in words.
     private var correctionSpokenValue: String {
-        // Matches the rungs' `size not yet known` while the audio arrives: what the dash means,
+        // Matches the preset rows' `size not yet known` while the audio arrives: what the dash means,
         // spoken.
         guard !isStillArriving else { return "not yet known" }
         return switch correction.state {
@@ -281,7 +257,7 @@ struct ExportInspector: View {
         }
     }
 
-    /// The correction figure, as dB and **never LUFS**: `Measuring…` until the BS.1770
+    /// The correction figure, as dB and never LUFS: `Measuring…` until the BS.1770
     /// pass resolves, then the number, with the one land-short caption beneath it when it fell short.
     @ViewBuilder
     private var correctionReadout: some View {
@@ -293,8 +269,8 @@ struct ExportInspector: View {
 
     @ViewBuilder
     private var correctionReadoutContent: some View {
-        // **No verdict while the audio is still arriving**, the same em dash the rungs'
-        // size estimates draw for the same reason. Ungated, this row re-measured on a `correctionKey`
+        // No verdict while the audio is still arriving, the same em dash the preset rows' size
+        // estimates draw for the same reason.
         if isStillArriving {
             Text(verbatim: "—").foregroundStyle(.secondary)
         } else {
@@ -324,7 +300,6 @@ struct ExportInspector: View {
     private var exportControl: some View {
         if case .refused(.stillCapturing) = readiness {
             // Its `.caf` is still growing and its Trim end is undefined until Stop.
-            // In ink, like every other sentence in this slot: `.secondary` here measured
             dockSentence(.stillCapturing)
         } else if coordinator.subjectURL == recording.url {
             switch coordinator.phase {
@@ -338,19 +313,14 @@ struct ExportInspector: View {
         }
     }
 
-    /// **The dock states a refusal; it does not wear one**. A disabled
-    /// `.borderedProminent` button is dimmed twice — the control at α ≈ 0.69 over the column's
-    /// ground and its label at a further α = 0.50 over that — which put `Export…` at
-    /// **1.75: 1 in Light** and under 3: 1 in all four measured cells. So there is no disabled
-    /// button: when an Export cannot start, the button is replaced by the sentence that says why,
-    /// which measures **12.66 / 13.87** and does not move when the window loses key.
+    /// The dock states a blocker; it does not wear one.
     @ViewBuilder
     private var exportControlOrBlocker: some View {
         if let reason = readiness.blocker { dockSentence(reason) }
         else { exportButton }
     }
 
-    /// The dock's one sentence shape, for every refusal there is. Holds the button's own box, so the
+    /// The dock's one sentence shape, for every blocker there is. Holds the button's own box, so the
     /// dock keeps the single declared height pinned and nothing above it moves.
     private func dockSentence(_ reason: ExportReadiness.Reason) -> some View {
         Label(reason.sentence, systemImage: reason.symbolName)
@@ -360,8 +330,7 @@ struct ExportInspector: View {
     }
 
     private var exportButton: some View {
-        // The width is asked for on the **label**, not on the `Button`. `.frame(maxWidth:.infinity)`
-        // on a `Button` widens the layout slot and leaves the control hugging its title inside it,
+        // The width is asked for on the label, not on the `Button`.
         Button {
             coordinator.export(recording: recording, preset: effectivePreset, capture: capture)
         } label: {
@@ -391,9 +360,8 @@ struct ExportInspector: View {
     /// occupy the same height as the idle button.
     private func succeededControl(_ url: URL) -> some View {
         HStack(spacing: Metrics.sm) {
-            // Split for the same reason as the failed phase below: one
-            // `.foregroundStyle(.green)` used to colour the checkmark *and* the word, and the word
-            // measured **2.13: 1 in Light**. The check keeps the colour, `Exported` takes ink.
+            // Split for the same reason as the failed phase below: one `.foregroundStyle(.green)`
+            // Light.
             Label {
                 Text("Exported")
                     .foregroundStyle(.primary)
@@ -411,14 +379,11 @@ struct ExportInspector: View {
         }
     }
 
-    /// The tallest phase, and so the one that sets `exportControlHeight`: two lines of reason beside
-    /// a retry. The retry steps down from prominent to plain — a failure the user has just read
-    /// is not the moment for the loudest control in the pane, and the prominent button here made
-    /// the failed phase taller than every other.
+    /// The tallest phase, and so the one that sets `exportControlHeight`: two lines of reason
+    /// beside a retry.
     private func failedControl(_ message: String) -> some View {
         HStack(spacing: Metrics.sm) {
-            // **The warning's colour belongs to its mark, not to its sentence**. One
-            // `.foregroundStyle(.orange)` used to cover the glyph *and* the message, which put the
+            // The warning's colour belongs to its mark, not to its sentence.
             Label {
                 Text(message)
                     .foregroundStyle(.primary)
@@ -440,7 +405,7 @@ struct ExportInspector: View {
 }
 
 private extension View {
-    /// One accessibility element per inspector row, carrying **both** the label and the number.
+    /// One accessibility element per inspector row, carrying both the label and the number.
     func accessibilityLabeledValue(_ label: LocalizedStringKey, _ value: String) -> some View {
         accessibilityElement(children: .ignore)
             .accessibilityLabel(label)
@@ -453,11 +418,8 @@ private extension View {
 // `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too.
 #if DEBUG
 
-/// The dock's states, and the reason the pane accepts its four collaborators rather than reaching for
-/// them. The three Export phases below need a coordinator parked in one, which the running
-/// app reaches only by starting a real Export through the save panel — so 's claim that all
-/// four phases render at **one height** is checkable here for the first time. Read them together:
-/// nothing in the column may move as the phase changes.
+/// The dock's states, and the reason the pane accepts its four collaborators rather than reaching
+/// for them.
 
 /// A pane over a Recording that does not exist, with its own defaults suite so a preview can never
 /// write the user's sticky Quality Preset.
@@ -502,10 +464,7 @@ private func previewDock(_ recording: Recording,
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
-/// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to. The
-/// message is one the app actually produces, and it is the longest of them: found the
-/// sentence shortened to fit these two `.caption` lines beside `Try Again…`, so a preview carrying a
-/// made-up longer one would be testing a straw man.
+/// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to.
 #Preview("Dock · failed") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
@@ -521,20 +480,14 @@ private func previewDock(_ recording: Recording,
                 coordinator: ExportCoordinator())
 }
 
-/// A 96 kHz adopted file against the default `high` sticky — the three AAC rungs refuse it,
-/// so the dock names the situation while each rung states its own specific reason above.
-/// **The state could only photograph with a doctored Library and a `defaults write`**; here
-/// it is one line.
+/// A 96 kHz adopted file against the default `high` sticky — the three AAC preset rows refuse it, so
+/// the dock names the situation while each preset row states its own specific reason above.
 #Preview("Dock · refused · unencodable") {
     previewDock(.stub("ZZ Probe 96k", sampleRate: 96_000), capture: PreviewCapture.settled,
                 coordinator: ExportCoordinator())
 }
 
-/// An Export running on a *different* subject. Its one route used to be — a rename
-/// mid-encode moved `recording.url` while `subjectURL` kept the old path — which closed by
-/// having the telling follow its Recording; what is left is the compound case in
-/// `ExportReadiness.Reason.alreadyRunning`. So this refusal has still never been seen in the running
-/// app, and this is where it is looked at. Parked on a Recording that is deliberately not this one.
+/// An Export running on a *different* subject.
 #Preview("Dock · refused · already running") {
     let coordinator = ExportCoordinator()
     coordinator.enter(phase: .running(fraction: 0.42), subject: .stub("Some Other Recording"))

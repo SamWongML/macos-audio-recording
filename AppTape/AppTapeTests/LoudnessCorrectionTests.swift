@@ -26,8 +26,8 @@ struct LoudnessCorrectionTests {
     }
 
     @Test func amplificationIsCappedAtTwelveDecibels() {
-        // −40 LUFS wants +24 dB but the cap holds it to +12; peak at −40 dBTP leaves the ceiling slack,
-        // so the cap — not the ceiling — is what bound it.
+        // −40 LUFS wants +24 dB but the cap holds it to +12; peak at −40 dBTP leaves the
+        // ceiling slack, so the cap — not the ceiling — is what bound it.
         let c = LoudnessCorrection.compute(for: measurement(-40, peak: -40))
         #expect(abs(c.decibels - 12.0) < 1e-9)
         #expect(c.gainResult == .amplificationCapped)

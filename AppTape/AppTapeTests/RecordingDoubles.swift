@@ -5,13 +5,10 @@ import Testing
 
 /// The `Recording.stub(…)` every suite builds its Recordings with lives in the app target now, in
 /// `PreviewFixtures.swift` under `#if DEBUG`, because the previews need the same fixture and two
-/// definitions of "an ordinary Recording" would drift apart. Nothing about its call sites
-/// changed.
+/// definitions of "an ordinary Recording" would drift apart.
 
-/// A reader over an in-memory Library: the test says what the folder holds and what each file
-/// reads as, and reads back how often it was asked. The second conformance of `RecordingReading`,
-/// and the reason that protocol exists — the store's whole job is reconciling a rename, a
-/// re-adoption and a vanish, none of which needs a real file to express.
+/// A reader over an in-memory Library: the test says what the folder holds and what each file reads
+/// as, and reads back how often it was asked.
 @MainActor
 final class StubRecordingReader: RecordingReading {
     /// The folder's contents, in listing order. `RecordingReader` returns them unordered, so a
@@ -19,7 +16,7 @@ final class StubRecordingReader: RecordingReading {
     var files: [URL] = []
     /// What each file reads as. A url listed but absent here is one the gate declines.
     var adopted: [URL: Recording] = [:]
-    /// What each file's length reads as *now* — the number 's staleness check turns on.
+    /// What each file's length reads as *now* — the number the staleness check turns on.
     /// `place` keeps it agreeing with the Recording; `grow` is what makes them disagree.
     var byteCounts: [URL: Int64] = [:]
     var identities: [URL: FileIdentity] = [:]

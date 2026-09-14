@@ -2,9 +2,8 @@ import AppKit
 import CoreAudio
 import Observation
 
-/// Scans the live HAL process table and the workspace, and resolves them into the panel's
-/// list of Sources (via the pure `SourceResolution`). Icons are attached here, at the
-/// AppKit edge, so the resolution itself stays a pure function.
+/// Scans the live HAL process table and the workspace, and resolves them into the panel's list of
+/// Sources (via the pure `SourceResolution`).
 @MainActor
 @Observable
 final class SourceModel {

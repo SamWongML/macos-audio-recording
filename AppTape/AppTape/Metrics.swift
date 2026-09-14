@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// The spacing, type and motion half of the token set. Values live here rather than
-/// inline so the views built after that ADR *inherit* the decision instead of copying it — and so
-/// two places quietly disagreeing becomes visible rather than invisible.
+/// The spacing, type and motion half of the token set.
 enum Metrics {
 
     // MARK: - Spacing
@@ -20,7 +18,7 @@ enum Metrics {
 
     // MARK: - Type
 
-    /// Wholly SF, four rungs, no light weights. Nothing goes below 11pt, though macOS permits 10.
+    /// Wholly SF, four preset rows, no light weights. Nothing goes below 11pt, though macOS permits 10.
 
     /// A Recording's name. Body/13 semibold.
     static let name = Font.body.weight(.semibold)
@@ -31,17 +29,13 @@ enum Metrics {
     /// Inspector section headers. Headline/13 bold.
     static let sectionHeader = Font.headline
 
-    /// The transport position and the Trim readouts. Body/13 with monospaced digits — the single
-    /// content-scoped departure from plain SF, and it is there so digits do not jitter as they
-    /// tick, not for flavour.
+    /// The transport position and the Trim readouts.
     static let readout = Font.body.monospacedDigit()
 
     // MARK: - Motion
 
-    /// **Motion is feedback**: something moves only to confirm an action the user just
-    /// took, or to mark a state change they must notice. There are two stops because those are two
-    /// different jobs, and a single duration gets one of them wrong — 0.25 s on a Trim handle feels
-    /// like drag, 0.12 s on an Export phase is a flicker you miss.
+    /// Motion is feedback: something moves only to confirm an action the user just took, or to
+    /// mark a state change they must notice.
 
     /// Direct manipulation: the thing under the cursor answering the cursor. Short enough to read
     /// as the control being *stiff* rather than as an animation playing.
@@ -51,16 +45,12 @@ enum Metrics {
     /// loudness measurement landing, a size estimate re-reckoned after a Trim.
     static let motionState = Animation.easeInOut(duration: 0.25)
 
-    /// What a suppressed animation degrades *to*. Apple's stated replacement for a movement is a
-    /// **fade**, not an instant cut, so Reduce Motion still gets a transition — it just stops
-    /// travelling.
+    /// What a suppressed animation degrades *to*.
     static let reducedMotionFade = Animation.easeInOut(duration: 0.2)
 }
 
 // MARK: - The two motion helpers
 
-// supersedes 's "Reduce Motion gets one helper, not four call sites". The
-// principle it stated is untouched and is why both of these exist: only Liquid Glass's own morph
 
 extension View {
     /// Swaps the animation, and honours Reduce Motion. Reads as `.animation(_:value:)` and behaves

@@ -1,14 +1,7 @@
 import Foundation
 
-/// A Recording's metadata rides in **extended attributes on the file itself**,
-/// so the filename stays the name and the attributes survive a Finder move or an APFS
-/// clone. Capture writes the Source; the editor writes Trim and Gain behind the same
-/// namespace, so both travel with the file and come back on the next open. Losing the xattrs
-/// degrades gracefully — the audio is the file, so a Recording that round-trips through a FAT
-/// volume or a network share arrives with its Trim reset and its Gain at zero.
-/// Explicitly `nonisolated`: the writer thread drives this, and the target's default isolation
-/// is `MainActor`. The annotation is load-bearing — dropping it silently main-actors
-/// a piece of the capture spine.
+/// A Recording's metadata rides in extended attributes on the file itself, so the filename
+/// stays the name and the attributes survive a Finder move or an APFS clone.
 nonisolated enum RecordingMetadata {
     /// The Source the Recording was captured from.
     static let sourceKey = "com.apptape.source"
@@ -16,10 +9,7 @@ nonisolated enum RecordingMetadata {
     static let trimKey = "com.apptape.trim"
     /// The hand-chosen Gain offset in dB (/#25 own its meaning; the editor only persists it).
     static let gainKey = "com.apptape.gain"
-    /// The Dropout list, a JSON array of `{start, frames, cause}` in master frames. Named
-    /// under the same `com.apptape.` namespace as the others, so it travels with the file and comes
-    /// back on the next open. (The ADR text names it `com.samwongml.apptape.dropouts`; the shipped
-    /// attributes all use the `com.apptape.` prefix, so it follows them for a single namespace.)
+    /// The Dropout list, a JSON array of `{start, frames, cause}` in master frames.
     static let dropoutsKey = "com.apptape.seams"
 
     static func writeSource(_ source: String, to url: URL) throws {
@@ -30,14 +20,13 @@ nonisolated enum RecordingMetadata {
         read(forKey: sourceKey, from: url)
     }
 
-    /// The Trim xattr is written **once on gesture-end**, never per drag frame.
+    /// The Trim xattr is written once on gesture-end, never per drag frame.
     static func writeTrim(_ trim: Trim, to url: URL) throws {
         try write("\(trim.start),\(trim.end)", forKey: trimKey, to: url)
     }
 
-    /// Hands whatever it found to `Trim`, which is the only thing that decides what a valid Trim
-    /// is — it does not validate here (the old reader's own validation could trap). A missing or
-    /// malformed attribute yields nil, so the caller falls back to the full-length Trim.
+    /// Hands whatever it found to `Trim`, which is the only thing that decides what a valid Trim is
+    /// — it does not validate here (the old reader's own validation could trap).
     static func readTrim(from url: URL, duration: Double) -> Trim? {
         guard let raw = read(forKey: trimKey, from: url) else { return nil }
         let parts = raw.split(separator: ",").compactMap { Double($0) }
@@ -65,9 +54,8 @@ nonisolated enum RecordingMetadata {
         try write(json, forKey: dropoutsKey, to: url)
     }
 
-    /// An unreadable or absent value reads as a **clean** Recording — the safe direction, and the
-    /// same graceful degradation the other attributes give. A malformed `cause` drops
-    /// that one Dropout rather than poisoning the list; a non-positive length drops it too.
+    /// An unreadable or absent value reads as a clean Recording — the safe direction, and the
+    /// same graceful degradation the other attributes give.
     static func readDropouts(from url: URL) -> [Dropout] {
         guard let raw = read(forKey: dropoutsKey, from: url),
               let data = raw.data(using: .utf8),

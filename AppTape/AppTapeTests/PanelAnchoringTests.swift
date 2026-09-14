@@ -2,9 +2,8 @@ import Testing
 import CoreGraphics
 @testable import AppTape
 
-/// The status button's frame is a claim to be checked, not trusted:
-/// `[0,0 29x0]` before the item is placed, its last frame retained while hidden,
-/// and stale duplicates just after a restore. These pin the geometry decision.
+/// The status button's frame is a claim to be checked, not trusted: `[0,0 29x0]` before the item is
+/// placed, its last frame retained while hidden, and stale duplicates just after a restore.
 struct PanelAnchoringTests {
     // A single 1440×900 primary screen, origin at (0,0).
     let mainScreen = CGRect(x: 0, y: 0, width: 1440, height: 900)

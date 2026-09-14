@@ -34,8 +34,7 @@ struct PreviewCapture: CaptureState {
 }
 
 /// A Recording with no file behind it, and the same fixture the suite uses — one definition, so a
-/// preview and a test cannot disagree about what an ordinary Recording looks like. This is what
-/// 's memberwise init bought; before it, every one of these cost a 440 Hz CAF on disk.
+/// preview and a test cannot disagree about what an ordinary Recording looks like.
 extension Recording {
     /// Stands for *unstated* in `stub(byteCount:)`, so `nil` there can mean what it means on a real
     /// file — the length could not be read — rather than "give me the default".
@@ -58,8 +57,8 @@ extension Recording {
                          frameCount: frameCount,
                          sampleRate: sampleRate,
                          isOpenable: isOpenable,
-                         // Unstated means the master's own 8 bytes a frame: interleaved
-                         // stereo Float32.
+                         // Unstated means the master's own 8 bytes a frame: interleaved stereo
+                         // Float32.
                          openedByteCount: byteCount == Recording.lengthFromFrameCount
                              ? frameCount * 8 : byteCount,
                          fileIdentity: identity,

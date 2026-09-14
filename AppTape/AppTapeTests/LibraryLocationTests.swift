@@ -42,9 +42,7 @@ struct LibraryLocationTests {
     }
 }
 
-/// Renaming a Recording from inside the app. The Library is an ordinary folder, so a
-/// rename *is* a file rename — and unlike capture, which resolves a collision silently because
-/// there is no one to ask, these rules **refuse rather than fix**.
+/// Renaming a Recording from inside the app.
 struct LibraryRenameTests {
     private func rename(_ current: String, to proposed: String, existing: [String] = [])
         -> LibraryLocation.RenameOutcome {
@@ -52,8 +50,8 @@ struct LibraryRenameTests {
     }
 
     @Test func theExtensionIsCarriedOverNotEdited() {
-        // An edited extension fails `RecordingReader.adopt`'s gate and vanishes the Recording,
-        // so the user only ever types the base name.
+        // An edited extension fails `RecordingReader.adopt`'s gate and vanishes the Recording, so
+        // the user only ever types the base name.
         #expect(rename("Google Chrome 2026-08-27 at 20.05.03.caf", to: "Interview")
                 == .rename(to: "Interview.caf"))
     }
@@ -82,8 +80,7 @@ struct LibraryRenameTests {
 
     @Test(arguments: ["Read/Write", "Notes: draft"])
     func anIllegalCharacterIsRefused(_ proposed: String) {
-        // `/` and `:` are the only two characters an APFS filename cannot hold. Capture folds them
-        // to a hyphen because a Source name is not the user's to type; a name the user typed is.
+        // `/` and `:` are the only two characters an APFS filename cannot hold.
         guard case .refused(.illegalCharacter) = rename("A.caf", to: proposed) else {
             Issue.record("expected an illegalCharacter blocker for \(proposed)")
             return
@@ -91,9 +88,9 @@ struct LibraryRenameTests {
     }
 
     @Test func aLeadingDotIsRefusedBecauseItWouldVanishTheRecording() {
-        // `RecordingReader.audioFiles(in:)` lists with `.skipsHiddenFiles`, so a dotted name drops the
-        // Recording out of the Library and close the editor on it — a rename that reads as a
-        // deletion. This is the reason the case exists at all.
+        // `RecordingReader.audioFiles(in:)` lists with `.skipsHiddenFiles`, so a dotted name drops
+        // the Recording out of the Library and close the editor on it — a rename that reads as a
+        // deletion.
         #expect(rename("A.caf", to: ".hidden") == .refused(.wouldHide))
     }
 
@@ -108,8 +105,7 @@ struct LibraryRenameTests {
     }
 
     @Test func aCaseOnlyRenameIsNotACollisionWithItself() {
-        // "podcast.caf" → "Podcast.caf" is the same file, so it cannot collide with itself. This
-        // is why the current file is excluded from the collision scan case-insensitively.
+        // "podcast.caf" → "Podcast.caf" is the same file, so it cannot collide with itself.
         #expect(rename("podcast.caf", to: "Podcast", existing: ["podcast.caf"])
                 == .rename(to: "Podcast.caf"))
     }

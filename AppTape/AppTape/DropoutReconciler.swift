@@ -6,9 +6,7 @@ nonisolated struct DropoutReconciler {
     let sampleRate: Double
     /// A gap larger than this ends the Recording rather than being padded.
     let maxGapSeconds: Double
-    /// The smallest gap worth padding as a Dropout. Below it, sub-frame host-time rounding jitter would
-    /// manufacture a one-frame Dropout on every chunk; above it sits the smallest real cause, a dropped
-    /// 512-frame buffer (~10.67 ms at 48 kHz), so every genuine overrun still registers.
+    /// The smallest gap worth padding as a Dropout.
     let minDropoutFrames: Int
 
     /// Frames committed to the master so far — real audio plus every pad. Matches what the writer

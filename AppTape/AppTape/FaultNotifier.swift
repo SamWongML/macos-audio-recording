@@ -2,12 +2,7 @@ import AppKit
 import Foundation
 import UserNotifications
 
-/// The four unrequested ends share 's notification channel, and each names its reason
-///. The reason is named because the four ask different things of the user — free up
-/// space, nothing, nothing, start again — and a generic "Recording stopped" would make them open
-/// the app to find out which. Clicking the notification opens the editor on that Recording; **when
-/// authorization is absent the editor opens directly instead**, without a permission prompt stacked
-/// onto a failure (the mistake avoided by keeping the request off the audio grant).
+/// The four unrequested ends share the notification channel, and each names its reason.
 enum FaultNotifier {
     /// The Recording URL carried in a notification's `userInfo`, read back on click to open the editor.
     static let openEditorURLKey = "com.apptape.fault.recordingURL"
@@ -52,20 +47,16 @@ enum FaultNotifier {
         }
     }
 
-    /// The 30-minute Runway warning: posted once when the guard crosses 30 minutes,
-    /// telling the user to free space — the only action the warning asks for. Unlike an end it opens
-    /// nothing while it goes unheard, because the Recording is still running; so when authorization is
-    /// absent there is simply no channel and nothing shows, and amber and the floor still stand.
-    /// Authorization is never requested here — that stays at the end of the first completed Recording
-    ///, so a warning during the very first Recording may find no channel yet, by design.
+    /// The 30-minute Runway warning: posted once when the guard crosses 30 minutes, report the
+    /// user to free space — the only action the warning asks for.
     static func runwayLow() {
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
-                // Time-framed to match the Recording's Runway and parallel to the
-                // `.diskGuard` end's own copy ("Recording stopped" / "Your disk is almost full…"):
-                // the title is what happens, the body names the disk and the one action it asks for.
+                // Time-framed to match the Recording's Runway and parallel to the `.diskGuard`
+                // end's own copy ("Recording stopped" / "Your disk is almost full…"): the title
+                // is what happens, the body names the disk and the one action it asks for.
                 let content = UNMutableNotificationContent()
                 content.title = "Recording will stop soon"
                 content.body = "Your disk is almost full. Free up space to keep recording."
@@ -82,9 +73,8 @@ enum FaultNotifier {
         }
     }
 
-    /// Reveal the Library in Finder — the action both the refusal and the warning offer,
-    /// there being no Settings pane to send the user to. Selects the folder when it exists, else opens
-    /// its parent, since the Library is created lazily at the first sound.
+    /// Reveal the Library in Finder — the action both the blocker and the warning offer, there
+    /// being no Settings pane to send the user to.
     @MainActor
     static func revealLibrary() {
         let library = LibraryLocation.directory

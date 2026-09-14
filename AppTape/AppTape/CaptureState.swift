@@ -7,9 +7,7 @@ protocol CaptureState {
     /// before the first sound. The sidebar row's live clock and the transport's readout.
     var elapsed: TimeInterval { get }
 
-    /// What the master weighs **right now**, on the same 4 Hz gate. Nil through
-    /// the armed window and at rest; a file merely *arriving* in the Library is not the one being
-    /// captured and has no figure to be current about.
+    /// What the master weighs right now, on the same 4 Hz gate.
     var masterByteCount: Int64? { get }
 
     /// Whether `recording` is the one being captured right now, and so not exportable: its `.caf` is
@@ -18,15 +16,11 @@ protocol CaptureState {
 }
 
 extension CaptureState {
-    /// Whether this Recording's audio is **still arriving**: it has no frames at all, or it is the
-    /// one being captured right now. Either way the editor is holding a reading of a file that is
-    /// still being written, so the lane says so instead of drawing it and the transport
-    /// offers no Play.
+    /// Whether this Recording's audio is still arriving: it has no frames at all, or it is the
+    /// one being captured right now.
     func isStillArriving(_ recording: Recording) -> Bool {
         recording.isEmpty || isCapturing(recording)
     }
 }
 
-/// The production conformance. Every member is already there, unchanged — which is the sign the
-/// interface was cut where the code was already divided rather than across it.
 extension CaptureRun: CaptureState {}

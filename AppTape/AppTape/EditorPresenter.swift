@@ -11,9 +11,7 @@ final class EditorPresenter {
     /// Called from a SwiftUI view's environment to hand over its `openWindow` action.
     func bind(_ action: OpenWindowAction) { openWindow = action }
 
-    /// Opens the editor, optionally selecting the Recording just captured. The model is told
-    /// before the window is shown — and again on every reopen, since a suppressed `Window`
-    /// reuses its `NSWindow` and does not re-run the view's `.task` (EditorWindowLifecycle).
+    /// Opens the editor, optionally selecting the Recording just captured.
     func open(selecting url: URL? = nil) {
         EditorModel.shared.activate(selecting: url)
         openWindow?(id: AppTapeApp.editorWindowID)

@@ -5,7 +5,7 @@ import Foundation
 
 /// Real CAF masters for the tests that need a Recording that is genuinely on disk — the store,
 /// the metadata round-trip and the adoption gate all go through `RecordingReader.adopt`, which
-/// opens the file with `AVAudioFile`. A test that only needs *a Recording* builds one directly.
+/// opens the file with `AVAudioFile`.
 enum AudioFixtures {
     private static func stereoFloat32(_ sampleRate: Double = 48_000) -> AudioStreamBasicDescription {
         AudioStreamBasicDescription(

@@ -1,10 +1,7 @@
 import Foundation
 import Observation
 
-/// The Loudness correction **preview** for the editor. The correction is a full BS.1770
-/// pass where the size estimate is only arithmetic, so it cannot be shown instantly — it resolves
-/// from `Measuring…` to a dB figure. This model owns that async measure for the current Recording
-/// and Trim, so the inspector shows the figure and playback can apply the same correction.
+/// The Loudness correction preview for the editor.
 @MainActor
 @Observable
 final class LoudnessCorrectionModel {
@@ -32,9 +29,7 @@ final class LoudnessCorrectionModel {
     /// adds the manual Gain to this and sets the sum as one `globalGain`.
     var correctionDB: Double { correction?.decibels ?? 0 }
 
-    /// Measures (or clears) the correction for a Recording's current Trim. Call it on any change to
-    /// the selection, the Trim, or the normalize toggle; it dedupes an unchanged key so a redraw is
-    /// free, and cancels a superseded pass so a dragging Trim handle does not pile up work.
+    /// Measures (or clears) the correction for a Recording's current Trim.
     func update(recording: Recording, normalize: Bool) {
         guard normalize else {
             task?.cancel(); task = nil

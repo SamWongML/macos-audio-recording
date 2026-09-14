@@ -2,30 +2,22 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// The hand-rolled panel's transport surface: the list *is* the panel and a row *is* the
-/// record control — no button chrome (variant H). Pressing a Source aims the tap at
-/// its helper processes and starts a Recording; the pressed row then *is* the running Recording
-/// — a pulsing `record.circle.fill` in a reserved trailing lane, over a live level meter — while
-/// the one-click stop lives on the status item itself. The panel stays open
-/// through a start so that transition is seen; it dismisses the ordinary transient way (outside
-/// click, Escape, a right-click on the status item).
+/// The hand-rolled panel's transport surface: the list *is* the panel and a row *is* the record
+/// control — no button chrome (variant H).
 struct PanelView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = SourceModel()
-    /// The transport, accepted from the status item that hosts this panel. Concrete, not
-    /// an interface: the panel reads nine members of it and is one of the two surfaces that
-    /// *commands* capture, so an interface here would be a layer over the shell rather than a dropout
-    /// under it — the editor's `CaptureState` is the read-only half, and this is not it.
+    /// The transport, accepted from the status item that hosts this panel.
     var recorder: RecordingController
     /// How the panel hands its `openWindow` action to the shell, below.
     var presenter: EditorPresenter
     /// Rescans the world for the list's live ordering (playing first). Slow enough not to churn.
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
-    /// Drives the pressed row's bring-up glyph across the ~500 ms in-flight threshold — `sincePress`
-    /// advances with wall-clock time, which no `@Observable` change reports, so the view is nudged.
-    /// Only bumps while recording, so it never re-renders the idle panel.
+    /// Drives the pressed row's bring-up glyph across the ~500 ms in-flight threshold —
+    /// `sincePress` advances with wall-clock time, which no `@Observable` change reports, so the
+    /// view is nudged.
     private let recTick = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     @State private var recNudge = 0
 
@@ -39,8 +31,7 @@ struct PanelView: View {
             footer
         }
         .frame(width: 280)
-        // Reduce Transparency: swap the popover's vibrant material for an opaque
-        // window background. At rest the fill is clear so the material shows through as before.
+        // Reduce Transparency: swap the popover's vibrant material for an opaque window background.
         .background(reduceTransparency ? Color(nsColor: .windowBackgroundColor) : Color.clear)
         .onAppear {
             // Capture the SwiftUI open-window action so a status-item stop-click can open the
@@ -50,9 +41,8 @@ struct PanelView: View {
         }
         .onReceive(tick) { _ in model.refresh() }
         .onReceive(recTick) { _ in if recorder.isRecording { recNudge &+= 1 } }
-        // An unrelated key handler, exactly the kind a real control adds: it silently takes
-        // the popover's free Escape away, which is why the app owns Escape in
-        // MenuBarController. Kept to hold that guarantee honest as the panel grows.
+        // An unrelated key handler, exactly the kind a real control adds: it silently takes the
+        // popover's free Escape away, which is why the app owns Escape in MenuBarController.
         .onKeyPress(.space) { .ignored }
     }
 
@@ -88,11 +78,7 @@ struct PanelView: View {
 
     // MARK: - Blocking banner
 
-    /// The panel's one blocking-message surface. **At most one reason is ever set**: a
-    /// refusal below the floor and a denial each clear the other, and a successful start clears both,
-    /// so the two never compete here. What should happen *if* two blocking reasons ever did compete is
-    /// 's deferral to not decided by this ordering — which only picks a branch when,
-    /// by construction, just one arm can be taken.
+    /// The panel's one blocking-message surface.
     @ViewBuilder private var blockingBanner: some View {
         if let blocker = recorder.startBlocker {
             diskBlockerBanner(blocker)
@@ -101,19 +87,14 @@ struct PanelView: View {
         }
     }
 
-    /// Shown when a start is refused below the 2 GB floor. It names the free space and the
-    /// floor, and its action opens Finder at the Library rather than a Settings pane — there being
-    /// none to send the user to. Retry, as with the denial banner, is simply pressing record again.
+    /// Shown when a start is refused below the 2 GB floor.
     @ViewBuilder private func diskBlockerBanner(_ blocker: DiskGuardBlocker) -> some View {
         banner(title: blocker.title, message: blocker.message, action: "Show in Finder") {
             FaultNotifier.revealLibrary()
         }
     }
 
-    /// Shown when a denied System Audio Recording grant was inferred. It names
-    /// "System Audio Recording Only" — not the pane's own broader heading — and the deep-link
-    /// button lands on the audio-capture pane. Retry is not a button here: it is pressing record
-    /// again, which is where the copy sends the user.
+    /// Shown when a denied System Audio Recording grant was inferred.
     @ViewBuilder private var recoveryBanner: some View {
         banner(title: PermissionRecovery.title, message: PermissionRecovery.message,
                action: "Open System Settings") {
@@ -156,8 +137,7 @@ struct PanelView: View {
                 } else {
                     ForEach(model.sources) { source in
                         // A Source with no HAL clients yet cannot be aimed at by object ID, so
-                        // pressing it could do nothing. Show it dimmed and inert rather than
-                        // swallow the press silently.
+                        // pressing it could do nothing.
                         let capturable = !source.processObjectIDs.isEmpty
                         let isTarget = recorder.isRecording && recorder.recordingSourceID == source.bundleID
                         let glyph = RowRecordGlyph.state(
@@ -167,8 +147,8 @@ struct PanelView: View {
                         SourceRow(source: source,
                                   icon: model.icon(for: source),
                                   glyph: glyph,
-                                  // Only the recording row carries live meter data; every other row's
-                                  // meter is dead and reads zero.
+                                  // Only the recording row carries live meter data; every other
+                                  // row's meter is dead and reads zero.
                                   meterColumns: isTarget ? recorder.meterColumns : [],
                                   reduceMotion: reduceMotion)
                             .opacity(capturable ? 1 : 0.4)
@@ -182,10 +162,8 @@ struct PanelView: View {
         .frame(maxHeight: 320)
     }
 
-    /// While recording, the transport is busy: a press cannot start a second Recording (one
-    /// Source at a time), so rows are inert until stop. On a start the panel stays open — the
-    /// pressed row becomes the record control, showing bring-up then the live meter;
-    /// a start refused below the floor also stays open, for its banner.
+    /// While recording, the transport is busy: a press cannot start a second Recording (one Source
+    /// at a time), so rows are inert until stop.
     private func pick(_ source: Source) {
         guard !recorder.isRecording else { return }
         recorder.start(source)
@@ -207,10 +185,7 @@ struct PanelView: View {
     }
 }
 
-/// One Source in the list. The row *is* the record control: icon, name,
-/// then a fixed lane holding the live level meter and — in a reserved trailing sub-lane the
-/// meter insets around, so it stays legible over the waveform — the record glyph. `circle` at
-/// rest; a pulsing `record.circle.fill` once this row is the one recording.
+/// One Source in the list.
 private struct SourceRow: View {
     let source: Source
     let icon: NSImage?
@@ -251,9 +226,7 @@ private struct SourceRow: View {
         .padding(.vertical, 7)
     }
 
-    /// The live level meter. Empty (a dead or absent tap) draws nothing, which reads as exactly
-    /// zero — so a non-recording row is flat and the recording row flattens the moment
-    /// its tap goes silent.
+    /// The live level meter.
     @ViewBuilder private var meter: some View {
         if meterColumns.contains(where: { $0 > 0 }) {
             LevelMeterShape(fills: meterColumns)
@@ -274,11 +247,7 @@ private struct SourceRow: View {
 }
 
 /// The row's live level meter, drawn as a compact scroll of vertical bars — one per recent meter
-/// fill, oldest at the leading edge — mirrored around the centre line. Deliberately
-/// its own `Shape` rather than the audio-envelope `WaveformPath`: the input is a single 0...1 fill
-/// per column, already dB-scaled by `LevelMeter`, not a reduced min/max/rms envelope, so nothing is
-/// faked into an `Envelope.Column`. A `Shape`, not a `Canvas`, because a `Canvas` draws nothing
-/// inside a lazy list row on macOS 27 (see `WaveformView`).
+/// fill, oldest at the leading edge — mirrored around the centre line.
 private struct LevelMeterShape: Shape {
     /// Meter fills 0...1, oldest first.
     var fills: [Double]

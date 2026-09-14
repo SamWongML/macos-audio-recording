@@ -2,8 +2,8 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// The disk guard's Runway math, tested as a pure function with no disk and no clock:
-/// the `(free − 2 GB) ÷ rate` formula, the 3-hour amber tier and 30-minute warning, the 15-minute
+/// The disk guard's Runway math, tested as a pure function with no disk and no clock: the `(free
+/// − 2 GB) ÷ rate` formula, the 3-hour amber tier and 30-minute warning, the 15-minute
 /// hysteresis that stops flapping and double-warning, the end at the floor, and the start policy
 /// (refuse below the floor, begin amber up to the 3-hour tier).
 struct RunwayGuardTests {
@@ -79,8 +79,8 @@ struct RunwayGuardTests {
     }
 
     @Test func recoveryNeverPostsAnAllClear() {
-        // A recovered reading returns shouldWarn false and moves the tier back silently — a posted
-        // warning is never retracted.
+        // A recovered reading returns shouldWarn false and moves the tier back silently — a
+        // posted warning is never retracted.
         var g = RunwayGuard()
         _ = g.receive(freeBytes: Self.freeBytes(runway: 20 * 60), ratePerSecond: Self.rate)
         let recovered = g.receive(freeBytes: Self.freeBytes(runway: 4 * 3600), ratePerSecond: Self.rate)
@@ -122,7 +122,7 @@ struct RunwayGuardTests {
         #expect(RunwayGuard.startDecision(freeBytes: Self.freeBytes(runway: 5 * 3600), ratePerSecond: Self.rate) == .allow)
     }
 
-    // MARK: - The refusal copy
+    // MARK: - The blocker copy
 
     @Test func refusalCopyNamesTheFreeSpaceAndTheFloor() {
         // Assert against the formatter's own output rather than a literal "1.8 GB", since the

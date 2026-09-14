@@ -1,10 +1,6 @@
 import AppKit
 
-/// Flips the app between `.accessory` at rest and `.regular` while the editor
-/// window is open. The flip is *existence-based*, not focus-based:
-/// the app is `.regular` for exactly as long as an editor window is open,
-/// regardless of which app is frontmost, so ⌘-Tabbing to the app being recorded
-/// does not make the Dock icon and menu bar flicker away.
+/// Flips the app between `.accessory` at rest and `.regular` while the editor window is open.
 @MainActor
 final class ActivationPolicyController {
     static let shared = ActivationPolicyController()
@@ -23,9 +19,7 @@ final class ActivationPolicyController {
         apply()
     }
 
-    /// The policy implied by how many editor windows are open. Existence-based:
-    /// any open window is `.regular`, only zero is `.accessory` — the whole rule,
-    /// kept pure so it can be tested without a running app.
+    /// The policy implied by how many editor windows are open.
     nonisolated static func policy(forOpenEditorCount count: Int) -> NSApplication.ActivationPolicy {
         count > 0 ? .regular : .accessory
     }

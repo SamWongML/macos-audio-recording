@@ -14,8 +14,8 @@ struct AudioSourceTests {
     }
 
     @Test func webkitGPUMapsByLocalizedName() {
-        // WebKit's GPU process has a bundle ID that names no app; only its localized
-        // name ("Safari Graphics and Media") threads back to Safari.
+        // WebKit's GPU process has a bundle ID that names no app; only its localized name ("Safari
+        // Graphics and Media") threads back to Safari.
         let gpu = AudioProcess(id: 20, pid: 200, bundleID: "com.apple.WebKit.GPU",
                                isRunningOutput: true, appName: "Safari Graphics and Media")
         #expect(SourceResolution.owningBundleID(of: gpu, among: [chrome, safari]) == "com.apple.Safari")

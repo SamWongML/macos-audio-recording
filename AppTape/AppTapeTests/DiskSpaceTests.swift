@@ -2,13 +2,11 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// The Export pre-flight refuses over-large exports before writing. The decision is a
-/// pure byte comparison with a safety margin, tested here; the `statfs` read is exercised against
-/// a real directory to prove it returns a plausible figure.
+/// The Export pre-flight refuses over-large exports before writing.
 struct DiskSpaceTests {
     @Test func refusesWhenTheEstimatePlusItsErrorBandExceedsFreeSpace() {
         // 900 MB estimate against 1 GB free: rounded up by the ±3.5% band it needs 931.5 MB —
-        // fits. A 970 MB estimate needs ~1004 MB and is refused just before it would overflow.
+        // fits.
         #expect(DiskSpace.hasRoom(estimatedBytes: 900_000_000, freeBytes: 1_000_000_000))
         #expect(!DiskSpace.hasRoom(estimatedBytes: 970_000_000, freeBytes: 1_000_000_000))
     }
@@ -42,9 +40,9 @@ struct DiskSpaceTests {
     }
 
     @Test func theLibraryVolumeReadClimbsToAnExistingAncestor() throws {
-        // The Runway guard's read: a deeply-nested path that does not exist yet — as the
-        // Library folder does before the first sound — still stats its volume by climbing to the
-        // nearest existing ancestor rather than returning nil.
+        // The Runway guard's read: a deeply-nested path that does not exist yet — as the Library
+        // folder does before the first sound — still stats its volume by climbing to the nearest
+        // existing ancestor rather than returning nil.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let notYetCreated = dir.appendingPathComponent("AppTape/does/not/exist/yet", isDirectory: true)

@@ -1,9 +1,7 @@
 import Synchronization
 
-/// A lock-free single-producer / single-consumer ring of `Float` samples: the realtime
-/// IOProc writes, the non-realtime writer thread reads. It is the reason the IOProc never
-/// blocks — the tap thread copies its buffer in and returns, and a stalled disk
-/// can never reach into the audio callback.
+/// A lock-free single-producer / single-consumer ring of `Float` samples: the realtime IOProc
+/// writes, the non-realtime writer thread reads.
 nonisolated final class AudioRingBuffer: @unchecked Sendable {
     private let storage: UnsafeMutableBufferPointer<Float>
     private let capacity: Int
@@ -32,9 +30,7 @@ nonisolated final class AudioRingBuffer: @unchecked Sendable {
     var droppedSamples: Int { dropped.load(ordering: .relaxed) }
     func droppedFrames(channels: Int) -> Int { channels > 0 ? droppedSamples / channels : 0 }
 
-    /// Total samples ever written. Read by the **producer** (the IOProc) to stamp each host-time
-    /// mark with the ring-frame position its buffer lands at — the producer owns this counter, so
-    /// its own read is exact, not a race.
+    /// Total samples ever written.
     var writtenSamples: Int { written.load(ordering: .relaxed) }
 
     /// Producer side, realtime-safe: copy a whole block in, or drop it whole. Returns

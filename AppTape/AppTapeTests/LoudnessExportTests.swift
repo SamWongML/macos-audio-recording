@@ -4,11 +4,9 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// The normalized Export path end to end: the encode measures the trimmed range, applies
-/// one clamped gain, and — with manual Gain on top — a single combined multiply, never a second
-/// normalization pass. The lossless Master preset is used on purpose: the written file's loudness is
-/// the input's, scaled, so re-measuring it proves *where* the correction landed to within a fraction
-/// of a LU. A steady tone at −6 LUFS has ample ceiling and cap room, so nothing clamps.
+/// The normalized Export path end to end: the encode measures the trimmed range, applies one
+/// clamped gain, and — with manual Gain on top — a single combined multiply, never a second
+/// normalization pass.
 struct LoudnessExportTests {
     /// A stereo tone whose integrated loudness clears the gates and leaves the ceiling slack.
     private func writeTone(at url: URL, seconds: Double = 2, amplitude: Double = 0.5,
@@ -56,8 +54,7 @@ struct LoudnessExportTests {
     }
 
     @Test func manualGainRidesOnTopAsOneCombinedMultiply() throws {
-        // Correction brings the tone to −16; +3 dB Gain rides on top → −13. That the result is the
-        // target *plus* the Gain (not the target re-normalized) is what "no double-normalize" means.
+        // Correction brings the tone to −16; +3 dB Gain rides on top → −13.
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = dir.appendingPathComponent("master.caf")

@@ -1,9 +1,9 @@
 import Testing
 @testable import AppTape
 
-/// The detector encodes 's inference: all-zero-since-first-sample for 3 s while the
-/// Source runs output is a denied grant — and the "since its first sample" clause makes a
-/// mid-Recording silence structurally unable to trip it.
+/// The detector encodes the inference: all-zero-since-first-sample for 3 s while the Source runs
+/// output is a denied grant — and the "since its first sample" clause makes a mid-Recording
+/// silence structurally unable to trip it.
 struct DenialDetectorTests {
     @Test func threeSecondsOfAllZeroWhileRunningInfersDenial() {
         var d = DenialDetector()
@@ -46,8 +46,8 @@ struct DenialDetectorTests {
         _ = d.receive(hasBegun: false, isRunningOutput: true, now: 0)
         // The master begins — a real sound was heard.
         #expect(d.receive(hasBegun: true, isRunningOutput: true, now: 0.5) == false)
-        // Now a long mid-Recording silence with output running: it must never infer denial,
-        // because the grant plainly exists ('s "since its first sample").
+        // Now a long mid-Recording silence with output running: it must never infer denial, because
+        // the grant plainly exists ('s "since its first sample").
         #expect(d.receive(hasBegun: false, isRunningOutput: true, now: 10) == false)
         #expect(d.receive(hasBegun: false, isRunningOutput: true, now: 60) == false)
         #expect(d.inferred == false)

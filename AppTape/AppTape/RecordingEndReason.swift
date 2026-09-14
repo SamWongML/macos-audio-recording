@@ -1,11 +1,6 @@
 import Foundation
 
-/// A Recording ends for **exactly six reasons** and no more. Everything else is a Dropout
-/// to pad or an event to ignore. The six split in two: *you asked for it* — a user stop, an app
-/// quit or logout — and *you didn't* — the disk guard, rebuilding exhausted, a format mismatch, or
-/// sleep. The four unrequested ends each post a notification naming their reason, because they ask
-/// different things of the user and a generic "Recording stopped" makes them open the app to find
-/// out which.
+/// A Recording ends for exactly six reasons and no more.
 nonisolated enum RecordingEndReason: Equatable, Sendable, CaseIterable {
     /// The user pressed stop.
     case userStopped

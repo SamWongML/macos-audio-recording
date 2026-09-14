@@ -9,13 +9,9 @@ enum PanelAnchor: Equatable {
     case screenFallback(CGRect)
 }
 
-/// The status button's own window frame is the natural anchor, but it is
-/// untrustworthy at exactly the moments it matters: `[0,0 29x0]`
-/// before the item is placed, its last frame retained while `isVisible` is
-/// false, and a stale duplicate shared by two items just after a restore. So a
-/// candidate frame is treated as a claim to be checked, and an unusable one
-/// falls back to the top-right of the main screen rather than refusing to open —
-/// a hidden item is exactly when someone is hunting for the app.
+/// The status button's own window frame is the natural anchor, but it is untrustworthy at exactly
+/// the moments it matters: `[0,0 29x0]` before the item is placed, its last frame retained while
+/// `isVisible` is false, and a stale duplicate shared by two items just after a restore.
 enum PanelAnchoring {
     /// A button-window frame is usable only if it is non-empty *and* fully
     /// contained in some screen's frame.
@@ -24,10 +20,9 @@ enum PanelAnchoring {
         return screens.contains { $0.contains(frame) }
     }
 
-    /// A thin sliver at the top-right of the main screen whose top edge is flush
-    /// with the screen top, so a popover shown from its `.maxY` edge auto-flips
-    /// to sit just below the menu bar — the same placement the real status item
-    /// gets.
+    /// A thin sliver at the top-right of the main screen whose top edge is flush with the screen
+    /// top, so a popover shown from its `.maxY` edge auto-flips to sit just below the menu bar —
+    /// the same placement the real status item gets.
     static func fallbackRect(mainScreen: CGRect, statusBarThickness: CGFloat) -> CGRect {
         CGRect(x: mainScreen.maxX - 1,
                y: mainScreen.maxY - statusBarThickness,

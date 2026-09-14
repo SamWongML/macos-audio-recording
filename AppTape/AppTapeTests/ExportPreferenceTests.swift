@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// The Quality Preset is sticky **app-wide**: a choice about how to export, not a
+/// The Quality Preset is sticky app-wide: a choice about how to export, not a
 /// property of any Recording, so it persists across launches in `UserDefaults`.
 @MainActor
 struct ExportPreferenceTests {

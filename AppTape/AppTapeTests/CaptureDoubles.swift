@@ -2,8 +2,6 @@ import Foundation
 @testable import AppTape
 
 /// The second conformance of each of `CaptureRun`'s four interfaces — the reason they exist.
-/// Between them they replace Core Audio, a `statfs`, a notification centre and a window, so a
-/// Recording's whole life is a sequence of calls a test makes and reads back.
 
 /// A capture that never touches Core Audio: the test sets what it reports and reads back what was
 /// asked of it.
@@ -23,8 +21,8 @@ final class FakeCapture: Capturing {
     private(set) var discardCount = 0
 
     /// Whether this capture was torn down at all — true for a finalize *and* for an orphan stop,
-    /// which are the same call by design: a bring-up that never produced a first sound left no file,
-    /// so there is nothing for the orphan path to remove.
+    /// which are the same call by design: a bring-up that never produced a first sound left no
+    /// file, so there is nothing for the orphan path to remove.
     var wasTornDown: Bool { stopCount + stopNowCount + discardCount > 0 }
 
     func stop(then: @escaping @Sendable @MainActor (CaptureOutcome) -> Void) {
@@ -40,16 +38,12 @@ final class FakeCapture: Capturing {
     func discard() { discardCount += 1 }
 }
 
-/// Bring-up under the test's control. The three things it can do are the three things a real
-/// bring-up does: hand a capture back, throw, or block — and the third one, `stall`, is the only
-/// way 's wedge and its three races can be written down at all.
+/// Bring-up under the test's control.
 @MainActor
 final class FakeCaptureBuilder: CaptureBuilding {
     private(set) var builds: [(source: Source, hooks: CaptureHooks)] = []
 
-    /// One outstanding completion **per bring-up**, not one in total. That is the whole point: a
-    /// blocked first attempt has to be able to return *after* a second press, which is the race
-    /// 's generation rule exists for and the one a single slot cannot express.
+    /// One outstanding completion per bring-up, not one in total.
     private var pending: [(@Sendable @MainActor ((any Capturing)?) -> Void)?] = []
 
     var buildCount: Int { builds.count }
@@ -66,9 +60,7 @@ final class FakeCaptureBuilder: CaptureBuilding {
         pending.append(then)
     }
 
-    /// The ordinary bring-up: hand a capture back now. Defaults to the most recent one, and to a
-    /// fresh capture — built here rather than as a default argument, which is evaluated in a
-    /// nonisolated context where a main-actor initializer cannot be called.
+    /// The ordinary bring-up: hand a capture back now.
     @discardableResult
     func finish(build index: Int? = nil, with capture: FakeCapture? = nil) -> FakeCapture {
         let capture = capture ?? FakeCapture()

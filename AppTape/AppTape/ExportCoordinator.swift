@@ -19,12 +19,8 @@ final class ExportCoordinator {
 
     private(set) var phase: Phase = .idle
 
-    /// Which Recording the current telling belongs to — the **object**, not the path it had when
-    /// the Export was launched. A rename moves the path and the store relocates the same object
-    /// (/-0020), so a stored url was left naming a file that no longer exists: the dock lost
-    /// the running Recording's own progress bar and Cancel button mid-encode while the encode, which
-    /// reads a file it already has open, ran to completion unseen. Held rather than
-    /// copied, so the telling stays attached to its subject wherever the subject goes.
+    /// Which Recording the current report belongs to — the object, not the path it had when
+    /// the Export was launched.
     private var subject: Recording?
 
     /// Where the subject is now. The inspector shows running/success/failure only when this matches
@@ -47,10 +43,8 @@ final class ExportCoordinator {
     }
 #endif
 
-    /// The parameters an Export is launched with — snapshotted from the Recording at click, before
-    /// the save panel, so a later Trim or preset edit never reaches the running encode.
-    /// A value carried as one thing rather than threaded as loose arguments; the chosen destination
-    /// is the one piece that arrives later, from the panel.
+    /// The parameters an Export is launched with — snapshotted from the Recording at click,
+    /// before the save panel, so a later Trim or preset edit never reaches the running encode.
     private struct Snapshot {
         let source: URL
         let name: String
@@ -59,8 +53,7 @@ final class ExportCoordinator {
         let preset: QualityPreset
         let estimatedBytes: Double
         /// The Loudness and Gain settings, snapshotted at click like every other parameter
-        /// (/-0013): the app-wide normalize toggle and this Recording's manual Gain. A later
-        /// toggle flip or Gain nudge never reaches the running measure-then-encode.
+        /// (/-0013): the app-wide normalize toggle and this Recording's manual Gain.
         let normalize: Bool
         let gainDB: Double
     }
@@ -68,13 +61,11 @@ final class ExportCoordinator {
     /// Starts an Export of `recording`'s Trim at `preset`. Presents the save panel, pre-flights, then
     /// encodes off the main thread. Snapshots every parameter now.
     func export(recording: Recording, preset: QualityPreset, capture: any CaptureState) {
-        // **Not the one-at-a-time rule** — that is `ExportReadiness`'s `.alreadyRunning`, below. This
-        // guards `.succeeded` and `.failed` too: those are tellings awaiting dismissal rather than
+        // Not the one-at-a-time rule — that is `ExportReadiness`'s `.alreadyRunning`, below.
         guard case .idle = phase else { return }
 
         let (startFrame, frameCount) = recording.trimmedFrameRange
-        // **The belt-and-suspenders gate this comment has always claimed to be**. It used
-        // to hold two of the five rules and speak a wording of its own; the dock held all five and
+        // The belt-and-suspenders gate this comment has always claimed to be.
         if let reason = ExportReadiness.evaluate(isOpenable: recording.isOpenable,
                                                  isCapturing: capture.isCapturing(recording),
                                                  trimmedFrameCount: frameCount,
@@ -97,16 +88,13 @@ final class ExportCoordinator {
         presentSavePanel(defaultName: snapshot.name) { [weak self] destination in
             guard let self, let destination else { return }
             // The Recording rides alongside the snapshot rather than inside it: the snapshot is the
-            // *encode's* parameters, frozen at click, and this is the telling's subject,
-            // which is the one thing that must stay live.
+            // *encode's* parameters, frozen at click, and this is the report's subject, which is
+            // the one thing that must stay live.
             self.begin(snapshot, subject: recording, destination: destination)
         }
     }
 
-    /// Cancels a running Export and clears any telling back to idle. Used by the in-progress
-    /// Cancel button, by navigating away, and to dismiss a finished success/failure.
-    /// The destination is left untouched: a running encode writes only to the sibling temp, which
-    /// its own cancelled path discards.
+    /// Cancels a running Export and clears any report back to idle.
     func cancel() {
         encoder?.cancel()
         encoder = nil
@@ -123,7 +111,7 @@ final class ExportCoordinator {
         guard DiskSpace.hasRoom(estimatedBytes: snapshot.estimatedBytes, freeBytes: free) else {
             let need = ExportSizeEstimate.sizeText(bytes: snapshot.estimatedBytes)
             let have = free.map { "\(ExportSizeEstimate.sizeText(bytes: Double($0))) free" } ?? "less free"
-            // **Two lines, and the two numbers are the payload.** The failed phase renders inside
+            // Two lines, and the two numbers are the payload. The failed phase renders inside
             // the Export dock's one declared height beside `Try Again…`, which leaves
             fail(message: "Not enough space: needs \(need), \(have).",
                  name: snapshot.name, for: subject)
@@ -163,9 +151,9 @@ final class ExportCoordinator {
         }
     }
 
-    /// The atomic finish: swap the temp into place with `replaceItemAt:` when a file is
-    /// already there, or a plain move when the chosen name is new — both atomic renames within the
-    /// destination directory, so the chosen file is never a partial write. Runs off-main.
+    /// The atomic finish: swap the temp into place with `replaceItemAt:` when a file is already
+    /// there, or a plain move when the chosen name is new — both atomic renames within the
+    /// destination directory, so the chosen file is never a partial write.
     nonisolated static func commit(temp: URL, to destination: URL) throws {
         if FileManager.default.fileExists(atPath: destination.path) {
             _ = try FileManager.default.replaceItemAt(destination, withItemAt: temp)
@@ -197,7 +185,7 @@ final class ExportCoordinator {
         }
     }
 
-    /// A pre-flight refusal, before any encode job exists. Tells in-window, and louder when the
+    /// A pre-flight blocker, before any encode job exists. Tells in-window, and louder when the
     /// app is not frontmost.
     private func fail(message: String, name: String, for recording: Recording) {
         present(.failed(message: message), for: recording)

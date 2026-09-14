@@ -1,18 +1,11 @@
 import AVFoundation
 import Foundation
 
-/// The waveform is built `AVAudioFile → downsample → Canvas`, the sanctioned path (
-/// there is no first-party waveform view in the macOS 27 SDK). **There is no peak cache and no
-/// sidecar file** — measured a 20-minute Float32 master reducing in ~155 ms with `-O`,
-/// so an on-disk artifact beside the CAF would buy nothing and would have to be invalidated and
-/// garbage-collected, muddying 's "the folder is the truth". The envelope is rebuilt
-/// from the master each time it is needed.
+/// The waveform is built `AVAudioFile → downsample → Canvas`, the sanctioned path (there is no
+/// first-party waveform view in the macOS 27 SDK).
 struct Envelope: Equatable, Sendable {
-    /// The fraction of the lane's half-height a **full-scale** sample is drawn at, so ordinary loud
-    /// material never reaches the lane's edge and is cut flat by the rounded-rect clip. Without it,
-    /// a loud Recording read as *clipped audio* — a claim the file does not make (
-    /// finding 7). It belongs here rather than in the two drawing paths so the big lane and the
-    /// sidebar silhouette cannot quietly disagree about what full scale looks like.
+    /// The fraction of the lane's half-height a full-scale sample is drawn at, so ordinary loud
+    /// material never reaches the lane's edge and is cut flat by the rounded-rect clip.
     static let drawnHeadroom: Double = 0.88
 
     var framesPerBucket: Int = 256
@@ -26,7 +19,7 @@ struct Envelope: Equatable, Sendable {
 
 
     /// One column per pixel over `range`, reduced from whatever buckets it spans. The lane asks
-    /// for exactly its own width in columns, so the waveform **always fits the width**.
+    /// for exactly its own width in columns, so the waveform always fits the width.
     func columns(over range: ClosedRange<Double>, count: Int) -> [Column] {
         guard count > 0, !mins.isEmpty else { return [] }
         let perBucket = Double(framesPerBucket) / sampleRate
@@ -50,10 +43,7 @@ struct Envelope: Equatable, Sendable {
     struct Column: Equatable, Sendable {
         var min: Float, max: Float, rms: Float
 
-        /// Reduce one bucket of frames `[from, to)` to a mono min/max/rms over the channels. The
-        /// one place the mixdown lives — both the full scan and the loupe re-read go through it.
-        /// `nonisolated` because both callers run off the main actor (a detached scan, a loupe
-        /// re-read), and this is pure arithmetic over the buffer they hand it.
+        /// Reduce one bucket of frames `[from, to)` to a mono min/max/rms over the channels.
         nonisolated static func reduce(_ channels: UnsafePointer<UnsafeMutablePointer<Float>>,
                                        from: Int, to: Int, channelCount: Int) -> Column {
             var mn: Float = 0, mx: Float = 0, sq: Float = 0
@@ -77,10 +67,7 @@ struct Envelope: Equatable, Sendable {
     }
 }
 
-/// Fills in each Recording's own envelope. Deliberately **not** a store keyed by URL: a row in
-/// a lazy `List` does not pick up a change to a dictionary living on some other object (
-/// proved it — sidebar sparklines never appeared while the identical view in a non-lazy `HStack`
-/// drew fine). Observing the element you were handed is the shape SwiftUI actually tracks.
+/// Fills in each Recording's own envelope.
 enum EnvelopeLoader {
     @MainActor
     static func load(_ recording: Recording) {
@@ -152,12 +139,7 @@ enum EnvelopeLoader {
         return loupeFile?.file
     }
 
-    /// Raw frames for the loupe, on a **fixed time grid** — the contract is the whole point.
-    /// Returns exactly `columns` entries covering exactly `[centre - span/2, centre + span/2]`,
-    /// bucketed on that time grid rather than on however many frames happened to be readable. So
-    /// seconds-per-**column** is always `span / columns`, the middle column is always exactly
-    /// `centre`, and the part of the window off either end of the file is *reported* (via
-    /// `inside`) rather than faked, so it can be drawn as an edge instead of passing for silence.
+    /// Raw frames for the loupe, on a fixed time grid — the contract is the whole point.
     nonisolated static func loupeWindow(url: URL, centre: Double, span: Double, columns: Int) -> LoupeWindow {
         var window = LoupeWindow(columns: Array(repeating: .init(min: 0, max: 0, rms: 0),
                                                  count: max(0, columns)),

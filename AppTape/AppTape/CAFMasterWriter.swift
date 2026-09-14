@@ -1,10 +1,8 @@
 import AudioToolbox
 import Foundation
 
-/// Writes the immutable Float32 CAF master with the raw `AudioFile` API, append-only, from
-/// the non-realtime writer thread. Created lazily at the first frame, in place
-/// at its final Library path — so a crash mid-capture leaves a valid, playable
-/// file already in the Library, complete to within the last few frames, with no repair step.
+/// Writes the immutable Float32 CAF master with the raw `AudioFile` API, append-only, from the
+/// non-realtime writer thread.
 nonisolated final class CAFMasterWriter {
     let url: URL
     private var fileID: AudioFileID?
@@ -14,25 +12,22 @@ nonisolated final class CAFMasterWriter {
 
     enum WriteError: Error { case create(OSStatus), setProperty(OSStatus), write(OSStatus) }
 
-    /// Creates the file at `url` and stamps its metadata immediately, so even a first-frame
-    /// crash leaves a labelled, backup-excluded file. `asbd` is the tap's own format
-    /// (`kAudioTapPropertyFormat`), written verbatim — never assumed to be 48 kHz stereo.
+    /// Creates the file at `url` and stamps its metadata immediately, so even a first-frame crash
+    /// leaves a labelled, backup-excluded file.
     init(url: URL, asbd: AudioStreamBasicDescription, sourceName: String) throws {
         self.url = url
         self.asbd = asbd
         self.channels = max(1, Int(asbd.mChannelsPerFrame))
 
         var file: AudioFileID?
-        // Empty flags: do not erase. The path is already collision-resolved, and erasing a
-        // master would be unrecoverable.
+        // Empty flags: do not erase.
         let create = AudioFileCreateWithURL(url as CFURL, kAudioFileCAFType, &self.asbd,
                                             AudioFileFlags(), &file)
         guard create == noErr, let file else { throw WriteError.create(create) }
         self.fileID = file
 
-        // Defer size updates: the header is not rewritten per write, which is exactly what
-        // makes the negative-mChunkSize crash story hold. Defaults to 1 for CAF; set
-        // explicitly so the guarantee does not rest on a default.
+        // Defer size updates: the header is not rewritten per write, which is exactly what makes
+        // the negative-mChunkSize crash story hold.
         var deferUpdates: UInt32 = 1
         let setDefer = AudioFileSetProperty(file, kAudioFilePropertyDeferSizeUpdates,
                                             UInt32(MemoryLayout<UInt32>.size), &deferUpdates)
@@ -42,8 +37,7 @@ nonisolated final class CAFMasterWriter {
             throw WriteError.setProperty(setDefer)
         }
 
-        // Stamp metadata now, before any audio, so a crash leaves it in place. Best-effort:
-        // a Recording that loses these still plays, so a failure here is not fatal.
+        // Stamp metadata now, before any audio, so a crash leaves it in place.
         try? RecordingMetadata.writeSource(sourceName, to: url)
         var resourceValues = URLResourceValues()
         resourceValues.isExcludedFromBackup = true   // a 1.4 GB/hour intermediate has no place in Time Machine

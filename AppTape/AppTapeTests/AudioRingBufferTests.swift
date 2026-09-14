@@ -1,9 +1,8 @@
 import Testing
 @testable import AppTape
 
-/// The ring is the dropout between the realtime IOProc and the writer thread: it must round-
-/// trip samples exactly, wrap correctly, and drop-with-a-count rather than overwrite on
-/// overrun.
+/// The ring is the boundary between the realtime IOProc and the writer thread: it must round- trip
+/// samples exactly, wrap correctly, and drop-with-a-count rather than overwrite on overrun.
 struct AudioRingBufferTests {
     private func write(_ ring: AudioRingBuffer, _ samples: [Float]) -> Bool {
         samples.withUnsafeBufferPointer { ring.write($0) }

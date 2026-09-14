@@ -1,9 +1,9 @@
 import Testing
 @testable import AppTape
 
-/// The soft/hard fault split: a 10 s soft one-shot that never ends a Recording and
-/// re-arms on the next non-zero sample; hard attempts spaced 1/2/4 s and armed at the first
-/// callback; a format mismatch that ends without spending an attempt; restore beating rebuild.
+/// The soft/hard fault split: a 10 s soft one-shot that never ends a Recording and re-arms on the
+/// next non-zero sample; hard attempts spaced 1/2/4 s and armed at the first callback; a format
+/// mismatch that ends without spending an attempt; restore beating rebuild.
 struct FaultReducerTests {
 
     // MARK: - Soft path
@@ -73,7 +73,7 @@ struct FaultReducerTests {
 
     @Test func recoveryDuringBackoffCancelsTheRebuild() {
         var c = HardFaultCoordinator()
-        // A hard fault schedules a rebuild 1 s out — restore's first-refusal window.
+        // A hard fault schedules a rebuild 1 s out — restore's first-blocker window.
         #expect(c.hardFault(now: 0) == .none)
         // Audio returns before the rebuild fires: cancel it and restore the budget.
         c.recovered()

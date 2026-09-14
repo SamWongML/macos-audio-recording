@@ -2,10 +2,7 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// The four Quality Presets and the size-estimate math. These pin
-/// the two properties the acceptance criteria call out: the estimate is `bitrate × duration × 1.02`
-/// to three significant figures, and it is **invariant to Loudness and Gain** — a property that
-/// holds here by construction, because neither is an input the estimate can take.
+/// The four Quality Presets and the size-estimate math.
 struct QualityPresetTests {
     private let stereo48 = SourceFormat(sampleRate: 48_000, channelCount: 2, bitsPerChannel: 32)
 
@@ -27,7 +24,7 @@ struct QualityPresetTests {
     }
 
     @Test func masterQualityEstimatesAt46PercentOfTheFloatMaster() {
-        // the ALAC rung is ~633 MB/hour at 48 kHz stereo Float32 (46% of the master).
+        // the ALAC preset row is ~633 MB/hour at 48 kHz stereo Float32 (46% of the master).
         let bps = QualityPreset.master.estimatedBitsPerSecond(for: stereo48)
         let mbPerHour = bps / 8 * 3600 / 1_000_000
         #expect(abs(mbPerHour - 633) < 5)
@@ -83,7 +80,7 @@ struct QualityPresetTests {
     // MARK: - Faithful-or-refuse encodability
 
     @Test func aCapturedStereo48MasterEncodesOnEveryRung() {
-        // The plain path: 48 kHz stereo is the captured master, and every rung takes it.
+        // The plain path: 48 kHz stereo is the captured master, and every preset row takes it.
         for preset in QualityPreset.allCases {
             #expect(preset.encodability(for: stereo48) == .available)
         }
@@ -117,7 +114,7 @@ struct QualityPresetTests {
         #expect(QualityPreset.high.encodability(for: threeCh) == .available)
         #expect(QualityPreset.compact.encodability(for: threeCh).reason?.contains("3 channels") == true)
 
-        // 6 channels (5.1): even and ≤ 8, so every rung takes it.
+        // 6 channels (5.1): even and ≤ 8, so every preset row takes it.
         let fiveOne = SourceFormat(sampleRate: 48_000, channelCount: 6, bitsPerChannel: 24)
         for preset in QualityPreset.allCases {
             #expect(preset.encodability(for: fiveOne) == .available)
@@ -125,14 +122,14 @@ struct QualityPresetTests {
     }
 
     @Test func masterIsTheAlwaysWorksEscapeHatchAcrossExoticRatesAndChannels() {
-        // The escape hatch: any rate, up to 8 channels — Master takes it where the AAC rungs won't.
+        // The escape hatch: any rate, up to 8 channels — Master takes it where the AAC preset rows won't.
         for rate in [44_100.0, 48_000, 88_200, 96_000, 192_000] {
             for channels in 1...8 {
                 let format = SourceFormat(sampleRate: rate, channelCount: channels, bitsPerChannel: 24)
                 #expect(QualityPreset.master.encodability(for: format) == .available)
             }
         }
-        // Beyond 8 channels even Master refuses — the one file with no faithful rung.
+        // Beyond 8 channels even Master refuses — the one file with no faithful preset row.
         let nineCh = SourceFormat(sampleRate: 48_000, channelCount: 9, bitsPerChannel: 24)
         #expect(!QualityPreset.master.encodability(for: nineCh).isAvailable)
     }
@@ -149,7 +146,7 @@ struct QualityPresetTests {
         #expect(QualityPreset.PresetPick.resolve(picking: .master, sticky: .high, format: hiRes)
                 == .displayOver(.master))
 
-        // A rung the source itself can't encode is ignored, whatever the sticky is.
+        // A preset row the source itself can't encode is ignored, whatever the sticky is.
         #expect(QualityPreset.PresetPick.resolve(picking: .high, sticky: .high, format: hiRes)
                 == .ignore)
     }

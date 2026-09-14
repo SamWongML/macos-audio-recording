@@ -1,10 +1,8 @@
 import AVFoundation
 import Observation
 
-/// Editor playback: an `AVAudioEngine` + `AVAudioPlayerNode` playing a frame range straight off
-/// the master with `scheduleSegment`. **Play loops the Trim** — a preview of exactly what Export
-/// will produce (variant O/Q). The playhead is published from a 30 Hz timer onto this
-/// `@Observable`, not read out of the audio graph by the view.
+/// Editor playback: an `AVAudioEngine` + `AVAudioPlayerNode` playing a frame range straight off the
+/// master with `scheduleSegment`.
 @MainActor
 @Observable
 final class AudioPlayer {
@@ -15,10 +13,10 @@ final class AudioPlayer {
 
     @ObservationIgnored private let engine = AVAudioEngine()
     @ObservationIgnored private let node = AVAudioPlayerNode()
-    /// A bandless `AVAudioUnitEQ` used only for its `globalGain` — the **one scalar** that makes Play
-    /// match Export: the Loudness correction plus the manual Gain are set here in dB, so
-    /// playback previews exactly what the written file will sound like rather than approximating it in
-    /// a second code path. Bandless because no equalisation is wanted, only the master gain it exposes.
+    /// A bandless `AVAudioUnitEQ` used only for its `globalGain` — the one scalar that makes
+    /// Play match Export: the Loudness correction plus the manual Gain are set here in dB, so
+    /// playback previews exactly what the written file will sound like rather than approximating it
+    /// in a second code path.
     @ObservationIgnored private let gainUnit = AVAudioUnitEQ(numberOfBands: 0)
     @ObservationIgnored private var file: AVAudioFile?
     @ObservationIgnored private var segmentStart: Double = 0
@@ -32,8 +30,7 @@ final class AudioPlayer {
 
     func load(_ recording: Recording) {
         // Identity, not path: a re-adopted Recording is a *new object at the same url* holding a
-        // different reading of a file that has since grown. Keyed on the url this would
-        // decline to reload and keep playing the old, short segment.
+        // different reading of a file that has since grown.
         guard self.recording !== recording else { return }
         stop()
         self.recording = recording
@@ -50,9 +47,7 @@ final class AudioPlayer {
     }
 
     /// Sets the combined gain — the Loudness correction plus the manual Gain — applied to
-    /// playback, in dB. Live: the Gain slider and a resolving correction both call through here, and
-    /// `AVAudioUnitEQ` retunes `globalGain` without a reschedule, so the change is heard mid-loop.
-    /// Clamped to the node's range.
+    /// playback, in dB.
     func setGlobalGainDB(_ decibels: Double) {
         gainUnit.globalGain = Float(min(max(decibels, -96), 24))
     }
@@ -80,8 +75,8 @@ final class AudioPlayer {
             if !engine.isRunning { try engine.start() }
             try node.playAudio()
         } catch {
-            // Playback is best-effort: if the engine or node refuses to start, leave the
-            // transport showing stopped rather than surface an error for a preview.
+            // Playback is best-effort: if the engine or node refuses to start, leave the transport
+            // showing stopped rather than surface an error for a preview.
             return
         }
         isPlaying = true

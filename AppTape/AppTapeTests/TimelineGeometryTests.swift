@@ -35,7 +35,7 @@ struct TimelineGeometryTests {
         #expect(empty.visibleRange.upperBound == TimelineGeometry.minimumSpan)
     }
 
-    /// The range the sidebar's silhouette used to spell out for itself.
+    /// The range the sidebar's row waveform used to spell out for itself.
     @Test func theWholeRangeIsTheSameFromEitherDoor() {
         #expect(lane.visibleRange == TimelineGeometry.wholeRange(duration: 90))
         #expect(TimelineGeometry.wholeRange(duration: 0).upperBound == TimelineGeometry.minimumSpan)
@@ -62,7 +62,7 @@ struct TimelineGeometryTests {
         #expect(lane.time(atX: .infinity) == 0)
     }
 
-    /// `x(atTime:)` is **not** clamped, and that asymmetry is the decision: a handle at the very end
+    /// `x(atTime:)` is not clamped, and that asymmetry is the decision: a handle at the very end
     /// draws at exactly `width`, and a Dropout band's width is the difference of two of these.
     @Test func xIsDeliberatelyUnclamped() {
         #expect(lane.x(atTime: 180) > lane.width)
@@ -177,15 +177,15 @@ struct TimelineGeometryTests {
 
     // MARK: - The ruler's ladder
 
-    /// **No duration means no ticks, not one tick at zero**.
+    /// No duration means no ticks, not one tick at zero.
     @Test func anEmptyRecordingGetsNoTicks() {
         #expect(TimelineGeometry(width: 760, duration: 0).ticks.isEmpty)
         #expect(TimelineGeometry(width: 760, duration: -5).ticks.isEmpty)
         #expect(TimelineGeometry(width: 760, duration: .nan).ticks.isEmpty)
     }
 
-    /// 's rule, which had never been asserted: no two labels within 64 pt, wherever the
-    /// ladder has a rung that can deliver it.
+    /// the rule, which had never been asserted: no two labels within 64 pt, wherever the
+    /// ladder has a preset row that can deliver it.
     @Test func noTwoTickLabelsComeWithinTheMinimumSpacing() {
         for width in [212.0, 400.0, 760.0, 1200.0, 2400.0] {
             for duration in [0.5, 3, 12, 45, 90, 240, 900, 3600, 7200, 86_400.0] {
@@ -200,11 +200,10 @@ struct TimelineGeometryTests {
         }
     }
 
-    /// **A known limit, pinned rather than hidden.** 's ladder stops at an hour, so a
-    /// Recording long enough that even hourly ticks crowd — an adopted file of about 56 minutes per
-    /// point of lane, so roughly 3 hours 20 at the editor's 212 pt minimum — gets ticks closer
-    /// together than the 64 pt the ADR asks for. The ladder saturates rather than trapping, which
-    /// is the behaviour carried over unchanged; nothing in the app has produced such a file yet.
+    /// A known limit, pinned rather than hidden. the ladder stops at an hour, so a Recording
+    /// long enough that even hourly ticks crowd — an adopted file of about 56 minutes per point
+    /// of lane, so roughly 3 hours 20 at the editor's 212 pt minimum — gets ticks closer together
+    /// than the 64 pt the ADR asks for.
     @Test func theLadderSaturatesRatherThanClimbingPastAnHour() {
         let crowded = TimelineGeometry(width: 212, duration: 86_400)
         #expect(crowded.tickInterval == 3600)
@@ -214,14 +213,14 @@ struct TimelineGeometryTests {
                 "the limit this test documents has gone away — tighten the assertion above")
     }
 
-    /// The interval always comes off 's ladder, and never climbs past its top.
+    /// The interval always comes off the ladder, and never climbs past its top.
     @Test func theIntervalIsAlwaysARungOfTheLadder() {
         for duration in [0.5, 30, 90, 3600, 86_400, 1e7] {
             let g = TimelineGeometry(width: 760, duration: duration)
             #expect(TimelineGeometry.tickCandidates.contains(g.tickInterval),
                     "\(g.tickInterval) is not on the ladder")
         }
-        // Past the top rung there is nothing better to pick, so it saturates rather than trapping.
+        // Past the top preset row there is nothing better to pick, so it saturates rather than trapping.
         #expect(TimelineGeometry(width: 760, duration: 1e7).tickInterval
                 == TimelineGeometry.tickCandidates.last!)
     }

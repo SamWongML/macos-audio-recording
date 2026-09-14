@@ -7,9 +7,7 @@ private func drawn(_ amplitude: Double) -> Double {
     pow(min(1, max(0, amplitude)), drawnCurve)
 }
 
-/// The waveform itself. Deliberately dumb: it takes columns as a stored value and draws them —
-/// never reading out of a buffer the view cannot observe, so the `Canvas` redraws when its
-/// inputs change.
+/// The waveform itself.
 struct WaveformShape: View {
     var columns: [Envelope.Column]
     var peakStyle: AnyShapeStyle
@@ -31,11 +29,7 @@ struct WaveformShape: View {
         }
     }
 
-    /// No minimum thickness: a column with no signal draws **nothing**. The old
-    /// `max(v * scale, 0.5)` painted a continuous 1 px bar the full width of the lane, so genuine
-    /// silence — the gap between two phrases, which is exactly where an edit lands — read as a
-    /// low-level signal that is not there. The lane's own trough is what
-    /// says "timeline here"; the waveform's job is to say only what the audio does.
+    /// No minimum thickness: a column with no signal draws nothing.
     private func path(_ pairs: [(Float, Float)], size: CGSize, mid: Double, scale: Double, step: Double) -> Path {
         var p = Path()
         p.move(to: CGPoint(x: 0, y: mid))

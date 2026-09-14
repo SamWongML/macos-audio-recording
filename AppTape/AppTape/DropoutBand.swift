@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// Diagonal hatching clipped to a rect. Hatch rather than a colour is deliberate: red is
-/// the transport, amber is the Runway, and a third hue would re-buy that
-/// accessibility trade for something less urgent. Hatch also reads as *no data here* rather than
-/// *warning*, which is exactly what a Dropout means.
+/// Diagonal hatching clipped to a rect.
 struct HatchPattern: Shape {
     var spacing: CGFloat = 5
 
@@ -20,9 +17,8 @@ struct HatchPattern: Shape {
     }
 }
 
-/// One Dropout drawn as a hatched band: a faint fill so the gap reads as a region, plus hatch strokes
-/// over it. Used both in the lane (with a ~3 pt minimum width so a sub-pixel Dropout is still visible)
-/// and in the loupe (at true width). Neutral, not tinted — it is absence, not alarm.
+/// One Dropout drawn as a hatched band: a faint fill so the gap reads as a region, plus hatch
+/// strokes over it.
 struct DropoutBand: View {
     /// Hatch line spacing; the loupe uses a tighter weave at true width.
     var spacing: CGFloat = 5

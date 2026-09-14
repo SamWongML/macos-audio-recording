@@ -2,11 +2,9 @@ import AudioToolbox
 import Foundation
 import Synchronization
 
-/// One export's parameters, snapshotted at launch: the master to read, the temp file to
-/// write, the trimmed frame range, the preset, and the Loudness/Gain settings — whether to normalize
-/// Loudness and the manual Gain in dB. A value, so later edits to Trim, preset, the toggle
-/// or the Gain slider never reach a running encode. These two default to a **faithful export** (no
-/// normalization, 0 dB Gain), so the plain path stays untouched.
+/// One export's parameters, snapshotted at launch: the master to read, the temp file to write, the
+/// trimmed frame range, the preset, and the Loudness/Gain settings — whether to normalize
+/// Loudness and the manual Gain in dB.
 struct ExportRequest {
     let source: URL
     let destination: URL
@@ -20,12 +18,8 @@ struct ExportRequest {
     var gainDB: Double = 0
 }
 
-/// The encode itself: a **hand-rolled `ExtAudioFileRead`/`Write` loop** over the master's trimmed
-/// frames. Hand-rolled rather than an opaque `AVAssetExportSession` for one reason —
-/// exact frame counts, so the inspector's progress bar shows real progress of the real file rather
-/// than an estimate. It reads the master as Float32 through an `ExtAudioFile` client format and
-/// writes the compressed `.m4a`, letting the framework's `AudioConverter` do the codec work with
-/// **no resampler and no downmix** (the client format carries the source's own rate and channels).
+/// The encode itself: a hand-rolled `ExtAudioFileRead`/`Write` loop over the master's trimmed
+/// frames.
 final class ExportEncoder: @unchecked Sendable {
     /// ~0.34 s of stereo 48 kHz per read — large enough to keep syscalls down, small enough that a
     /// cancel is honoured within a fraction of a second.
@@ -52,9 +46,7 @@ final class ExportEncoder: @unchecked Sendable {
 
         var description: String {
             switch self {
-            // The app's one wording for this fact, not a third copy of it. Reachable only
-            // by a caller that built an `ExportRequest` directly — `ExportCoordinator` refuses on the
-            // same rule before a save panel opens.
+            // The app's one wording for this fact, not a third copy of it.
             case .emptyRange: return ExportReadiness.Reason.emptyTrim.sentence
             case .cancelled: return "Export cancelled."
             case .coreAudio(let stage, let status):
@@ -63,15 +55,12 @@ final class ExportEncoder: @unchecked Sendable {
         }
     }
 
-    /// Runs the encode synchronously, reporting a `0...1` fraction as frames are written. Throws on
-    /// failure or cancellation. Disposing the destination `ExtAudioFile` before returning finalizes
-    /// the `.m4a`, so a successful return means the temp file is complete and ready to be swapped in.
+    /// Runs the encode synchronously, reporting a `0...1` fraction as frames are written.
     func run(_ request: ExportRequest, onProgress: (Double) -> Void) throws {
         guard request.frameCount > 0 else { throw Failure.emptyRange }
 
         // MARK: Gain — measure (if normalizing) and fold the correction + Gain into one scalar.
-        // The measure pass leads the one continuous bar. An unmeasurable range yields a
-        // 0 dB correction and the encode still completes.
+        // The measure pass leads the one continuous bar.
         var correctionDB = 0.0
         let encodeStart: Double
         if request.normalize {
@@ -151,15 +140,7 @@ final class ExportEncoder: @unchecked Sendable {
         }
     }
 
-    /// The Export/Loudness dropout. Multiplies every sample by the one linear `scale` that
-    /// folds the clamped Loudness correction and the manual Gain — **a single scalar multiply, never
-    /// a limiter or a per-sample clamp** — so the two gains compose without double-normalizing and
-    /// the whole path stays the pure multiply 's no-double-normalize stance leans on. The
-    /// scalar is exactly 1 for a faithful export (no normalization, 0 dB Gain), and the loop is
-    /// skipped entirely then. The correction can never breach full scale (its ceiling is −3 dBTP);
-    /// only an uncapped positive Gain can, and there the framework's float→int conversion saturates
-    /// on the way to ALAC/AAC rather than wrapping — so no nonlinearity is inserted here. The `× 1.02`
-    /// size estimate never moves with any of this.
+    /// The Export/Loudness dropout.
     private func applyGain(_ buffer: UnsafeMutableBufferPointer<Float>, sampleCount: Int) {
         guard scale != 1 else { return }   // faithful passthrough
         let s = scale
@@ -168,9 +149,6 @@ final class ExportEncoder: @unchecked Sendable {
 
     /// Sets the lossy target bitrate on the underlying `AudioConverter` and asks for constrained
     /// VBR, then resyncs the file's data format per the `ExtAudioFile` contract (a NULL config).
-    /// Best-effort: an encoder that refuses a quality knob still produces a valid file at its
-    /// default, so a failure here is swallowed rather than aborting the export. ALAC has no target
-    /// and is left alone.
     private func configureEncoder(_ destRef: ExtAudioFileRef, preset: QualityPreset) {
         guard let bitrate = preset.targetBitrate else { return }
         var converter: AudioConverterRef?
@@ -186,8 +164,7 @@ final class ExportEncoder: @unchecked Sendable {
                                       UInt32(MemoryLayout<UInt32>.size), &rate)
 
         // A NULL config resynchronises the file's data format with the reconfigured converter
-        // (ExtAudioFile contract). Pass it as a null pointer-sized word rather than `&someCFArray?`,
-        // which would form a raw pointer to a managed reference.
+        // (ExtAudioFile contract).
         var nullConfig: UnsafeRawPointer? = nil
         withUnsafePointer(to: &nullConfig) { pointer in
             _ = ExtAudioFileSetProperty(destRef, kExtAudioFileProperty_ConverterConfig,

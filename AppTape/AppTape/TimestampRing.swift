@@ -1,12 +1,10 @@
 import Synchronization
 
-/// A lock-free single-producer / single-consumer ring of **host-time marks**, parallel to the
-/// sample `AudioRingBuffer`. The realtime IOProc pushes one mark per delivered buffer — the buffer's
-/// first-frame host time and the ring-frame position it lands at — and the non-realtime writer
-/// thread pops them to learn where, in wall-clock time, each drained chunk sits.
+/// A lock-free single-producer / single-consumer ring of host-time marks, parallel to the
+/// sample `AudioRingBuffer`.
 nonisolated final class TimestampRing: @unchecked Sendable {
     struct Mark: Equatable {
-        /// Frames written to the sample ring **before** this buffer — the ring-frame position of the
+        /// Frames written to the sample ring before this buffer — the ring-frame position of the
         /// buffer's first frame, in the same counting as the writer's per-tap consumed-frame index.
         var ringFrame: Int
         /// Host time of the buffer's first frame, in seconds (a monotonic machine clock).

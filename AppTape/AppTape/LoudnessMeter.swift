@@ -1,20 +1,10 @@
 import AudioToolbox
 import Foundation
 
-/// A **hand-rolled ITU-R BS.1770-5 / EBU R128 pass** over a trimmed range of Float32 frames
-///. It is deliberately *not* `MusicUnderstanding.LoudnessResult`: that type applies no
-/// gain and takes no time-range, so it cannot measure a Trim or drive the correction. This one is
-/// fully specified by BS.1770-5 Annexes 1–2 and small — K-weighting, 400 ms gated blocks, and a 4×
-/// oversampled true peak — run over the same trimmed Float32 the encode already reads.
+/// A hand-rolled ITU-R BS.1770-5 / EBU R128 pass over a trimmed range of Float32 frames.
 nonisolated enum LoudnessMeter {
     /// Reads the master's trimmed range as interleaved Float32 (the encode's own client format) and
-    /// measures it. `onProgress` reports `0...1` across the read, so a normalized Export can show one
-    /// continuous measure-then-encode bar. Throws on a Core Audio failure; a genuinely unmeasurable
-    /// range is not an error — it returns a measurement whose `integratedLUFS` is `nil`.
-    /// `isCancelled`, polled each read chunk, lets a superseded preview pass (a dragging Trim handle,
-    /// a flipped toggle) stop its filtering early instead of running the whole range to completion;
-    /// the caller discards the partial result. The Export path leaves it at the default and always
-    /// runs to the end.
+    /// measures it.
     static func measure(url: URL, startFrame: Int64, frameCount: Int64,
                         isCancelled: () -> Bool = { false },
                         onProgress: (Double) -> Void = { _ in }) throws -> LoudnessMeasurement {
@@ -192,8 +182,8 @@ nonisolated final class LoudnessAnalyzer {
         // Store the new sample, then convolve the 12-tap window with each of the 4 phases.
         let windowBase = channel * Self.peakTaps
         peakWindow[windowBase + peakPos] = sample
-        // Advance this channel's ring on the last channel of the frame (all channels share peakPos).
-        // The window is read most-recent-first: index (peakPos - k) mod 12.
+        // Advance this channel's ring on the last channel of the frame (all channels share
+        // peakPos).
         for phase in 0..<4 {
             var acc: Float = 0
             let coeffs = Self.peakCoefficients[phase]
@@ -241,9 +231,7 @@ nonisolated final class LoudnessAnalyzer {
 
 // MARK: - Biquad
 
-/// One second-order section, Direct Form II Transposed. Coefficients are normalised so `a0 == 1`.
-/// `nonisolated`, like everything else the BS.1770 pass touches — a main-actor biquad
-/// would drag the whole filter cascade back onto the main thread one sample at a time.
+/// One second-order section, Direct Form II Transposed.
 nonisolated struct Biquad {
     let b0, b1, b2, a1, a2: Double
 
@@ -255,10 +243,7 @@ nonisolated struct Biquad {
         return y
     }
 
-    /// The K-weighting **pre-filter** (Annex 1 stage 1): a high-frequency shelf. Coefficients are
-    /// derived from the analog prototype at the actual sample rate (the bilinear transform in
-    /// libebur128's derivation), so a 44.1, 48 or 96 kHz capture is weighted correctly rather than
-    /// with the 48 kHz table forced onto every rate.
+    /// The K-weighting pre-filter (Annex 1 stage 1): a high-frequency shelf.
     static func kWeightingShelf(sampleRate: Double) -> Biquad {
         let f0 = 1681.9744509555319
         let G = 3.99984385397
@@ -275,7 +260,7 @@ nonisolated struct Biquad {
             a2: (1.0 - K / Q + K * K) / a0)
     }
 
-    /// The K-weighting **RLB high-pass** (Annex 1 stage 2), likewise derived at the real rate.
+    /// The K-weighting RLB high-pass (Annex 1 stage 2), likewise derived at the real rate.
     static func kWeightingHighpass(sampleRate: Double) -> Biquad {
         let f0 = 38.13547087613982
         let Q = 0.5003270373253953

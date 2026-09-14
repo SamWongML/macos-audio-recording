@@ -30,8 +30,8 @@ struct CaptureReducerTests {
     @Test func interiorSilenceAfterFirstSoundIsKept() {
         var reducer = CaptureReducer()
         _ = reducer.receive(frameCount: 512, firstNonSilentFrame: 0)
-        // A silent chunk *after* the master has begun is appended, not elided —
-        // it lands as real zero-frames so Trim points do not shift.
+        // A silent chunk *after* the master has begun is appended, not elided — it lands as real
+        // zero-frames so Trim points do not shift.
         #expect(reducer.receive(frameCount: 512, firstNonSilentFrame: nil) == .append)
         #expect(reducer.receive(frameCount: 512, firstNonSilentFrame: 300) == .append)
         #expect(reducer.masterFrames == 512 * 3)
@@ -39,8 +39,8 @@ struct CaptureReducerTests {
 
     @Test func armThenNeverPlayNeverBegins() {
         var reducer = CaptureReducer()
-        // Many silent callbacks (something else on the system is playing) but the
-        // Source itself never makes a sound.
+        // Many silent callbacks (something else on the system is playing) but the Source itself
+        // never makes a sound.
         for _ in 0..<200 { _ = reducer.receive(frameCount: 512, firstNonSilentFrame: nil) }
         #expect(reducer.hasBegun == false)
         #expect(reducer.masterFrames == 0)

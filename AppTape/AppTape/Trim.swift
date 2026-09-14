@@ -1,8 +1,6 @@
 import Foundation
 
-/// A **Trim**: the two points that select which part of a Recording is Exported (CONTEXT.md).
-/// Choosing them never alters the Recording, so a Trim can be widened, narrowed, or reset at
-/// any time — it lives only as two numbers, persisted in an extended attribute.
+/// A Trim: the two points that select which part of a Recording is Exported (CONTEXT.md).
 nonisolated struct Trim: Equatable {
     /// An Export has to contain something.
     static let minimumLength = 0.2
@@ -12,8 +10,7 @@ nonisolated struct Trim: Equatable {
     let duration: Double
 
     /// A Recording shorter than the minimum cannot be trimmed at all — the whole thing is the
-    /// Trim, and neither handle moves. Adopted-file limits own what else such a
-    /// file should do.
+    /// Trim, and neither handle moves.
     var isFixed: Bool { duration < Self.minimumLength }
 
     /// The full-length Trim over a Recording of `duration` seconds.
@@ -23,9 +20,9 @@ nonisolated struct Trim: Equatable {
         self.end = self.duration
     }
 
-    /// Sanitising initialiser: takes any two numbers from anywhere — an xattr written by an
-    /// older build, a file since replaced by a shorter one (permits it) — and lands on
-    /// a valid Trim rather than trusting them or trapping.
+    /// Sanitising initialiser: takes any two numbers from anywhere — an xattr written by an older
+    /// build, a file since replaced by a shorter one (permits it) — and lands on a valid Trim
+    /// rather than trusting them or trapping.
     init(start: Double, end: Double, duration: Double) {
         self = Trim(duration: duration)
         guard !isFixed else { return }
@@ -49,11 +46,7 @@ nonisolated struct Trim: Equatable {
         Swift.min(duration, start + Self.minimumLength)...duration
     }
 
-    /// Non-finite input leaves the Trim alone rather than moving a handle to nowhere. `NaN` is
-    /// reachable: the lane converts a pixel to a time with `px / width * span`, and a zero-width
-    /// lane during a layout pass makes that `inf * 0`. `min` and `max` propagate `NaN` silently,
-    /// so without this guard one bad layout would write `nan` into the xattr and the Recording
-    /// would come back broken on the next launch.
+    /// Non-finite input leaves the Trim alone rather than moving a handle to nowhere.
     mutating func setStart(_ t: Double) {
         guard !isFixed, t.isFinite else { return }
         start = t.clamped(to: startLimits)

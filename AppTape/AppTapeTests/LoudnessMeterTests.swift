@@ -3,20 +3,12 @@ import AVFoundation
 import Foundation
 @testable import AppTape
 
-/// The hand-rolled BS.1770-5 pass, driven through the streaming `LoudnessAnalyzer` dropout
-/// with engineered fixtures. The absolute anchor is the standard calibration a hand-derivation of the
-/// K-weighting confirms: a 0 dBFS 1 kHz sine reads −3.0 LUFS in one channel. The relative anchors are
-/// filter-independent by construction — halving amplitude is exactly −6.02 LU, and a matched stereo
-/// pair is exactly +3.01 LU over the same single channel — so they hold regardless of the exact gain.
+/// The hand-rolled BS.1770-5 pass, driven through the streaming `LoudnessAnalyzer` dropout with
+/// engineered fixtures.
 struct LoudnessMeterTests {
     private let sampleRate = 48_000.0
 
-    /// / the pass must never execute on the main thread. The target sets
-    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so dropping `nonisolated` from `LoudnessMeter`
-    /// silently makes it main-actor isolated — and the `Task.detached` in `LoudnessCorrectionModel`
-    /// then hops right back, freezing the editor for the length of the pass (over fifteen minutes
-    /// on a twenty-minute master in Debug). `onProgress` is called from inside the read loop, so it
-    /// samples the thread the filtering is actually running on.
+    /// / the pass must never execute on the main thread.
     @Test func theBS1770PassNeverRunsOnTheMainThread() async throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -82,8 +74,8 @@ struct LoudnessMeterTests {
     // MARK: - The relative gate
 
     @Test func theRelativeGateExcludesTrailingSilence() {
-        // 1 s of a loud sine then 1 s of silence: the gate must report the loud part's loudness, not
-        // the −3 dB average of loud-plus-silence. Silence sits under the −70 LKFS absolute gate.
+        // 1 s of a loud sine then 1 s of silence: the gate must report the loud part's loudness,
+        // not the −3 dB average of loud-plus-silence.
         let loud = sine(seconds: 1, amplitude: 0.5, channels: 1)
         let silence = [Float](repeating: 0, count: Int(sampleRate) )
         let mixed = loud + silence
@@ -116,8 +108,8 @@ struct LoudnessMeterTests {
     }
 
     @Test func oversamplingCatchesAnInterSamplePeakTheSamplesMiss() {
-        // A 12 kHz (fs/4) full-scale sine at 45°: every sample lands at ±0.707 (a −3.01 dBFS sample
-        // peak), but the continuous waveform crests at 1.0. Oversampling must see over −3 dB.
+        // A 12 kHz (fs/4) full-scale sine at 45°: every sample lands at ±0.707 (a −3.01 dBFS
+        // sample peak), but the continuous waveform crests at 1.0.
         let m = measure(sine(seconds: 0.5, frequency: 12_000, amplitude: 1.0, phase: .pi / 4), channels: 1)
         #expect(m.truePeakDBTP > -1.5)                // recovers close to 0 dBTP
         #expect(m.truePeakDBTP > -3.01 + 1.0)         // clearly above the sample peak

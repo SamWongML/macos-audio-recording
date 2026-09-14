@@ -14,9 +14,7 @@ final class RecordingController {
     let run: CaptureRun
 
     /// The production wiring: a real Core Audio capture, a real `statfs`, a real notification
-    /// centre, the real editor window and the real file system. Written as its own initializer
-    /// rather than a default argument because a default argument is evaluated in a nonisolated
-    /// context, and every one of these adapters is main-actor isolated.
+    /// centre, the real editor window and the real file system.
     init() {
         self.run = CaptureRun(builder: CoreAudioCaptureBuilder(),
                               runway: LibraryVolumeProbe(),
@@ -30,8 +28,7 @@ final class RecordingController {
     }
 
     // MARK: - What the panel and the status item read
-    //
-    // Forwards, not copies. Observation tracks through a computed property, so a surface reading
+    // Forwards, not copies.
 
     var isRecording: Bool { run.isRecording }
     var recordingSourceID: String? { run.recordingSourceID }
@@ -44,8 +41,6 @@ final class RecordingController {
     var startBlocker: DiskGuardBlocker? { run.startBlocker }
 
     /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
-    /// The subtraction happens here because the run reads no clock; it publishes the press time and
-    /// this is the one place that asks what time it is now.
     var sincePress: TimeInterval? {
         run.pressedAt.map { ProcessInfo.processInfo.systemUptime - $0 }
     }
@@ -54,8 +49,8 @@ final class RecordingController {
 
     func start(_ source: Source) {
         run.start(source, now: uptime)
-        // A press refused below the disk floor never enters a recording state, so there
-        // is nothing to clock.
+        // A press refused below the disk floor never enters a recording state, so there is nothing
+        // to clock.
         if run.isRecording { startClock() }
     }
 
@@ -71,9 +66,7 @@ final class RecordingController {
     }
 
     /// Registers the lifecycle ends that arrive as notifications: sleep, fast user switching, and
-    /// logout/power-off. Idempotent; called once from the app delegate. Quit itself is caught in
-    /// `applicationWillTerminate`. Uses the block API (like `LibraryStore`) because this is a plain
-    /// `@Observable`, not an `NSObject`, so a selector target would never be dispatched.
+    /// logout/power-off.
     func installLifecycleObservers() {
         guard !installedLifecycleObservers else { return }
         installedLifecycleObservers = true
@@ -94,9 +87,7 @@ final class RecordingController {
 
     // MARK: - The clock
 
-    /// 20 Hz — the meter's cadence, and the fastest thing the run does. Every slower
-    /// cadence is arithmetic over `now` inside the run: the menu bar's 4 Hz clock, the Runway's 5 s
-    /// poll, and the wedge timeout. Four timers used to say this.
+    /// 20 Hz — the meter's cadence, and the fastest thing the run does.
     static let tickInterval: TimeInterval = 1.0 / 20.0
 
     private var clock: Timer?

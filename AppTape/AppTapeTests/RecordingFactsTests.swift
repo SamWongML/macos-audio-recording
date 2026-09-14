@@ -2,24 +2,22 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// What a `Recording` says about itself, now that saying it costs nothing. Every case here used to
-/// need a 440 Hz CAF on disk, because `init?(url:)` was the only way to make one — which is why
-/// none of them existed. The Recording is the subject; the file is not.
+/// What a `Recording` says about itself, now that saying it costs nothing.
 @MainActor
 struct RecordingFactsTests {
 
     // MARK: - The Source: a stored xattr over a live parse
 
     @Test func theSourceXattrWinsOverTheFilename() {
-        // Capture writes the xattr, so a Recording knows where it came from even when its name
-        // no longer says. The name here says Chrome and the attribute says Zoom.
+        // Capture writes the xattr, so a Recording knows where it came from even when its name no
+        // longer says.
         let recording = Recording.stub("Google Chrome 2026-09-13 at 21.51.03", storedSource: "Zoom")
         #expect(recording.source == "Zoom")
     }
 
     @Test func withNoXattrAGeneratedNameParsesToItsSource() {
-        // A Recording that lost its attributes — a round trip through a FAT volume or a share
-        // — still knows its Source, because capture's own filename carries it.
+        // A Recording that lost its attributes — a round trip through a FAT volume or a share —
+        // still knows its Source, because capture's own filename carries it.
         let recording = Recording.stub("Google Chrome 2026-09-13 at 21.51.03", storedSource: nil)
         #expect(recording.source == "Google Chrome")
     }
@@ -38,17 +36,13 @@ struct RecordingFactsTests {
     }
 
     @Test func displayNameIsTheSourceUntilTheUserNamesIt() {
-        // while the filename is capture's, it says nothing the row is not already
-        // showing, so the row shows the Source. A rename is how you say *this one is the
-        // interview*, so once the name is the user's it has to show.
+        // while the filename is capture's, it says nothing the row is not already showing, so the
+        // row shows the Source.
         #expect(Recording.stub("Google Chrome 2026-09-13 at 21.51.03").displayName == "Google Chrome")
         #expect(Recording.stub("Interview").displayName == "Interview")
     }
 
-    /// The reason only *half* of `source` is a stored fact. A hand-adopted file has no Source
-    /// attribute, so its Source is a reading of its filename — and a rename changes the filename.
-    /// Caching the parse along with the xattr would have this Recording reporting a name it no
-    /// longer has.
+    /// The reason only *half* of `source` is a stored fact.
     @Test func aRenamedFileWithNoXattrRederivesItsSource() {
         let recording = Recording.stub("Google Chrome 2026-09-13 at 21.51.03", storedSource: nil)
         #expect(recording.source == "Google Chrome")
@@ -94,9 +88,8 @@ struct RecordingFactsTests {
 
     // MARK: - The facts are read once, which is the whole point
 
-    /// The sidebar filters on `displayName` and groups on `recordedAt`, both per row, on every
-    /// body pass. Each of those used to be a syscall — two `getxattr` and a `resourceValues` — so a
-    /// 44-Recording Library cost 132 of them per keystroke in the search field.
+    /// The sidebar filters on `displayName` and groups on `recordedAt`, both per row, on every body
+    /// pass.
     @Test func renderingTheLibraryOverAndOverReadsNothingFurther() {
         let reader = StubRecordingReader()
         for second in 0..<44 {
@@ -177,8 +170,8 @@ struct RecordingFactsTests {
     }
 
     @Test func theTrimmedFrameRangeClampsIntoTheFile() {
-        // A Trim read against a duration the file no longer has — permits pointing the app
-        // at a shorter file of the same name — must land inside the file rather than past its end.
+        // A Trim read against a duration the file no longer has — permits pointing the app at a
+        // shorter file of the same name — must land inside the file rather than past its end.
         let recording = Recording.stub(seconds: 5, storedTrim: Trim(start: 1, end: 19, duration: 20))
         let (start, count) = recording.trimmedFrameRange
         #expect(start == 48_000)

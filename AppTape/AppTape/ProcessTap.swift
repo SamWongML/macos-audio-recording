@@ -1,10 +1,8 @@
 import CoreAudio
 import Foundation
 
-/// Owns one Core Audio process tap, its private tap-only aggregate device, and the realtime
-/// IOProc that reads it — aimed at a Source's helper processes **by object ID**.
-/// The IOProc does one thing: copy the delivered samples into the ring buffer and return.
-/// It never blocks, never allocates, never logs.
+/// Owns one Core Audio process tap, its private tap-only aggregate device, and the realtime IOProc
+/// that reads it — aimed at a Source's helper processes by object ID.
 nonisolated final class ProcessTap {
     /// The tap's delivered stream format — interleaved Float32 stereo in practice, but read,
     /// not assumed.
@@ -30,9 +28,7 @@ nonisolated final class ProcessTap {
         case start(OSStatus)
     }
 
-    /// Builds and starts the tap. Blocking, and the call that can put up the TCC prompt, so
-    /// it must run off the main thread (saw `AudioDeviceStart` block 90 s while the
-    /// prompt was up).
+    /// Builds and starts the tap.
     init(processObjectIDs: [AudioObjectID], ringCapacitySeconds: Double = 10) throws {
         // Stereo mixdown of exactly the resolved helper processes, aimed by object ID.
         let description = CATapDescription(stereoMixdownOfProcesses: processObjectIDs)
@@ -44,8 +40,8 @@ nonisolated final class ProcessTap {
         // untouched description, so skipping the write silently leaves restore enabled.
         description.isProcessRestoreEnabled = true
 
-        // Everything below works in locals; a half-built tap must be destroyed on any throw,
-        // and `stop` cannot run before the stored `let`s exist. One `defer` unwinds whatever
+        // Everything below works in locals; a half-built tap must be destroyed on any throw, and
+        // `stop` cannot run before the stored `let`s exist.
         var tap = AudioObjectID(0)
         var aggregate = AudioObjectID(0)
         var proc: AudioDeviceIOProcID?
@@ -101,8 +97,7 @@ nonisolated final class ProcessTap {
         let marks = timestampRing
 
         let madeProc = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, inputData, inInputTime, _, _ in
-            // Realtime context: copy in and return. The ring drops-with-a-count on overrun,
-            // so a stalled writer costs a counted dropout, never a blocked audio thread.
+            // Realtime context: copy in and return.
             let firstFrame = ringBuffer.writtenSamples / channels
             var wroteAny = false
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
@@ -159,11 +154,8 @@ nonisolated final class ProcessTap {
             .filter { !$0.isEmpty })
     }
 
-    /// Re-resolve the Source's live HAL clients by bundle ID — the re-resolution a rebuild performs,
-    /// so a Source that quit and relaunched is picked up again at its new object IDs.
-    /// Pure Core Audio, no workspace: it re-scans the process table and keeps the clients whose
-    /// bundle ID the Recording started from, which covers a relaunched helper (same bundle, new ID)
-    /// and WebKit's GPU process (always `com.apple.WebKit.GPU`).
+    /// Re-resolve the Source's live HAL clients by bundle ID — the re-resolution a rebuild
+    /// performs, so a Source that quit and relaunched is picked up again at its new object IDs.
     static func resolveObjectIDs(matchingBundleIDs bundleIDs: Set<String>) -> [AudioObjectID] {
         guard !bundleIDs.isEmpty else { return [] }
         return CAProperty.objectIDs(of: AudioObjectID(kAudioObjectSystemObject),

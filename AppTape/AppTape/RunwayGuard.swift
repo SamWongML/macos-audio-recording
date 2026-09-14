@@ -1,12 +1,10 @@
 import Foundation
 
-/// The disk guard as a **Runway** clock: a pure value reducer, off the realtime IOProc
-/// and the writer thread, that turns a `statfs` free-space reading and the master's byte rate into
-/// three advisory tiers measured in *time to a 2 GB floor* rather than in bytes.
+/// The disk guard as a Runway clock: a pure value reducer, off the realtime IOProc and the
+/// writer thread, that turns a `statfs` free-space reading and the master's byte rate into three
+/// advisory tiers measured in *time to a 2 GB floor* rather than in bytes.
 nonisolated struct RunwayGuard {
-    /// The hard floor on the Library's volume. Plain available capacity, not
-    /// `…ForImportantUsage`. Decimal GB, matching how Finder reports free space and how
-    /// the refusal names it, so "2 GB" on screen is the same 2 GB enforced here.
+    /// The hard floor on the Library's volume.
     static let floorBytes: Int64 = 2_000_000_000
 
     /// The menu bar turns amber at 3 hours of Runway — late enough that a healthy disk never shows
@@ -22,13 +20,10 @@ nonisolated struct RunwayGuard {
     static let hysteresis: TimeInterval = 15 * 60
 
     /// A pre-tap estimate of the master's byte rate — 48 kHz stereo Float32 — used only for the
-    /// start-amber decision, before a tap exists to report its real format. The first real poll a few
-    /// seconds later corrects the tier with the true rate, so an off estimate costs nothing.
+    /// start-amber decision, before a tap exists to report its real format.
     static let nominalRatePerSecond: Double = 8 * 48_000
 
-    /// Whether the menu bar item is drawn amber. Colour is the sole signal at this tier —
-    /// a conscious accessibility trade, since the 30-minute tier is text and reaches a colour-blind
-    /// user intact.
+    /// Whether the menu bar item is drawn amber.
     enum Tier: Sendable { case nominal, amber }
 
     /// What the coordinator should do after folding in one reading.
@@ -53,9 +48,7 @@ nonisolated struct RunwayGuard {
         return Double(freeBytes - floorBytes) / ratePerSecond
     }
 
-    /// The start policy. The refusal depends only on the floor; the amber split uses the Runway, so a
-    /// Recording the guard would paint amber within seconds begins amber rather than flashing green
-    /// first.
+    /// The start policy.
     static func startDecision(freeBytes: Int64, ratePerSecond: Double) -> StartDecision {
         guard freeBytes > floorBytes else { return .refuse }
         return runwaySeconds(freeBytes: freeBytes, ratePerSecond: ratePerSecond) <= amberThreshold
@@ -66,18 +59,14 @@ nonisolated struct RunwayGuard {
     /// that wants to pre-seed it from a `.allowAmber` start.
     private(set) var tier: Tier = .nominal
     /// The warning one-shot: true once the 30-minute warning has fired, cleared only by a 45-minute
-    /// recovery. A posted warning is never retracted, so this never drives an all-clear — only
-    /// re-arms the single future warning.
+    /// recovery.
     private var warned = false
 
     init(tier: Tier = .nominal) { self.tier = tier }
 
-    /// Fold in one free-space reading and decide. The tier moves to amber the moment Runway reaches
-    /// 3 hours and back to nominal only once it recovers past 3h15m; the warning fires the moment
-    /// Runway reaches 30 minutes and re-arms only past 45 minutes. End wins outright at the floor.
+    /// Fold in one free-space reading and decide.
     mutating func receive(freeBytes: Int64, ratePerSecond: Double) -> Decision {
-        // The floor: end outright. No warning on this reading — "will stop soon" chased by an
-        // immediate stop is noise; the end's own notification is the telling.
+        // The floor: end outright.
         guard freeBytes > Self.floorBytes else {
             return Decision(tier: tier, shouldWarn: false, shouldEnd: true)
         }

@@ -4,10 +4,10 @@ import Testing
 /// The one decision that refuses an Export.
 struct ExportReadinessTests {
     private let stereo48 = SourceFormat(sampleRate: 48_000, channelCount: 2, bitsPerChannel: 32)
-    /// The source needed a doctored Library to photograph: the three AAC rungs refuse it.
+    /// The source needed a doctored Library to photograph: the three AAC preset rows refuse it.
     private let hiRes96 = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 32)
 
-    /// An ordinary settled Recording with a Trim in it, at a rung that can encode it. Every rule
+    /// An ordinary settled Recording with a Trim in it, at a preset row that can encode it. Every rule
     /// below flips exactly one of these.
     private func evaluate(isOpenable: Bool = true,
                           isCapturing: Bool = false,
@@ -42,9 +42,7 @@ struct ExportReadinessTests {
         #expect(ExportReadiness.Reason.alreadyRunning.sentence == "An Export is already running.")
     }
 
-    /// A negative frame count is the same refusal as zero. `trimmedFrameRange` cannot produce one
-    /// today, but the rule is `<= 0` rather than `== 0` so that a future caller's arithmetic cannot
-    /// slip an Export of nothing past the gate.
+    /// A negative frame count is the same blocker as zero.
     @Test func aNegativeFrameCountIsRefusedLikeAnEmptyOne() {
         #expect(evaluate(frames: -1).blocker == .emptyTrim)
     }
@@ -66,33 +64,24 @@ struct ExportReadinessTests {
 
     // MARK: - The two rules that used to be accidents
 
-    /// An adopted file with no audio in it. It was refused before this module existed, but only
-    /// because `Trim(duration: 0).length` is 0 — an invariant three files away, asserted nowhere.
-    /// Here it is the rule itself.
+    /// An adopted file with no audio in it.
     @Test func anAdoptedFileWithNoAudioIsRefusedAsAnEmptyTrim() {
         #expect(evaluate(frames: 0).blocker == .emptyTrim)
     }
 
-    /// A file the decoder cannot open. It, too, was refused only as arithmetic: an
-    /// unopenable Recording reads back as zero frames, so it fell into the Trim rule and was told the
-    /// wrong thing for the right reason. Stated, it wins first — and note the frame count here is
-    /// positive, which is what the old arrangement could not survive.
+    /// A file the decoder cannot open.
     @Test func aFileThatCannotBeDecodedIsRefusedBeforeAnythingElseIsAsked() {
         #expect(evaluate(isOpenable: false, frames: 48_000).blocker == .unopenable)
     }
 
-    /// The divergence this module exists to close. The dock measured `trimmedDuration` in seconds and
-    /// the coordinator measured `trimmedFrameRange` in frames, and a Recording whose Trim is `isFixed`
-    /// can report a positive length in seconds with zero frames behind it — so the dock offered a
-    /// button whose click produced a failure telling. Frames decide.
+    /// The divergence this module exists to close.
     @Test func aTrimWithNoFramesIsRefusedHoweverManySecondsItClaims() {
         #expect(evaluate(frames: 0).blocker == .emptyTrim)
-        // One frame is an Export. The rule is "nothing in the Trim", not "not enough in the Trim" —
-        // keeps a sub-0.2 s adopted file exportable at its whole length.
+        // One frame is an Export.
         #expect(evaluate(frames: 1) == .ready)
     }
 
-    // MARK: - The specific reason, carried but not printed (/ )
+    // MARK: - The specific reason, carried but not printed (/)
 
     @Test func anUnencodableReasonCarriesTheRungsOwnWordsAndPrintsTheGenericLine() {
         let blocker = evaluate(format: hiRes96).blocker
@@ -100,16 +89,16 @@ struct ExportReadinessTests {
             Issue.record("expected an unencodable blocker, got \(String(describing: blocker))")
             return
         }
-        // The rung's sentence, whole — this is what prints beside the rung at full strength.
+        // The preset row's sentence, whole — this is what prints beside the preset row at full strength.
         #expect(detail.contains("48 kHz"))
         #expect(detail.contains("96 kHz"))
-        // And the dock's, which names the situation only: 's trade, asserted.
+        // And the dock's, which names the situation only: the trade, asserted.
         #expect(blocker?.sentence == "This quality can't encode this file.")
         #expect(blocker?.sentence.contains("96 kHz") == false)
     }
 
-    /// Master/ALAC is the universal rung, so the same source that refuses three rungs is
-    /// ready on the fourth. The refusal is about the *effective preset*, never about the file alone.
+    /// Master/ALAC is the universal preset row, so the same source that refuses three preset rows is
+    /// ready on the fourth. The blocker is about the *effective preset*, never about the file alone.
     @Test func theSameSourceIsReadyOnARungThatCanEncodeIt() {
         #expect(evaluate(preset: .master, format: hiRes96) == .ready)
         #expect(evaluate(preset: .standard, format: hiRes96).blocker?.sentence

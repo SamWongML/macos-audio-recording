@@ -2,7 +2,7 @@ import Testing
 @testable import AppTape
 
 /// Dropouts are recorded always; only ones a listener would notice are surfaced. The threshold is a
-/// single Dropout of 250 ms **or a total of** 250 ms.
+/// single Dropout of 250 ms or a total of 250 ms.
 struct DropoutTests {
     private let rate = 48_000.0
     private func frames(_ ms: Double) -> Int { Int(ms / 1000 * rate) }

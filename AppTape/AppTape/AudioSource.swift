@@ -1,46 +1,35 @@
 import CoreAudio
 
 /// One HAL client process, straight out of `kAudioHardwarePropertyProcessObjectList`.
-/// The tap is aimed at these **by object ID** (`id`), never by bundle ID: `bundleIDs`
-/// resolves app bundles only and misses WebKit's XPC audio service, which is half the
-/// reason this app exists.
 struct AudioProcess: Identifiable, Hashable {
     var id: AudioObjectID
     var pid: pid_t
     var bundleID: String
     var isRunningOutput: Bool
-    /// `NSRunningApplication.localizedName`, when the OS admits one exists — often the
-    /// only thread back to the owning app for a WebKit GPU process, whose bundle ID
+    /// `NSRunningApplication.localizedName`, when the OS admits one exists — often the only
+    /// thread back to the owning app for a WebKit GPU process, whose bundle ID
     /// (`com.apple.WebKit.GPU`) names no app.
     var appName: String?
 }
 
-/// A running `.regular` application, reduced to what Source resolution needs. An
-/// abstraction over `NSRunningApplication` so the mapping is a pure function testable
-/// without a live workspace.
+/// A running `.regular` application, reduced to what Source resolution needs.
 struct RunningApp: Hashable {
     var bundleID: String
     var name: String
 }
 
-/// A user-facing application the user can choose to capture. One Source fans out to the
-/// helper processes that own its real HAL clients — Chrome's audio service, WebKit's GPU
-/// process — mapped back up onto the visible app.
+/// A user-facing application the user can choose to capture.
 struct Source: Identifiable, Hashable {
     var id: String { bundleID }
     var bundleID: String
     var name: String
     /// True when any process belonging to this Source is pushing audio out right now.
     var isPlaying: Bool
-    /// The object IDs of the HAL clients this Source resolves to — what the tap is aimed
-    /// at. Empty means the app is running but has not touched Core Audio yet, so there is
-    /// nothing to tap until it does.
+    /// The object IDs of the HAL clients this Source resolves to — what the tap is aimed at.
     var processObjectIDs: [AudioObjectID]
 }
 
-/// The pure mapping from raw HAL processes onto the apps a user would name. No Core Audio,
-/// no AppKit — the whole resolution is a function of its inputs, so it is unit-tested
-/// directly ('s heuristics, promoted out of the prototype).
+/// The pure mapping from raw HAL processes onto the apps a user would name.
 enum SourceResolution {
     /// Maps a HAL client's bundle ID back to the app a user would name, or `nil` if it
     /// belongs to no visible `.regular` app.
@@ -50,8 +39,8 @@ enum SourceResolution {
             let owner = name.replacingOccurrences(of: " Graphics and Media", with: "")
             return apps.first { $0.name == owner }?.bundleID
         }
-        // Longest matching prefix wins, so `com.google.Chrome.helper` picks Chrome, not
-        // some shorter `com.google` if one ever existed.
+        // Longest matching prefix wins, so `com.google.Chrome.helper` picks Chrome, not some
+        // shorter `com.google` if one ever existed.
         return apps
             .map(\.bundleID)
             .filter { process.bundleID == $0 || process.bundleID.hasPrefix($0 + ".") }

@@ -15,22 +15,18 @@ nonisolated enum LoudnessTarget {
 /// What a BS.1770 pass measured over a trimmed range: the integrated loudness (undefined for a
 /// silent or too-short range) and the 4× oversampled true peak that the ceiling clamps against.
 nonisolated struct LoudnessMeasurement: Equatable {
-    /// Integrated loudness in LUFS, or `nil` when the range is **unmeasurable** — silent under the
-    /// −70 LKFS gate, or shorter than one 400 ms gating block. An undefined measurement drives a
-    /// 0 dB correction, never an invented one.
+    /// Integrated loudness in LUFS, or `nil` when the range is unmeasurable — silent under
+    /// the −70 LKFS gate, or shorter than one 400 ms gating block.
     let integratedLUFS: Double?
     /// Maximum true peak in dBTP. `-.infinity` for pure silence.
     let truePeakDBTP: Double
 }
 
-/// The **single fixed linear gain** a normalized Export (and matching playback) applies to a
-/// trimmed range. It is one clamped scalar, never a limiter: amplify toward the target
-/// capped at +12 dB, attenuate uncapped, and where the gain would breach the −3 dBTP ceiling it is
-/// clamped down and the range lands short of the loudness target rather than reshaping the waveform.
+/// The single fixed linear gain a normalized Export (and matching playback) applies to a
+/// trimmed range.
 nonisolated struct LoudnessCorrection: Equatable {
     /// How the correction landed relative to the target, so the inspector can caption *why* it fell
-    /// short. The three land-short cases are distinct on purpose: the cap guards hiss, the ceiling
-    /// guards clipping, and an undefined range has nothing to correct at all.
+    /// short.
     enum GainResult: Equatable {
         /// Reached the target exactly — the figure shows alone, no caption.
         case full
@@ -58,9 +54,8 @@ nonisolated struct LoudnessCorrection: Equatable {
         }
 
         let desired = target - integrated
-        // Applying g dB moves the true peak to `truePeak + g`; the ceiling caps that at −3 dBTP, so
-        // the largest gain the ceiling permits is `ceiling − truePeak`. This can be negative when a
-        // range was captured hotter than the ceiling, forcing attenuation even where we meant to boost.
+        // Applying g dB moves the true peak to `truePeak + g`; the ceiling caps that at −3 dBTP,
+        // so the largest gain the ceiling permits is `ceiling − truePeak`.
         let ceilingLimit = ceiling - measurement.truePeakDBTP
 
         // Attenuation is uncapped (it lowers noise with signal); the ceiling can only ask for *more*.
@@ -86,7 +81,7 @@ nonisolated struct LoudnessCorrection: Equatable {
     // MARK: - Rendering (dB, never LUFS)
 
     /// The correction as its own decibel figure (`+4.2 dB`), or `No correction` when undefined. The
-    /// figure is **always dB** — the measured LUFS is never shown to the user.
+    /// figure is always dB — the measured LUFS is never shown to the user.
     var figureText: String {
         gainResult == .undefined ? "No correction" : Self.signedDecibels(decibels)
     }
@@ -115,8 +110,7 @@ nonisolated struct LoudnessCorrection: Equatable {
     }
 
     /// The one linear scalar that composes the Loudness correction and the manual Gain — a single
-    /// multiply, so stacking the two never double-normalizes. Play applies exactly this
-    /// as `AVAudioUnitEQ.globalGain`; Export applies exactly this in its write loop.
+    /// multiply, so stacking the two never double-normalizes.
     static func linearScalar(correctionDB: Double, gainDB: Double) -> Float {
         Float(pow(10.0, (correctionDB + gainDB) / 20.0))
     }

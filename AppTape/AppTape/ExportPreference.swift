@@ -1,11 +1,8 @@
 import Foundation
 import Observation
 
-/// The chosen Quality Preset, sticky **app-wide**: it is a preference about how the
-/// user wants to export, not a property of any one Recording, so it lives here rather than in an
-/// xattr. Backed by `UserDefaults` so it survives a relaunch, and `@Observable` so the inspector's
-/// subtitle and size estimate follow a change immediately. A singleton because every editor open
-/// shares the one preference.
+/// The chosen Quality Preset, sticky app-wide: it is a preference about how the user wants to
+/// export, not a property of any one Recording, so it lives here rather than in an xattr.
 @MainActor
 @Observable
 final class ExportPreference {
@@ -21,10 +18,7 @@ final class ExportPreference {
         }
     }
 
-    /// Whether Export normalizes Loudness. Like the preset, it is a preference about *how*
-    /// the user exports rather than a property of any one Recording — the shape of the Quality Preset,
-    /// not a per-Recording value like Gain and Trim — so it is sticky **app-wide** and **off on first
-    /// use**. Backed by `UserDefaults` so it survives a relaunch.
+    /// Whether Export normalizes Loudness.
     var normalizeLoudness: Bool {
         didSet {
             guard normalizeLoudness != oldValue else { return }

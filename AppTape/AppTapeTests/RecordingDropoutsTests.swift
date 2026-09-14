@@ -2,15 +2,12 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// How a Recording surfaces the Dropouts it read: the 250 ms single-or-total rule, what draws in the
-/// lane, and how the rest are told in one line. The mark describes the master, and a
-/// hand-adopted file with no attribute is clean.
+/// How a Recording surfaces the Dropouts it read: the 250 ms single-or-total rule, what draws in
+/// the lane, and how the rest are told in one line.
 @MainActor
 struct RecordingDropoutsTests {
     /// The summary is a `LocalizedStringResource`, so the inflection markup is parsed rather than
-    /// printed. Returned as a `String` it reached `Text`'s non-localized initializer and the editor
-    /// showed `^[3 Dropout](inflect: true) · 2.8 s of silence padded in` verbatim on screen
-    ///.
+    /// printed.
     private func resolved(_ resource: LocalizedStringResource) -> String {
         String(AttributedString(localized: resource).characters)
     }

@@ -3,9 +3,9 @@ import AVFoundation
 import AudioToolbox
 @testable import AppTape
 
-/// The write path is where the crash guarantee lives, so it is exercised end to end against
-/// real Core Audio: a written master must be a valid, playable CAF, carry its Source, and be
-/// readable *before* it is closed.
+/// The write path is where the crash guarantee lives, so it is exercised end to end against real
+/// Core Audio: a written master must be a valid, playable CAF, carry its Source, and be readable
+/// *before* it is closed.
 struct CAFMasterWriterTests {
     /// Interleaved Float32 stereo at 48 kHz — the tap's delivered format.
     private func stereoFloat32(_ sampleRate: Double = 48_000) -> AudioStreamBasicDescription {
@@ -55,8 +55,8 @@ struct CAFMasterWriterTests {
 
     @Test func aNotYetClosedFileIsAlreadyReadable() throws {
         // Stands in for the crash property: with deferred size updates and CAF's negative
-        // mChunkSize, a file whose header was never finalized still opens and reports its
-        // frames from the bytes on disk.
+        // mChunkSize, a file whose header was never finalized still opens and reports its frames
+        // from the bytes on disk.
         let url = tempURL()
         defer { try? FileManager.default.removeItem(at: url) }
 

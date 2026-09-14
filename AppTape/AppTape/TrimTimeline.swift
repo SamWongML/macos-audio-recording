@@ -1,27 +1,22 @@
 import SwiftUI
 
-/// The scrubbable timeline and the Trim range selector — the two surfaces found no
-/// official component for (SwiftUI's `Slider` only ever takes a single `Binding<V>`, and no
-/// `RangeSlider` type exists on macOS 27). So this is hand-drawn, and this file is the honest
-/// cost of that: hit-testing, two handles, a playhead, and the ±2 s loupe.
+/// The scrubbable timeline and the Trim range selector — the two surfaces found no official
+/// component for (SwiftUI's `Slider` only ever takes a single `Binding<V>`, and no `RangeSlider`
+/// type exists on macOS 27).
 struct TrimTimeline: View {
     var recording: Recording
     var envelope: Envelope
     var player: AudioPlayer
-    /// What capture is doing, accepted like the three above it. The lane asks two things
-    /// of it: whether it has anything dependable to draw, and — so the empty lane can say
-    /// *why* it is empty rather than just being blank — whether this is the Recording being captured.
+    /// What capture is doing, accepted like the three above it.
     var capture: any CaptureState
     /// Persist the Trim once, at gesture-end — never per drag frame.
     var onTrimCommitted: () -> Void
 
-    /// The loupe's material is the editor's one vibrant surface in the detail pane (
-    /// finding 15). Reduce Motion is handled by `.motion(_:value:)`, not read here.
+    /// The loupe's material is the editor's one vibrant surface in the detail pane. Reduce Motion
+    /// is handled by `.motion(_:value:)`, not read here.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// The playhead's two opacity stops are per-appearance, so both are read here.
-    /// `colorSchemeContrast` is readable but not settable — `.environment(_:_:)` does not compile
-    /// for it — so the Increase Contrast branch below is reasoned, not measured.
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
@@ -32,15 +27,11 @@ struct TrimTimeline: View {
     enum Handle { case start, end }
 
     /// The lane's mapping between points and seconds, over whatever width this pass measured.
-    /// It replaces a `visible` range whose lower bound was provably `0` at all seven sites that
-    /// subtracted it — closed the zoom question, and the code never caught up.
     private func geometry(width: Double) -> TimelineGeometry {
         TimelineGeometry(width: width, duration: recording.duration)
     }
 
-    /// Whether the lane has anything dependable to draw. The Recording always fits the width, so a
-    /// reading of a file still being written is drawn as though it were the whole Recording — which
-    /// is how a fraction of a second became a solid slab across the lane.
+    /// Whether the lane has anything dependable to draw.
     private var isStillArriving: Bool { capture.isStillArriving(recording) }
 
     /// What the lane says in place of that picture. A capture in progress is named as such; a file
@@ -51,7 +42,7 @@ struct TrimTimeline: View {
 
     var body: some View {
         VStack(spacing: Metrics.xs) {
-            // The ruler sits **above** the lane, which is where every peer that has one puts it
+            // The ruler sits above the lane, which is where every peer that has one puts it
             // (Fission's restored upper timeline ruler, Sound Studio's per-pane ruler, Logic's
             ruler
             GeometryReader { geo in
@@ -69,8 +60,7 @@ struct TrimTimeline: View {
             RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.35))
 
             if isStillArriving {
-                // Nothing dependable to draw over: no waveform, no Trim, no playhead. A Trim over
-                // near-zero frames puts both handles at zero and stretches a fraction of a second
+                // Nothing dependable to draw over: no waveform, no Trim, no playhead.
                 Text(arrivingMessage)
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -78,8 +68,9 @@ struct TrimTimeline: View {
             } else {
                 waveform(geometry)
 
-                // Dropouts draw as hatched bands over the waveform, each carrying `minimumDropoutWidth`
-                // so one that is sub-pixel on an always-fits-the-width lane stays visible.
+                // Dropouts draw as hatched bands over the waveform, each carrying
+                // `minimumDropoutWidth` so one that is sub-pixel on an always-fits-the-width lane
+                // stays visible.
                 dropoutBands(geometry, height: height)
 
                 handle(.start, at: geometry.x(atTime: recording.trim.lowerBound), height: height)
@@ -95,8 +86,9 @@ struct TrimTimeline: View {
         // There is nothing to scrub or Trim while the audio is still arriving, and a drag would set
         // a Trim against a length that is about to change.
         .disabled(isStillArriving)
-        // The lane exposed exactly two elements to accessibility — the two chevron `Image`s inside
-        // the handles, read out as "Compact Right Chevron" — and nothing at all for the waveform,
+        // The lane exposed exactly two elements to accessibility — the two chevron `Image`s
+        // inside the handles, read out as "Compact Right Chevron" — and nothing at all for the
+        // waveform,
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Waveform")
         .accessibilityValue(laneAccessibilityValue)
@@ -112,7 +104,7 @@ struct TrimTimeline: View {
             : "\(whole), whole Recording"
     }
 
-    /// The lane's audio, drawn twice: **colourless everywhere, in colour inside the Trim**.
+    /// The lane's audio, drawn twice: colourless everywhere, in colour inside the Trim.
     private func waveform(_ geometry: TimelineGeometry) -> some View {
         let columns = envelope.columns(over: geometry.visibleRange, count: geometry.columnCount)
         let shape = WaveformShape(columns: columns,
@@ -133,9 +125,7 @@ struct TrimTimeline: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
-    /// One decision per drag, taken from `startLocation`. Keying off `translation ==.zero` was
-    /// wrong: the first `onChanged` of a `minimumDistance: 0` drag usually already carries a
-    /// pixel or two of travel, so grabbing a handle silently turned into a scrub.
+    /// One decision per drag, taken from `startLocation`.
     private func scrub(_ geometry: TimelineGeometry) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
@@ -180,12 +170,11 @@ struct TrimTimeline: View {
     // MARK: - Dropouts
 
     /// The narrowest a Dropout band may draw in the lane, so one that is sub-pixel on an
-    /// always-fits-the-width timeline is still visible. The loupe deliberately has no
-    /// such floor — see `loupeDropouts`.
+    /// always-fits-the-width timeline is still visible.
     static let minimumDropoutWidth: Double = 3
 
     /// The hatched bands for the lane-visible Dropouts (rebuild-class; the tiny overrun Dropouts live in
-    /// the editor summary, not here — ). Each carries the floor above so it never vanishes.
+    /// the editor summary, not here —). Each carries the floor above so it never vanishes.
     @ViewBuilder
     private func dropoutBands(_ geometry: TimelineGeometry, height: Double) -> some View {
         let rate = recording.sampleRate
@@ -202,7 +191,7 @@ struct TrimTimeline: View {
         }
     }
 
-    /// Dropout bands inside the loupe, at **true width** (no minimum) — the loupe exists to show raw
+    /// Dropout bands inside the loupe, at true width (no minimum) — the loupe exists to show raw
     /// detail, so a Dropout is drawn exactly as wide as it is against the ±2 s window.
     private func loupeDropouts(centre: Double, span: Double, boxWidth: Double, boxHeight: Double) -> some View {
         let rate = recording.sampleRate
@@ -224,8 +213,7 @@ struct TrimTimeline: View {
     // MARK: - Decorations
 
     /// How far one accessibility nudge moves a handle: a fixed fraction of the Recording, so the
-    /// gesture takes the same number of steps end-to-end whatever the length. It is the same
-    /// always-fits-the-width reasoning the hit-test tolerance uses.
+    /// gesture takes the same number of steps end-to-end whatever the length.
     private var accessibilityStep: Double { max(0.1, recording.duration / 100) }
 
     private func handle(_ which: Handle, at x: Double, height: Double) -> some View {
@@ -239,15 +227,14 @@ struct TrimTimeline: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.background)
                     .padding(which == .start ? .leading : .trailing, 1)
-                    // These two were the only things the whole lane published (finding 14).
                     .accessibilityHidden(true)
             }
             .offset(x: x - (active ? 2.5 : 1.5))
-            // **The one custom shadow in the app, and amends to permit it here
-            // rather than deleting it.** It predates the token set and does real work: it lifts the
+            // The one custom shadow in the app, and amends to permit it here rather than deleting
+            // it. It predates the token set and does real work: it lifts the
             .shadow(radius: active ? 3 : 0)
             // The handle answering the cursor: `motionQuick`, AppTape's direct-manipulation stop
-            // and the value this token was seeded from. Through the helper, not `.animation`
+            // and the value this token was seeded from.
             .motion(Metrics.motionQuick, value: active)
             .accessibilityElement()
             .accessibilityLabel(which == .start ? "Trim start" : "Trim end")
@@ -259,7 +246,7 @@ struct TrimTimeline: View {
             }
     }
 
-    /// The playhead's ink: **the true ink of the appearance, at a measured opacity** — not
+    /// The playhead's ink: the true ink of the appearance, at a measured opacity — not
     /// `Color.primary`, and the difference is the whole margin.
     private var playheadInk: Color {
         let isDark = colorScheme == .dark
@@ -273,8 +260,7 @@ struct TrimTimeline: View {
             .fill(ink)
             .frame(width: 1.5, height: height)
             .overlay(alignment: .top) {
-                // The disc follows the line rather than substituting for it. It sits above the
-                // lane, where peaks (capped at 88% of half-height) never reach, so it never had
+                // The disc follows the line rather than substituting for it.
                 Circle().fill(ink).frame(width: 7, height: 7).offset(y: -3)
             }
             .offset(x: x - 0.75)
@@ -284,11 +270,7 @@ struct TrimTimeline: View {
 
     // MARK: - Loupe
 
-    /// Raw frames around the handle being dragged, read straight off the master. Its scale is
-    /// fixed by contract (see `EnvelopeLoader.loupeWindow`): the box always shows exactly `span`
-    /// seconds, so the crosshair down the middle is always exactly the time in the label, and
-    /// dragging a handle always moves the picture at the same rate. Near the head or the tail the
-    /// file runs out, and that is drawn as an edge rather than passing for silence.
+    /// Raw frames around the handle being dragged, read straight off the master.
     private func loupe(_ geometry: TimelineGeometry) -> some View {
         let span = Self.loupeSpan
         let boxWidth = Self.loupeBoxWidth
@@ -301,7 +283,7 @@ struct TrimTimeline: View {
         let bounds = window.insideFraction
 
         // The box follows the handle without overhanging either end of the lane, and on a lane too
-        // narrow to hold it, centres instead. This was a hand-written `min(max(half, x), width -
+        // narrow to hold it, centres instead.
         let x = geometry.centredBoxX(at: centre, boxWidth: boxWidth)
 
         return VStack(spacing: 3) {
@@ -341,8 +323,8 @@ struct TrimTimeline: View {
                 loupeDropouts(centre: centre, span: span, boxWidth: boxWidth,
                            boxHeight: Self.loupeBoxHeight)
 
-                // The crosshair is the contract made visible: it sits at the box's centre, and
-                // the box's centre is `centre`.
+                // The crosshair is the contract made visible: it sits at the box's centre, and the
+                // box's centre is `centre`.
                 Rectangle().fill(.primary).frame(width: 1.5)
             }
             .frame(width: boxWidth, height: Self.loupeBoxHeight)
@@ -352,7 +334,7 @@ struct TrimTimeline: View {
                 Text(Format.time(centre, precise: true))
                     .font(.system(.caption, design: .monospaced))
                     .monospacedDigit()
-                // **A flat label colour at a stated opacity, not a hierarchical rung.** Over the
+                // A flat label colour at a stated opacity, not a hierarchical preset row. Over the
                 // loupe's vibrant material in Dark, `.tertiary` resolved to within four luminance
                 Text("±\(Int(span / 2))s")
                     .font(.caption2)
@@ -361,8 +343,8 @@ struct TrimTimeline: View {
         }
         .padding(Self.loupePadding)
         // Reduce Transparency swaps the vibrant material for an opaque window background, as
-        // `PanelView` already did — the editor honoured neither accessibility setting (
-        // finding 15).
+        // `PanelView` already did — the editor honoured neither accessibility setting (finding
+        // 15).
         .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
                                        : AnyShapeStyle(.regularMaterial),
                     in: RoundedRectangle(cornerRadius: 9))
@@ -378,14 +360,13 @@ struct TrimTimeline: View {
 
     // MARK: - Ruler
 
-    /// **A pure time axis: ticks at a round interval with `mm:ss` labels, and nothing else.**
+    /// A pure time axis: ticks at a round interval with `mm:ss` labels, and nothing else.
     private var ruler: some View {
         GeometryReader { geo in
             let geometry = self.geometry(width: geo.size.width)
 
             ZStack(alignment: .topLeading) {
-                // **No ticks while the audio is still arriving**. The ruler's times are
-                // a function of `recording.duration`, which for a growing master is whatever the
+                // No ticks while the audio is still arriving.
                 ForEach(isStillArriving ? [] : geometry.ticks, id: \.self) { t in
                     VStack(alignment: .leading, spacing: 1) {
                         Text(Format.time(t))
@@ -417,9 +398,7 @@ struct TrimTimeline: View {
     /// read by the box, the Dropout bands and the caption, which each used to say it for themselves.
     private static let loupeSpan: Double = 4
 
-    /// The box, in points. It is deliberately **not** `loupeColumns`: the window is bucketed on a
-    /// fixed time grid of `loupeSpan / loupeColumns` and then drawn across this width, so the
-    /// picture is very slightly oversampled and the centre column still lands exactly on `centre`.
+    /// The box, in points.
     private static let loupeBoxWidth: Double = 212
     private static let loupeBoxHeight: Double = 54
     private static let loupeColumns: Int = 220
@@ -430,13 +409,12 @@ struct TrimTimeline: View {
 
 // MARK: - Previews
 
-// `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too, so a fixture
-// that does not ship has to be guarded where it is used as well as where it is defined.
+// `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too, so a
+// fixture that does not ship has to be guarded where it is used as well as where it is defined.
 #if DEBUG
 
 /// The lane's three states, which is the whole reason `capture` is accepted rather than reached for
-///. Before this, none of them could be rendered without a live tap: the second and third
-/// require a Recording that is *being written*, which only Core Audio and a noisy Source produce.
+///.
 
 #Preview("Lane · settled") {
     TrimTimeline(recording: .stub(),

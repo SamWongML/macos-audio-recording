@@ -1,19 +1,15 @@
 import SwiftUI
 
 extension View {
-    /// Reports the editor window's existence to the activation-policy controller
-    /// so the app is `.regular` for exactly as long as the window is open
-    ///, and cancels a running Export when it closes.
-    /// Attach to the editor's content.
+    /// Reports the editor window's existence to the activation-policy controller so the app is
+    /// `.regular` for exactly as long as the window is open, and cancels a running Export when it
+    /// closes.
     func editorActivationPolicy(cancelling exportCoordinator: ExportCoordinator) -> some View {
         background(EditorWindowLifecycle(exportCoordinator: exportCoordinator))
     }
 }
 
-/// Bridges the SwiftUI editor window to the AppKit activation-policy flip. It
-/// keys off the *existence* of the host `NSWindow` — shown means the editor is
-/// open, `willClose` means it is gone — not on focus, so the policy stays
-/// `.regular` while the editor is merely backgrounded.
+/// Bridges the SwiftUI editor window to the AppKit activation-policy flip.
 private struct EditorWindowLifecycle: NSViewRepresentable {
     var exportCoordinator: ExportCoordinator
 
@@ -28,9 +24,7 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
     }
 
     final class LifecycleView: NSView {
-        /// Accepted from the modifier. `ActivationPolicyController` below stays a `.shared` read on
-        /// purpose: it is the app's own activation state, nothing renders it, and there is no second
-        /// one for a preview or a test to want.
+        /// Accepted from the modifier.
         var exportCoordinator: ExportCoordinator?
         private weak var trackedWindow: NSWindow?
         private var isOpen = false
@@ -54,13 +48,10 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
             markOpen()
         }
 
-        /// The spec's menu set has no View menu, but AppKit auto-inserts
-        /// "Enter Full Screen" into one whenever the editor is `.regular` — and it
-        /// is decoupled from the window: the editor is already `.fullScreenNone`, so
-        /// neither `collectionBehavior` nor a replaced `.toolbar` CommandGroup
-        /// removes it. Strip the whole (single-item) View menu imperatively instead,
-        /// deferred past SwiftUI's menu build and re-run whenever the editor becomes
-        /// key so a menu rebuild cannot bring it back.
+        /// The spec's menu set has no View menu, but AppKit auto-inserts "Enter Full Screen" into
+        /// one whenever the editor is `.regular` — and it is decoupled from the window: the
+        /// editor is already `.fullScreenNone`, so neither `collectionBehavior` nor a replaced
+        /// `.toolbar` CommandGroup removes it.
         private func trimViewMenu() {
             DispatchQueue.main.async {
                 guard let mainMenu = NSApp.mainMenu,
@@ -84,8 +75,7 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
         @objc private func windowWillClose() {
             guard isOpen else { return }
             isOpen = false
-            // Closing the editor navigates away from any running Export, which cancels it
-            // unwarned. The destination is untouched, so this costs only redoable work.
+            // Closing the editor navigates away from any running Export, which cancels it unwarned.
             exportCoordinator?.cancel()
             ActivationPolicyController.shared.editorDidClose()
         }
