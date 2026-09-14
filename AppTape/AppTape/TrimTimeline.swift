@@ -41,7 +41,12 @@ struct TrimTimeline: View {
 
     enum Handle { case start, end }
 
-    private var visible: ClosedRange<Double> { 0...max(recording.duration, 0.001) }
+    /// The lane's mapping between points and seconds, over whatever width this pass measured.
+    /// It replaces a `visible` range whose lower bound was provably `0` at all seven sites that
+    /// subtracted it — ADR-0023 closed the zoom question, and the code never caught up (ADR-0047).
+    private func geometry(width: Double) -> TimelineGeometry {
+        TimelineGeometry(width: width, duration: recording.duration)
+    }
 
     /// Whether the lane has anything dependable to draw. The Recording always fits the width, so a
     /// reading of a file still being written is drawn as though it were the whole Recording — which
@@ -64,7 +69,7 @@ struct TrimTimeline: View {
             // parameter to pass any more.
             ruler
             GeometryReader { geo in
-                lane(width: max(geo.size.width, 1), height: geo.size.height)
+                lane(width: geo.size.width, height: geo.size.height)
             }
         }
     }
@@ -72,11 +77,7 @@ struct TrimTimeline: View {
     // MARK: - Lane
 
     private func lane(width: Double, height: Double) -> some View {
-        let span = visible.upperBound - visible.lowerBound
-        func x(_ t: Double) -> Double { (t - visible.lowerBound) / span * width }
-        func time(_ px: Double) -> Double {
-            min(max(0, visible.lowerBound + px / width * span), recording.duration)
-        }
+        let geometry = self.geometry(width: width)
 
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.35))
@@ -93,22 +94,22 @@ struct TrimTimeline: View {
                     .foregroundStyle(.secondary)
                     .frame(width: width, height: height)
             } else {
-                waveform(x: x, width: width)
+                waveform(geometry)
 
                 // Seams draw as hatched bands over the waveform, each with a ~3 pt minimum width so a
                 // Seam that is sub-pixel on an always-fits-the-width timeline is still visible (ADR-0010).
-                seamBands(x: x, height: height)
+                seamBands(geometry, height: height)
 
-                handle(.start, at: x(recording.trim.lowerBound), height: height)
-                handle(.end, at: x(recording.trim.upperBound), height: height)
+                handle(.start, at: geometry.x(atTime: recording.trim.lowerBound), height: height)
+                handle(.end, at: geometry.x(atTime: recording.trim.upperBound), height: height)
 
-                playhead(at: x(player.position), height: height)
+                playhead(at: geometry.x(atTime: player.position), height: height)
 
-                if draggingHandle != nil { loupe(width: width) }
+                if draggingHandle != nil { loupe(geometry) }
             }
         }
         .contentShape(Rectangle())
-        .gesture(scrub(time: time))
+        .gesture(scrub(geometry))
         // There is nothing to scrub or Trim while the audio is still arriving, and a drag would set
         // a Trim against a length that is about to change.
         .disabled(isStillArriving)
@@ -160,16 +161,17 @@ struct TrimTimeline: View {
     /// what this costs: no `.motion` may be attached at or above this view keyed on the selection.
     /// The Trim's own redraw is exempt because it is direct manipulation — the grayscale mask
     /// tracks the drag continuously, which is why it needs no animation of its own.
-    private func waveform(x: @escaping (Double) -> Double, width: Double) -> some View {
-        let columns = envelope.columns(over: visible, count: Int(width))
+    private func waveform(_ geometry: TimelineGeometry) -> some View {
+        let columns = envelope.columns(over: geometry.visibleRange, count: geometry.columnCount)
         let shape = WaveformShape(columns: columns,
                                   peakStyle: AnyShapeStyle(Palette.signal),
                                   bodyStyle: AnyShapeStyle(Palette.signalMuted))
         let quiet = WaveformShape(columns: columns,
                                   peakStyle: AnyShapeStyle(Palette.signalQuiet),
                                   bodyStyle: AnyShapeStyle(Palette.signalMutedQuiet))
-        let keptStart = x(recording.trim.lowerBound)
-        let keptWidth = max(0, x(recording.trim.upperBound) - keptStart)
+        let keptStart = geometry.x(atTime: recording.trim.lowerBound)
+        let keptWidth = geometry.points(from: recording.trim.lowerBound,
+                                        to: recording.trim.upperBound, minimum: 0)
         return ZStack(alignment: .topLeading) {
             quiet
             shape.mask(alignment: .topLeading) {
@@ -182,14 +184,15 @@ struct TrimTimeline: View {
     /// One decision per drag, taken from `startLocation`. Keying off `translation == .zero` was
     /// wrong: the first `onChanged` of a `minimumDistance: 0` drag usually already carries a
     /// pixel or two of travel, so grabbing a handle silently turned into a scrub (issue #7).
-    private func scrub(time: @escaping (Double) -> Double) -> some Gesture {
+    private func scrub(_ geometry: TimelineGeometry) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
                 if !gestureActive {
                     gestureActive = true
-                    draggingHandle = nearestHandle(to: time(value.startLocation.x))
+                    draggingHandle = nearestHandle(to: geometry.time(atX: value.startLocation.x),
+                                                   within: geometry.grabTolerance)
                 }
-                let t = time(value.location.x)
+                let t = geometry.time(atX: value.location.x)
                 if let handle = draggingHandle {
                     move(handle, to: t)
                     loupeCentre = t
@@ -206,11 +209,9 @@ struct TrimTimeline: View {
             }
     }
 
-    /// Hit-test in *time*, from a fixed fraction of the visible span, so the grab area is a
-    /// consistent physical size.
-    private func nearestHandle(to t: Double) -> Handle? {
-        let span = visible.upperBound - visible.lowerBound
-        let tolerance = span * 0.02
+    /// Hit-test in *time*. The tolerance is the lane's, not this view's: a fixed fraction of the
+    /// width, so the grab area is a consistent physical size whatever the Recording's length.
+    private func nearestHandle(to t: Double, within tolerance: Double) -> Handle? {
         let dStart = abs(t - recording.trim.lowerBound)
         let dEnd = abs(t - recording.trim.upperBound)
         guard min(dStart, dEnd) < tolerance else { return nil }
@@ -226,18 +227,24 @@ struct TrimTimeline: View {
 
     // MARK: - Seams
 
+    /// The narrowest a Seam band may draw in the lane, so one that is sub-pixel on an
+    /// always-fits-the-width timeline is still visible (ADR-0010). The loupe deliberately has no
+    /// such floor — see `loupeSeams`.
+    static let minimumSeamWidth: Double = 3
+
     /// The hatched bands for the lane-visible Seams (rebuild-class; the tiny overrun Seams live in
-    /// the editor summary, not here — ADR-0010). Each carries a ~3 pt floor so it never vanishes.
+    /// the editor summary, not here — ADR-0010). Each carries the floor above so it never vanishes.
     @ViewBuilder
-    private func seamBands(x: @escaping (Double) -> Double, height: Double) -> some View {
+    private func seamBands(_ geometry: TimelineGeometry, height: Double) -> some View {
         let rate = recording.sampleRate
         ForEach(Array(recording.laneSeams.enumerated()), id: \.offset) { _, seam in
-            let x0 = x(seam.startSeconds(sampleRate: rate))
-            let x1 = x(Double(seam.start + seam.frames) / rate)
+            let start = seam.startSeconds(sampleRate: rate)
             SeamBand()
-                .frame(width: max(3, x1 - x0), height: height)
+                .frame(width: geometry.points(from: start, to: seam.endSeconds(sampleRate: rate),
+                                              minimum: Self.minimumSeamWidth),
+                       height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
-                .offset(x: x0)
+                .offset(x: geometry.x(atTime: start))
                 .allowsHitTesting(false)
         }
     }
@@ -249,7 +256,7 @@ struct TrimTimeline: View {
         let lo = centre - span / 2
         return ForEach(Array(recording.seams.enumerated()), id: \.offset) { _, seam in
             let s0 = seam.startSeconds(sampleRate: rate)
-            let s1 = Double(seam.start + seam.frames) / rate
+            let s1 = seam.endSeconds(sampleRate: rate)
             // Fraction of the box each edge lands on, clamped to the visible window.
             let f0 = max(0, min(1, (s0 - lo) / span))
             let f1 = max(0, min(1, (s1 - lo) / span))
@@ -361,20 +368,22 @@ struct TrimTimeline: View {
     /// seconds, so the crosshair down the middle is always exactly the time in the label, and
     /// dragging a handle always moves the picture at the same rate. Near the head or the tail the
     /// file runs out, and that is drawn as an edge rather than passing for silence.
-    private func loupe(width: Double) -> some View {
-        let span = 4.0
-        let boxWidth = 212.0
+    private func loupe(_ geometry: TimelineGeometry) -> some View {
+        let span = Self.loupeSpan
+        let boxWidth = Self.loupeBoxWidth
         let centre = loupeCentre
         let window = EnvelopeLoader.loupeWindow(url: recording.url, centre: centre,
-                                                span: span, columns: 220)
+                                                span: span, columns: Self.loupeColumns)
         // Normalised to its own window: unscaled it was a flat line exactly where it matters —
         // the quiet gap between two phrases, which is where an edit lands.
         let columns = Envelope.normalised(window.columns)
         let bounds = window.insideFraction
 
-        let x = min(max(boxWidth / 2, (centre - visible.lowerBound)
-                        / (visible.upperBound - visible.lowerBound) * width),
-                    width - boxWidth / 2)
+        // The box follows the handle without overhanging either end of the lane, and on a lane too
+        // narrow to hold it, centres instead. This was a hand-written `min(max(half, x), width -
+        // half)` over an interval that is empty below `boxWidth` — so the loupe stopped tracking at
+        // 212 pt and sat off the leading edge below 106 (ADR-0047).
+        let x = geometry.centredBoxX(at: centre, boxWidth: boxWidth)
 
         return VStack(spacing: 3) {
             ZStack {
@@ -410,13 +419,14 @@ struct TrimTimeline: View {
                 }
 
                 // Seams at true width inside the loupe, drawn over the waveform silence they pad.
-                loupeSeams(centre: centre, span: span, boxWidth: boxWidth, boxHeight: 54)
+                loupeSeams(centre: centre, span: span, boxWidth: boxWidth,
+                           boxHeight: Self.loupeBoxHeight)
 
                 // The crosshair is the contract made visible: it sits at the box's centre, and
                 // the box's centre is `centre`.
                 Rectangle().fill(.primary).frame(width: 1.5)
             }
-            .frame(width: boxWidth, height: 54)
+            .frame(width: boxWidth, height: Self.loupeBoxHeight)
             .clipShape(RoundedRectangle(cornerRadius: 4))
 
             HStack(spacing: 5) {
@@ -443,7 +453,7 @@ struct TrimTimeline: View {
                     .foregroundStyle(Color.primary.opacity(0.7))
             }
         }
-        .padding(7)
+        .padding(Self.loupePadding)
         // Reduce Transparency swaps the vibrant material for an opaque window background, as
         // `PanelView` already did — the editor honoured neither accessibility setting (issue #73,
         // finding 15).
@@ -454,7 +464,7 @@ struct TrimTimeline: View {
         .shadow(radius: 10, y: 3)
         // Inside the lane, not above it: floated above, it was clipped by the window on a layout
         // that puts the waveform near the top (issue #7).
-        .offset(x: x - (boxWidth / 2 + 7), y: 10)
+        .offset(x: x - (boxWidth / 2 + Self.loupePadding), y: 10)
         .allowsHitTesting(false)
         // It exists only while a handle is under the hand; the handle's own value says the time.
         .accessibilityHidden(true)
@@ -472,10 +482,7 @@ struct TrimTimeline: View {
     /// Logic all keep the ruler as time and put the selection's figures in a status area.
     private var ruler: some View {
         GeometryReader { geo in
-            let width = max(geo.size.width, 1)
-            let span = visible.upperBound - visible.lowerBound
-            // A closure, not a `func`: a `ViewBuilder` closure cannot contain a declaration.
-            let x: (Double) -> Double = { ($0 - visible.lowerBound) / span * width }
+            let geometry = self.geometry(width: geo.size.width)
 
             ZStack(alignment: .topLeading) {
                 // **No ticks while the audio is still arriving** (ADR-0031). The ruler's times are
@@ -485,8 +492,12 @@ struct TrimTimeline: View {
                 // alternative, ticking against the live figure, is worse: the ruler would rescale
                 // continuously, which is the ambient motion ADR-0028 forbids. The ruler simply has
                 // nothing to say until there is a Recording to lay out.
-                ForEach(Self.tickTimes(duration: isStillArriving ? 0 : recording.duration,
-                                       width: width), id: \.self) { t in
+                //
+                // This used to be spelled `tickTimes(duration: isStillArriving ? 0 : …)` — the
+                // policy stated by lying to the arithmetic about the length. The geometry answers
+                // for a duration it is given; whether that duration is trustworthy yet is the
+                // ruler's judgement, and it is made here.
+                ForEach(isStillArriving ? [] : geometry.ticks, id: \.self) { t in
                     VStack(alignment: .leading, spacing: 1) {
                         Text(Format.time(t))
                             .font(.caption2).monospacedDigit()
@@ -495,7 +506,7 @@ struct TrimTimeline: View {
                         Rectangle().fill(.quaternary).frame(width: 1, height: 4)
                     }
                     // The last label is pulled in so it cannot run off the trailing edge.
-                    .offset(x: min(x(t), width - 30))
+                    .offset(x: geometry.labelX(at: t, reserving: Self.tickLabelWidth))
                 }
             }
         }
@@ -506,27 +517,26 @@ struct TrimTimeline: View {
     }
 
     /// Height of the ruler row: one line of tick labels plus the tick marks under them.
-    static let rulerHeight: Double = 24
+    private static let rulerHeight: Double = 24
 
-    /// Tick times at a round interval — 1/2/5/10/15/30/60 s and up — chosen so no two labels come
-    /// within 64 pt of each other. The Recording always fits the width and there is no zoom, so
-    /// this is a function of duration and width alone.
-    ///
-    /// **No duration means no ticks, not one tick at zero** (ADR-0031). A lone `0:00` under an
-    /// empty lane is a ruler insisting there is a timeline here; there isn't one until the file
-    /// stops growing.
-    static func tickTimes(duration: Double, width: Double) -> [Double] {
-        guard duration > 0 else { return [] }
-        let step = tickInterval(duration: duration, width: width)
-        return stride(from: 0.0, through: duration, by: step).map { $0 }
-    }
+    /// How much room a `mm:ss` tick label needs, so the last one is pulled in rather than clipped.
+    private static let tickLabelWidth: Double = 30
 
-    static func tickInterval(duration: Double, width: Double) -> Double {
-        let candidates: [Double] = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600]
-        let minimumSpacing = 64.0
-        let safeDuration = max(duration, 0.001)
-        return candidates.first { $0 / safeDuration * width >= minimumSpacing } ?? candidates.last!
-    }
+    // MARK: - The loupe's own scale
+
+    /// The window the loupe shows, in seconds — the ±2 s of the file header. Stated once here and
+    /// read by the box, the Seam bands and the caption, which each used to say it for themselves.
+    private static let loupeSpan: Double = 4
+
+    /// The box, in points. It is deliberately **not** `loupeColumns`: the window is bucketed on a
+    /// fixed time grid of `loupeSpan / loupeColumns` and then drawn across this width, so the
+    /// picture is very slightly oversampled and the centre column still lands exactly on `centre`.
+    private static let loupeBoxWidth: Double = 212
+    private static let loupeBoxHeight: Double = 54
+    private static let loupeColumns: Int = 220
+
+    /// The inset around the box, which the box's own offset has to undo.
+    private static let loupePadding: Double = 7
 }
 
 // MARK: - Previews
@@ -564,6 +574,25 @@ struct TrimTimeline: View {
 
 /// A Recording with no frames at all — adopted moments after the first sound created it, or one that
 /// could not be opened. The other half of `isStillArriving`, and the half zero-frames alone was.
+/// A lane narrower than the loupe's own box — the width class that was never rendered, and where
+/// the loupe's clamp inverted: below 212 pt it stopped tracking the drag, and below 106 it sat off
+/// the leading edge entirely (ADR-0047).
+///
+/// The loupe itself is not in this picture, and cannot be: it shows only while `draggingHandle` is
+/// set, which is `@State` with no seam to set it from outside. That clamp is covered by
+/// `TimelineGeometryTests` instead — which is the point of moving it out of the view. What this
+/// does show is the rest of the lane at that width: the ruler's labels pulled inside the trailing
+/// edge, and the handles still landing where the mapping says.
+#Preview("Lane · narrower than the loupe") {
+    TrimTimeline(recording: .stub(seconds: 93),
+                 envelope: .preview(),
+                 player: AudioPlayer(),
+                 capture: PreviewCapture.settled,
+                 onTrimCommitted: {})
+        .frame(width: 180, height: 300)
+        .padding(Metrics.xl)
+}
+
 #Preview("Lane · no audio yet") {
     TrimTimeline(recording: .stub(seconds: 0),
                  envelope: Envelope(),

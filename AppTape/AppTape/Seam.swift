@@ -29,6 +29,12 @@ nonisolated struct Seam: Equatable, Sendable {
 
     func seconds(sampleRate: Double) -> Double { sampleRate > 0 ? Double(frames) / sampleRate : 0 }
     func startSeconds(sampleRate: Double) -> Double { sampleRate > 0 ? Double(start) / sampleRate : 0 }
+    /// Where the Seam ends. The lane and the loupe each drew a band from `startSeconds` to
+    /// `Double(start + frames) / sampleRate`, spelled out by hand, beside a `startSeconds` that
+    /// already existed — so a Seam had one named end and one arithmetic one.
+    func endSeconds(sampleRate: Double) -> Double {
+        sampleRate > 0 ? Double(start + frames) / sampleRate : 0
+    }
 }
 
 /// When a Recording's Seams are worth telling the user about. Every Seam is recorded; only ones a
