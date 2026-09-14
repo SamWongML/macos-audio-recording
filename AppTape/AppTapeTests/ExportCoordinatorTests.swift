@@ -73,4 +73,99 @@ struct ExportCoordinatorTests {
 
         #expect(try Data(contentsOf: dest) == Data("ORIGINAL".utf8))   // untouched
     }
+
+    /// **The gate in front of the save panel** (ADR-0046). `export` used to hold two of the five
+    /// refusal rules, in a wording of its own, and neither was reachable by a test because reaching
+    /// them meant getting past `presentSavePanel`. They are `ExportReadiness`'s now, and every case
+    /// here returns *before* any AppKit is touched — which is exactly what each one asserts.
+    ///
+    /// `@MainActor` at the suite: `ExportCoordinator` and `Recording` both are (ADR-0022), and this
+    /// test target does not carry the app's `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
+    @MainActor
+    struct Refusals {
+        /// The state the running app reaches by pressing Export on the Recording being written. The
+        /// coordinator had **no rule for it at all** before ADR-0046 — the dock alone refused it,
+        /// so any other caller could have encoded a `.caf` still growing under it (ADR-0012).
+        @Test func aCapturingRecordingIsRefusedBeforeTheSavePanel() {
+            let coordinator = ExportCoordinator()
+            let recording = Recording.stub()
+            coordinator.export(recording: recording, preset: .high,
+                               capture: PreviewCapture.capturing(recording))
+
+            #expect(coordinator.phase == .failed(message: "This Recording is still capturing."))
+            #expect(coordinator.subjectURL == recording.url)
+        }
+
+        /// A `public.audio`-typed file the decoder cannot open (ADR-0015). The other rule the
+        /// coordinator never had: it was refused only because such a file reads back as zero frames,
+        /// so it was told *"Nothing in the Trim to export."* for the wrong reason. The frame count
+        /// here is deliberately positive, which is what the old arrangement could not survive.
+        @Test func anUnopenableRecordingIsRefusedBeforeAnythingElseIsAsked() {
+            let coordinator = ExportCoordinator()
+            let recording = Recording.stub(seconds: 90, isOpenable: false)
+            coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
+
+            #expect(coordinator.phase == .failed(message: "AppTape can't decode this file."))
+        }
+
+        /// The wording that used to differ: the dock said `Nothing in the Trim to export.` and this
+        /// said `There is nothing in the Trim to export.` ADR-0042's table is the one that ships.
+        @Test func anEmptyTrimIsRefusedInTheDocksWording() {
+            let coordinator = ExportCoordinator()
+            coordinator.export(recording: .stub(seconds: 0), preset: .high,
+                               capture: PreviewCapture.settled)
+
+            #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
+        }
+
+        /// A Trim claiming ninety seconds over a file with no frames in it — the seconds↔frames
+        /// divergence, from the side that always counted frames. The dock offered an `Export…` button
+        /// for this Recording and the click landed here, which is how a refusal became a failure.
+        @Test func aTrimWithNoFramesIsRefusedHoweverManySecondsItClaims() {
+            let recording = Recording.stub(seconds: 0, storedTrim: Trim(duration: 90))
+            #expect(recording.trimmedDuration == 90)          // what the dock used to read
+            #expect(recording.trimmedFrameRange.count == 0)   // what the encoder actually gets
+
+            let coordinator = ExportCoordinator()
+            coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
+            #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
+        }
+
+        /// Faithful-or-refuse (ADR-0015) at the gate. The telling is the dock's **generic** sentence,
+        /// not the rung's specific one: ADR-0041 already states `AAC can't encode above 48 kHz` on the
+        /// rung above at full strength, and ADR-0042 has the dock name the situation and leave the
+        /// specifics there. The specific reason is carried in the refusal, not discarded.
+        @Test func anUnencodablePresetIsRefusedInTheDocksWording() {
+            let coordinator = ExportCoordinator()
+            let recording = Recording.stub("ZZ Probe 96k", sampleRate: 96_000)
+            coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
+
+            #expect(coordinator.phase == .failed(message: "This quality can't encode this file."))
+            // The same source on the rung that can encode it is not refused — so the guard is about
+            // the preset, never the file alone. (`.master` would reach the save panel, so this asks
+            // `ExportReadiness` directly rather than driving AppKit.)
+            #expect(ExportReadiness.evaluate(isOpenable: true, isCapturing: false,
+                                             trimmedFrameCount: recording.trimmedFrameRange.count,
+                                             preset: .master, format: recording.sourceFormat,
+                                             isExporting: false) == .ready)
+        }
+
+        /// `guard case .idle` is **not** the one-at-a-time rule. It also holds a finished telling in
+        /// place until it is dismissed, which is what the inspector's `Retry…` relies on — it calls
+        /// `cancel()` first, and only then does a second `export` get through.
+        @Test func aCallDuringASucceededTellingIsStillSwallowed() {
+            let coordinator = ExportCoordinator()
+            let recording = Recording.stub()
+            coordinator.park(in: .succeeded(url: recording.url), subject: recording.url)
+
+            coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
+            #expect(coordinator.phase == .succeeded(url: recording.url))   // unchanged, not refused
+
+            // And a cancel reopens it: the refusal below proves the call now gets past the guard.
+            coordinator.cancel()
+            coordinator.export(recording: .stub(seconds: 0), preset: .high,
+                               capture: PreviewCapture.settled)
+            #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
+        }
+    }
 }

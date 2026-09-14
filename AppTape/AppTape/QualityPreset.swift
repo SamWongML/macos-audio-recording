@@ -30,7 +30,14 @@ struct SourceFormat: Equatable {
 /// The rung names are deliberate: the top rung is **Master quality**, 24-bit ALAC, and is *not*
 /// called Lossless, because on macOS there is no lossless path from the Float32 master and the
 /// word would be a claim the file does not honour (ADR-0005).
-enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
+///
+/// Explicitly `nonisolated` (ADR-0022), and load-bearing rather than decorative. An unannotated type
+/// in this target is main-actor isolated, and `Sendable` alone does not lift a type's *members* out
+/// of that — so `encodability(for:)` was main-actor while `fileFormat(for:)` next to it was not, and
+/// which was which could not be read off the source. Nothing here touches UI or disk: it is codec
+/// names, bitrates, format arithmetic and refusal reasons. `ExportEncoder` already reads it from a
+/// `.utility` queue, and `ExportReadiness` calls `encodability(for:)` from one.
+nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
     case master
     case high
     case standard
