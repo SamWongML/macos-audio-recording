@@ -32,8 +32,6 @@ struct Envelope: Equatable, Sendable {
     /// long Recording appears progressively rather than after a stall.
     var complete = false
 
-    var seconds: Double { Double(mins.count * framesPerBucket) / sampleRate }
-    var isEmpty: Bool { mins.isEmpty }
 
     /// One column per pixel over `range`, reduced from whatever buckets it spans. The lane asks
     /// for exactly its own width in columns, so the waveform **always fits the width**.
@@ -165,12 +163,18 @@ enum EnvelopeLoader {
     /// Raw frames for the loupe, on a **fixed time grid** — the contract is the whole point.
     /// Returns exactly `columns` entries covering exactly `[centre - span/2, centre + span/2]`,
     /// bucketed on that time grid rather than on however many frames happened to be readable. So
-    /// seconds-per-pixel is always `span / columns`, the middle column is always exactly
+    /// seconds-per-**column** is always `span / columns`, the middle column is always exactly
     /// `centre`, and the part of the window off either end of the file is *reported* (via
     /// `inside`) rather than faked, so it can be drawn as an edge instead of passing for silence.
+    ///
+    /// Per **point** it is `span / boxWidth`, which is not the same number: the caller asks for
+    /// slightly more columns than its box is wide, so the picture is a little oversampled. The
+    /// centre is unaffected — it is the boundary between the two middle columns either way, which
+    /// is what makes the crosshair honest.
     nonisolated static func loupeWindow(url: URL, centre: Double, span: Double, columns: Int) -> LoupeWindow {
-        var window = LoupeWindow(columns: Array(repeating: .init(min: 0, max: 0, rms: 0), count: max(0, columns)),
-                                 inside: 0..<0, span: span, centre: centre)
+        var window = LoupeWindow(columns: Array(repeating: .init(min: 0, max: 0, rms: 0),
+                                                 count: max(0, columns)),
+                                 inside: 0..<0)
         guard columns > 0, let file = cachedFile(url) else { return window }
 
         let rate = file.processingFormat.sampleRate
@@ -218,8 +222,6 @@ struct LoupeWindow: Equatable {
     var columns: [Envelope.Column]
     /// Indices of `columns` that lie inside the file. Everything else is past an edge.
     var inside: Range<Int>
-    var span: Double
-    var centre: Double
 
     /// The fraction of the box, 0...1, where the file begins and ends.
     var insideFraction: ClosedRange<Double> {

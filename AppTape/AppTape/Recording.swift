@@ -250,9 +250,15 @@ final class Recording: Identifiable {
     var trimmedDuration: Double { trim.length }
     var isTrimmed: Bool { !trim.isWholeRecording }
 
-    /// The Trim as a `(startFrame, frameCount)` pair, clamped into the file. The one place the
-    /// seconds→frames rounding lives, so Export and the Loudness measurement read exactly the same
-    /// frames (ADR-0012/-0013).
+    /// The Trim as a `(startFrame, frameCount)` pair, clamped into the file, rounded to nearest —
+    /// so Export and the Loudness measurement read exactly the same frames (ADR-0012/-0013), and so
+    /// `ExportReadiness` can ask about emptiness in the unit the encoder reads (ADR-0046).
+    ///
+    /// It used to call itself *the one place the seconds→frames rounding lives*, and that was not
+    /// true: `AudioPlayer.play()` truncates its own start frame and `EnvelopeLoader.loupeWindow`
+    /// rounds outward to cover its window. Both are reads that no file depends on and neither is
+    /// wrong for its job, but three roundings are not one. This is the one place the **Export's**
+    /// rounding lives, which is the claim that was actually being relied on.
     var trimmedFrameRange: (start: Int64, count: Int64) {
         guard sampleRate > 0 else { return (0, 0) }
         let start = Int64((trim.lowerBound * sampleRate).rounded())

@@ -928,7 +928,7 @@ private struct LibraryRow: View {
     /// would compete with the text it sits behind (ADR-0025).
     private var silhouette: some View {
         WaveformPath(columns: recording.envelope.columns(
-            over: 0...max(recording.duration, 0.001), count: 120))
+            over: TimelineGeometry.wholeRange(duration: recording.duration), count: 120))
             .fill(isSelected ? AnyShapeStyle(.primary.opacity(0.30))
                              : AnyShapeStyle(.secondary.opacity(0.5)))
             .frame(height: 15)
