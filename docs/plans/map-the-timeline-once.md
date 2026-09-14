@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: delivered
 source: architecture review, 12 Sep 2026 — candidate 5, "One timeline, two pixel↔time mappings"
 issue: https://github.com/SamWongML/macos-audio-recording/issues/133
 record: docs/adr/0047-the-lane-maps-points-to-seconds-in-one-place.md
@@ -103,6 +103,57 @@ widths are reachable on a narrow window.
   module takes only numbers that participate in the px↔time mapping.
 
 ---
+
+## As built
+
+Green at every step. The suite went from **312 unique cases to 331**, and `TrimTimeline.swift` went
+from 577 lines to 612 — it gained a preview and lost every arithmetic expression it had.
+
+| file | change |
+|---|---|
+| `TimelineGeometry.swift` | **+173, new**: the value, both directions, the range, the ladder, the two bounded placements |
+| `TimelineGeometryTests.swift` | **+267, new**: 19 cases over geometry that had none, including a round-trip property and a deterministic fuzz |
+| `TrimTimeline.swift` | +105/−70: `visible` and both statics gone; the lane, the loupe and the ruler each ask one value; the loupe's numbers named; a fourth preview |
+| `Envelope.swift` | +9/−7: four dead members out, the loupe's seconds-per-pixel contract corrected |
+| `WaveformView.swift` | +16/−10: one amplitude curve for two renderers, the reason stated once |
+| `Recording.swift` | +9/−3: a locality claim that was not true |
+| `Seam.swift` | +6: `endSeconds(sampleRate:)`, which two call sites were doing by hand |
+| `EditorView.swift`, `AudioPlayer.swift` | +2/−2: the sidebar's range and the player's clamp stop being copies |
+
+Six things differ from the plan below, each because writing the code showed the plan was wrong.
+
+- **The mapping was five, and the plan's own table was already the correction.** The review said two.
+  What the plan did not predict is that the ruler's copy existed *because* of `visible`: with a
+  moving origin in the expression, nobody rereading `(t - visible.lowerBound) / span * width` could
+  see that the origin never moves, so it read as a different calculation rather than the same one.
+- **`secondsPerPoint` was designed and then not built.** It is the file header's own phrasing for the
+  central quantity and no caller wanted it once `grabTolerance` and `columnCount` existed. Adding
+  unused API while removing unused API is the wrong trade; it can be added when something asks.
+- **`tickInterval` is an instance member, not the `static func(duration:width:)` the plan sketched.**
+  Once the value exists, a static taking the same two scalars is the value with extra steps.
+- **The width floor moved off the call sites entirely.** The plan kept `max(geo.size.width, 1)` at
+  both `GeometryReader`s and had the module floor defensively. Both is one too many: the initialiser
+  is the invariant, so the views now pass `geo.size.width` straight in.
+- **ADR-0023's 64 pt label rule does not hold at the top of the ladder, and the test says so rather
+  than asserting a falsehood.** The ladder stops at an hour, so a Recording longer than roughly
+  56 seconds per point of lane crowds its ticks. Found by writing the assertion the ADR implies and
+  watching it fail. Carried over unchanged, pinned by a test that fails if it silently changes.
+- **The narrow-lane preview cannot show the loupe.** It renders only while `draggingHandle` is set,
+  which is `@State` with no seam; giving it one means a debug-only initialiser on a production view.
+  The clamp is covered by a test instead — which is the point — but the picture is reasoned, not seen.
+
+### What bit us, so it does not bite you again
+
+- **`min`/`max` and `.clamped(to:)` disagree about `NaN`, in opposite directions.** Swift's
+  `max(0, .nan)` returns `0` (the comparison is false, so it keeps `x`), while
+  `Double.clamped(to: 0...d)` returns `.nan` — the same two operations, composed the other way round.
+  So porting a hand-written clamp to the shared helper silently changes what a bad layout pass
+  produces. `time(atX:)` keeps an explicit `isFinite` guard for exactly this, and it is a test case.
+- **A local `let` shadowing a method of the same name does not compile.** `let geometry =
+  geometry(width: width)` is *"used before being initialized"* — the binding is in scope inside its
+  own initialiser. `self.geometry(width:)`.
+- **Count the baseline yourself.** The previous plan's "313 cases" and this one's "312" are the same
+  suite counted two ways. A delta claimed against someone else's counting method is not a delta.
 
 ## 0 · Decisions taken before any code
 
@@ -258,10 +309,11 @@ waveform.
 
 ## 7 · Out of scope
 
-- **The loupe's synchronous `AVAudioFile.read` per drag frame.** `Envelope.swift:153-154` documents
+- **The loupe's synchronous `AVAudioFile.read` per drag frame** — filed as
+  [#134](https://github.com/SamWongML/macos-audio-recording/issues/134). `Envelope.swift:153-154` documents
   the held-open file cache as a deliberate design so that read stays cheap, and making it async means
   the loupe lags the handle it magnifies. This module fixes *where the box sits*; *what it shows* is
-  a separate change with a real latency trade-off. Filed as an issue instead.
+  a separate change with a real latency trade-off.
 - **Unifying seconds→frames rounding** across `Recording.trimmedFrameRange` (`.rounded()`),
   `AudioPlayer` (truncation) and `loupeWindow` (`.rounded(.down)`/`.up`) — a behaviour question about
   playback and export boundaries, not a mapping duplication.
