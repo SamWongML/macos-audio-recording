@@ -49,7 +49,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private lazy var amberDot: NSImage = Self.makeDot(color: .systemOrange)
     private lazy var idleGlyph: NSImage = Self.makeIdleGlyph()
 
-    private var recorder: RecordingController { .shared }
+    /// The transport this item is the face of, and the panel's too — accepted from `AppDelegate`,
+    /// which is where AppKit's half of the app names its singletons (ADR-0045).
+    private let recorder: RecordingController
+    private let presenter: EditorPresenter
+
+    init(recorder: RecordingController, presenter: EditorPresenter) {
+        self.recorder = recorder
+        self.presenter = presenter
+        super.init()
+    }
 
     /// Installs the status item. Idempotent.
     func install() {
@@ -224,7 +233,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         // bar — so it would effectively never close (ADR-0011).
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentViewController = NSHostingController(rootView: PanelView())
+        popover.contentViewController = NSHostingController(
+            rootView: PanelView(recorder: recorder, presenter: presenter))
         return popover
     }
 

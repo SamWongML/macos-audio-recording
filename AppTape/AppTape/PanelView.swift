@@ -22,7 +22,13 @@ struct PanelView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = SourceModel()
-    private var recorder: RecordingController { .shared }
+    /// The transport, accepted from the status item that hosts this panel (ADR-0045). Concrete, not
+    /// an interface: the panel reads nine members of it and is one of the two surfaces that
+    /// *commands* capture, so an interface here would be a layer over the shell rather than a seam
+    /// under it — the editor's `CaptureState` is the read-only half, and this is not it.
+    var recorder: RecordingController
+    /// How the panel hands its `openWindow` action to the shell, below.
+    var presenter: EditorPresenter
     /// Rescans the world for the list's live ordering (playing first). Slow enough not to churn.
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
     /// Drives the pressed row's bring-up glyph across the ~500 ms in-flight threshold — `sincePress`
@@ -47,7 +53,7 @@ struct PanelView: View {
         .onAppear {
             // Capture the SwiftUI open-window action so a status-item stop-click can open the
             // editor from AppKit (EditorPresenter).
-            EditorPresenter.shared.bind(openWindow)
+            presenter.bind(openWindow)
             model.refresh()
         }
         .onReceive(tick) { _ in model.refresh() }

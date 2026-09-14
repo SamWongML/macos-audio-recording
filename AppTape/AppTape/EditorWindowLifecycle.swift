@@ -8,9 +8,14 @@ import SwiftUI
 extension View {
     /// Reports the editor window's existence to the activation-policy controller
     /// so the app is `.regular` for exactly as long as the window is open
-    /// (ADR-0017). Attach to the editor's content.
-    func editorActivationPolicy() -> some View {
-        background(EditorWindowLifecycle())
+    /// (ADR-0017), and cancels a running Export when it closes (ADR-0012).
+    /// Attach to the editor's content.
+    ///
+    /// The Export coordinator is **passed in**, not reached for: the editor's model
+    /// owns the instance every other surface renders, and a bridge cancelling a
+    /// different one would be a cancel nobody can see (ADR-0045).
+    func editorActivationPolicy(cancelling exportCoordinator: ExportCoordinator) -> some View {
+        background(EditorWindowLifecycle(exportCoordinator: exportCoordinator))
     }
 }
 
@@ -30,10 +35,23 @@ extension View {
 /// never flickers; `willClose` marks closed. Minimizing fires neither, so a
 /// minimized editor correctly stays `.regular` — it still exists.
 private struct EditorWindowLifecycle: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { LifecycleView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    var exportCoordinator: ExportCoordinator
+
+    func makeNSView(context: Context) -> NSView {
+        let view = LifecycleView()
+        view.exportCoordinator = exportCoordinator
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? LifecycleView)?.exportCoordinator = exportCoordinator
+    }
 
     final class LifecycleView: NSView {
+        /// Accepted from the modifier. `ActivationPolicyController` below stays a `.shared` read on
+        /// purpose: it is the app's own activation state, nothing renders it, and there is no second
+        /// one for a preview or a test to want.
+        var exportCoordinator: ExportCoordinator?
         private weak var trackedWindow: NSWindow?
         private var isOpen = false
 
@@ -88,7 +106,7 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
             isOpen = false
             // Closing the editor navigates away from any running Export, which cancels it
             // unwarned (ADR-0012). The destination is untouched, so this costs only redoable work.
-            ExportCoordinator.shared.cancel()
+            exportCoordinator?.cancel()
             ActivationPolicyController.shared.editorDidClose()
         }
     }

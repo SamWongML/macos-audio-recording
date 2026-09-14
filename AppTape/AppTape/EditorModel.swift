@@ -7,21 +7,32 @@ import AppKit
 import Foundation
 import Observation
 
-/// The editor's coordinator: it owns the Library/Recording store, the current selection, and
-/// playback, and it is the single object the editor window renders. A singleton, like the other
-/// shell pieces (`RecordingController`, `EditorPresenter`), because the editor `Window` is opened
-/// from AppKit and reused across open/close cycles (ADR-0017), so its state cannot live in a view
-/// that SwiftUI may not recreate.
+/// The editor's coordinator: it owns the Library/Recording store, the current selection, playback,
+/// and the two Export objects the trailing column renders, and it is the single object the editor
+/// window is handed. A singleton, like the other shell pieces (`RecordingController`,
+/// `EditorPresenter`), because the editor `Window` is opened from AppKit and reused across open/close
+/// cycles (ADR-0017), so its state cannot live in a view that SwiftUI may not recreate.
+///
+/// It **accepts** its five collaborators rather than creating them (ADR-0045), which is what lets the
+/// suite drive `reconcileSelection` — ADR-0021's mechanism — against a store with no disk behind it,
+/// and lets a preview render the editor over a Library that does not exist.
 @MainActor
 @Observable
 final class EditorModel {
     static let shared = EditorModel()
 
-    let store = LibraryStore()
-    let player = AudioPlayer()
+    let store: LibraryStore
+    let player: AudioPlayer
     /// The Loudness correction preview for the selected Recording's Trim (ADR-0013). Owned here, not
     /// in the inspector view, so a resolved measurement outlives a redraw and drives playback too.
-    let correction = LoudnessCorrectionModel()
+    let correction: LoudnessCorrectionModel
+    /// The running Export (ADR-0012). App-wide and one-at-a-time, but held here because the editor is
+    /// the only surface that starts one, and because the selection's own rule — navigating away
+    /// cancels — is enforced below rather than by the view that renders it.
+    let coordinator: ExportCoordinator
+    /// The sticky Quality Preset and the Loudness switch (issue #9, ADR-0013). Here for the same
+    /// reason `correction` is: the dock renders it, and a redraw must not be able to lose it.
+    let preference: ExportPreference
 
     private(set) var selection: Recording?
 
@@ -39,7 +50,25 @@ final class EditorModel {
     @ObservationIgnored private var didInitialSelect = false
     @ObservationIgnored private var tracking = false
 
-    private init() {}
+    /// The production wiring: the real Library folder behind the store, and the app-wide Export
+    /// objects. Its own initializer rather than default arguments, because a default argument is
+    /// evaluated in a nonisolated context and every one of these is main-actor isolated — the same
+    /// reason `LibraryStore` and `RecordingController` each have two.
+    convenience init() {
+        self.init(store: LibraryStore(), player: AudioPlayer(), correction: LoudnessCorrectionModel(),
+                  coordinator: .shared, preference: .shared)
+    }
+
+    /// For a test or a preview: a store with a reader that opens no files, and Export objects nothing
+    /// else is watching.
+    init(store: LibraryStore, player: AudioPlayer, correction: LoudnessCorrectionModel,
+         coordinator: ExportCoordinator, preference: ExportPreference) {
+        self.store = store
+        self.player = player
+        self.correction = correction
+        self.coordinator = coordinator
+        self.preference = preference
+    }
 
     /// Called every time the editor opens (from the status item's stop, ADR-0016). Starts the
     /// store, remembers the Recording just made so it is selected once it appears, and begins
@@ -62,7 +91,7 @@ final class EditorModel {
         // Selecting a different Recording navigates away from any running Export, which cancels it
         // unwarned (ADR-0012). Guarded on a real change so a folder refresh re-selecting the same
         // Recording does not clear a just-finished success telling.
-        if selection?.url != recording?.url { ExportCoordinator.shared.cancel() }
+        if selection?.url != recording?.url { coordinator.cancel() }
         selection = recording
         guard let recording else { return }
         didInitialSelect = true
@@ -116,7 +145,7 @@ final class EditorModel {
         }
         if let selection {
             guard let current = recording(for: selection.url) else {
-                ExportCoordinator.shared.cancel()   // the open Recording vanished — navigate away
+                coordinator.cancel()   // the open Recording vanished — navigate away
                 self.selection = nil
                 player.stop()
                 vanishedTick += 1

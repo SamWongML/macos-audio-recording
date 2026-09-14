@@ -8,44 +8,10 @@ import Foundation
 import Testing
 @testable import AppTape
 
-/// A Recording with no file behind it. This is what the memberwise init bought: before it, every
-/// one of these cost a 440 Hz CAF on disk, which is why nothing that *consumes* a Recording had
-/// tests. The default name is one of capture's own (ADR-0006), so `displayName` and
-/// `windowSubtitle` have something real to read.
-extension Recording {
-    /// Stands for *unstated* in `stub(byteCount:)`, so `nil` there can mean what it means on a real
-    /// file — the length could not be read (ADR-0021) — rather than "give me the default".
-    static let lengthFromFrameCount: Int64 = -1
-
-    static func stub(_ name: String = "Google Chrome 2026-09-13 at 21.51.03",
-                     seconds: Double = 90,
-                     sampleRate: Double = 48_000,
-                     storedSource: String? = "Google Chrome",
-                     recordedAt: Date? = nil,
-                     byteCount: Int64? = Recording.lengthFromFrameCount,
-                     identity: FileIdentity? = nil,
-                     storedTrim: Trim? = nil,
-                     gain: Double = 0,
-                     seams: [Seam] = [],
-                     isOpenable: Bool = true,
-                     in directory: URL = URL(filePath: "/Library")) -> Recording {
-        let frameCount = AVAudioFramePosition((seconds * sampleRate).rounded())
-        return Recording(url: directory.appendingPathComponent("\(name).caf"),
-                         frameCount: frameCount,
-                         sampleRate: sampleRate,
-                         isOpenable: isOpenable,
-                         // Unstated means the master's own 8 bytes a frame: interleaved
-                         // stereo Float32 (ADR-0003).
-                         openedByteCount: byteCount == Recording.lengthFromFrameCount
-                             ? frameCount * 8 : byteCount,
-                         fileIdentity: identity,
-                         storedSource: storedSource,
-                         recordedAt: recordedAt,
-                         storedTrim: storedTrim,
-                         gain: gain,
-                         seams: seams)
-    }
-}
+/// The `Recording.stub(…)` every suite builds its Recordings with lives in the app target now, in
+/// `PreviewFixtures.swift` under `#if DEBUG`, because the previews need the same fixture and two
+/// definitions of "an ordinary Recording" would drift apart (ADR-0045). Nothing about its call sites
+/// changed.
 
 /// A reader over an in-memory Library: the test says what the folder holds and what each file
 /// reads as, and reads back how often it was asked. The second conformance of `RecordingReading`,
