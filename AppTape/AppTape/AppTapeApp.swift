@@ -14,17 +14,22 @@ struct AppTapeApp: App {
     /// Identifies the single editor window so the menu bar can open it.
     static let editorWindowID = "editor"
 
+    /// **The two app singletons the SwiftUI side names, named once** (ADR-0045). Everything below is
+    /// handed them; nothing under here reaches for `.shared` again. `AppDelegate` is the other place,
+    /// for the two surfaces AppKit owns — the status item and the panel.
+    ///
+    /// The same objects for the life of the process, which ADR-0017 requires: a `Window` reuses its
+    /// `NSWindow` across open/close cycles, so a model rebuilt per open would drop the selection.
+    private let model = EditorModel.shared
+    private let capture = RecordingController.shared.run
+
     var body: some Scene {
         // One editor window, not a WindowGroup: a Recording is edited in place.
         // Suppressed at launch so the app starts as a menu bar item only, and
         // its existence — via `.editorActivationPolicy()` — is what flips the
         // app to `.regular` (ADR-0017).
         Window("AppTape", id: Self.editorWindowID) {
-            // **One of the two places an app singleton is named** (ADR-0045). The editor accepts what
-            // capture is doing rather than reaching for the shell that presses record; the shell's
-            // own two surfaces — the panel and the status item — are wired in `AppDelegate`, which is
-            // the other place.
-            EditorView(capture: RecordingController.shared.run)
+            EditorView(model: model, capture: capture)
                 // A floor under the three columns. Without one the window clamped to 418 × 400 —
                 // below the sidebar's own 232 pt minimum plus the inspector's 248 — and SwiftUI
                 // resolved the shortfall by **collapsing the Library entirely**, with no indication
@@ -126,7 +131,7 @@ struct AppTapeApp: App {
             // Library's three row actions (ADR-0020): a context menu alone is
             // undiscoverable and unreachable from the keyboard.
             CommandGroup(replacing: .saveItem) {
-                LibraryRowCommands()
+                LibraryRowCommands(model: model)
                 Divider()
                 Button("Close") {
                     NSApp.keyWindow?.performClose(nil)
@@ -153,7 +158,8 @@ private struct LibraryRowCommands: View {
     /// Non-nil only while the Library sidebar has focus — the gate on the destructive item.
     @FocusedValue(\.librarySidebarRecording) private var focusedRecording: URL?
 
-    private var model: EditorModel { .shared }
+    /// Handed down from the scene, like the editor's own views (ADR-0045).
+    var model: EditorModel
 
     var body: some View {
         Button("Rename") {

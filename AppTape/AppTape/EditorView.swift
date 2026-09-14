@@ -14,7 +14,9 @@ import SwiftUI
 /// added (they left the app with zero windows — issue #7, ADR-0017), and the title bar drops its
 /// toolbar background so the waveform reads to the window's edge.
 struct EditorView: View {
-    @State private var model = EditorModel.shared
+    /// The editor's one coordinator, accepted rather than reached for (ADR-0045): the store, the
+    /// selection, playback, and the two Export objects the trailing column renders.
+    var model: EditorModel
     /// What capture is doing (ADR-0045). Accepted, not reached for, and this window is the one
     /// surface that passes it on: the transport reads it here, and the lane, the brief, the sidebar
     /// row and the Export dock are each handed it below.
@@ -63,7 +65,7 @@ struct EditorView: View {
             // window rather than hold a stale one (ADR-0006).
             dismissWindow(id: AppTapeApp.editorWindowID)
         }
-        .editorActivationPolicy()
+        .editorActivationPolicy(cancelling: model.coordinator)
     }
 
     // MARK: - Sidebar (the Library)
@@ -956,7 +958,7 @@ extension FocusedValues {
 #if DEBUG
 
 #Preview("Editor") {
-    EditorView(capture: PreviewCapture.settled)
+    EditorView(model: .shared, capture: PreviewCapture.settled)
 }
 
 /// The two states of the brief's `Master` row that ADR-0031 is about, neither of which could be seen
