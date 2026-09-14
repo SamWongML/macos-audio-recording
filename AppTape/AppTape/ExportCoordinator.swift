@@ -85,24 +85,36 @@ final class ExportCoordinator {
         let gainDB: Double
     }
 
-    /// Starts an Export of `recording`'s Trim at `preset`. One at a time: a call while another
-    /// Export runs is ignored. Presents the save panel, pre-flights, then encodes off the main
-    /// thread. Snapshots every parameter now.
-    func export(recording: Recording, preset: QualityPreset) {
+    /// Starts an Export of `recording`'s Trim at `preset`. Presents the save panel, pre-flights, then
+    /// encodes off the main thread. Snapshots every parameter now.
+    ///
+    /// **`capture` is taken as a parameter rather than held.** One of the five refusal rules is
+    /// whether this Recording is the one being written (ADR-0012), and this object cannot see capture.
+    /// Storing it would mean `static let shared = ExportCoordinator()` naming
+    /// `RecordingController.shared.run` at static-init time — a global reaching a global before the
+    /// app has a root — and would cost the six dock previews and `EditorModelTests` the bare
+    /// `ExportCoordinator()` they all build. ADR-0045 declined `ExportCoordinator(preference:)` on the
+    /// same grounds. Both call sites already hold a `CaptureState`.
+    func export(recording: Recording, preset: QualityPreset, capture: any CaptureState) {
+        // **Not the one-at-a-time rule** — that is `ExportReadiness`'s `.alreadyRunning`, below. This
+        // guards `.succeeded` and `.failed` too: those are tellings awaiting dismissal rather than
+        // Exports in flight, and the inspector's `Retry…` depends on the difference, calling `cancel()`
+        // first so this reopens.
         guard case .idle = phase else { return }
 
         let (startFrame, frameCount) = recording.trimmedFrameRange
-        guard frameCount > 0 else {
-            present(.failed(message: "There is nothing in the Trim to export."), for: recording.url)
-            return
-        }
-        // Faithful-or-refuse (ADR-0015): never let a preset the source's format can't encode reach the
-        // encoder, where AudioConverter would silently resample or downmix. The inspector already
-        // blocks this; this is the belt-and-suspenders gate so no caller can bypass it.
-        let encodability = preset.encodability(for: recording.sourceFormat)
-        guard encodability.isAvailable else {
-            present(.failed(message: encodability.reason ?? "This quality can't encode this file."),
-                    for: recording.url)
+        // **The belt-and-suspenders gate this comment has always claimed to be** (ADR-0046). It used
+        // to hold two of the five rules and speak a wording of its own; the dock held all five and
+        // counted the Trim in seconds where this counts frames. One decision now, and the sentence the
+        // user reads in the dock is the sentence a bypassing caller gets here. ADR-0015's faithful-or-
+        // refuse is inside it: no preset the source's format cannot encode reaches the encoder, where
+        // `AudioConverter` would silently resample or downmix.
+        if let reason = ExportReadiness.evaluate(isOpenable: recording.isOpenable,
+                                                 isCapturing: capture.isCapturing(recording),
+                                                 trimmedFrameCount: frameCount,
+                                                 preset: preset, format: recording.sourceFormat,
+                                                 isExporting: isExporting).refusal {
+            present(.failed(message: reason.sentence), for: recording.url)
             return
         }
         let snapshot = Snapshot(

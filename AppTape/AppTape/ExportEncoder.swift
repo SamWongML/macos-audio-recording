@@ -70,7 +70,10 @@ final class ExportEncoder: @unchecked Sendable {
 
         var description: String {
             switch self {
-            case .emptyRange: return "There is nothing in the Trim to export."
+            // The app's one wording for this fact (ADR-0046), not a third copy of it. Reachable only
+            // by a caller that built an `ExportRequest` directly — `ExportCoordinator` refuses on the
+            // same rule before a save panel opens.
+            case .emptyRange: return ExportReadiness.Reason.emptyTrim.sentence
             case .cancelled: return "Export cancelled."
             case .coreAudio(let stage, let status):
                 return "Export failed while \(stage) (error \(status))."
