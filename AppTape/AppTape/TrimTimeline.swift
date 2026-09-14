@@ -239,8 +239,9 @@ struct TrimTimeline: View {
         let rate = recording.sampleRate
         ForEach(Array(recording.laneSeams.enumerated()), id: \.offset) { _, seam in
             let start = seam.startSeconds(sampleRate: rate)
+            let end = seam.endSeconds(sampleRate: rate)
             SeamBand()
-                .frame(width: geometry.points(from: start, to: seam.endSeconds(sampleRate: rate),
+                .frame(width: geometry.points(from: start, to: end,
                                               minimum: Self.minimumSeamWidth),
                        height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -255,11 +256,11 @@ struct TrimTimeline: View {
         let rate = recording.sampleRate
         let lo = centre - span / 2
         return ForEach(Array(recording.seams.enumerated()), id: \.offset) { _, seam in
-            let s0 = seam.startSeconds(sampleRate: rate)
-            let s1 = seam.endSeconds(sampleRate: rate)
+            let start = seam.startSeconds(sampleRate: rate)
+            let end = seam.endSeconds(sampleRate: rate)
             // Fraction of the box each edge lands on, clamped to the visible window.
-            let f0 = max(0, min(1, (s0 - lo) / span))
-            let f1 = max(0, min(1, (s1 - lo) / span))
+            let f0 = max(0, min(1, (start - lo) / span))
+            let f1 = max(0, min(1, (end - lo) / span))
             if f1 > f0 {
                 SeamBand(spacing: 4)
                     .frame(width: boxWidth * (f1 - f0), height: boxHeight)

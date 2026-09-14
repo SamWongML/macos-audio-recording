@@ -27,11 +27,16 @@ nonisolated struct Seam: Equatable, Sendable {
     var frames: Int
     var cause: Cause
 
-    func seconds(sampleRate: Double) -> Double { sampleRate > 0 ? Double(frames) / sampleRate : 0 }
+    /// Where the Seam begins and ends, in seconds. **Both are positions**, which is why there is no
+    /// `seconds(sampleRate:)` beside them any more: it returned the Seam's *length* from the same
+    /// shaped name and nothing had called it since `SeamSurfacing` started comparing frames
+    /// directly. Three similar names, one of them measuring something else, is how a caller reaches
+    /// for the wrong one. A length in seconds is `SeamSurfacing.totalSeconds`; nothing currently
+    /// wants one Seam's own, and if something does it should say `duration` rather than `seconds`.
     func startSeconds(sampleRate: Double) -> Double { sampleRate > 0 ? Double(start) / sampleRate : 0 }
-    /// Where the Seam ends. The lane and the loupe each drew a band from `startSeconds` to
-    /// `Double(start + frames) / sampleRate`, spelled out by hand, beside a `startSeconds` that
-    /// already existed — so a Seam had one named end and one arithmetic one.
+
+    /// The lane and the loupe each drew a band from `startSeconds` to `Double(start + frames) /
+    /// sampleRate`, spelled out by hand — so a Seam had one named end and one arithmetic one.
     func endSeconds(sampleRate: Double) -> Double {
         sampleRate > 0 ? Double(start + frames) / sampleRate : 0
     }
