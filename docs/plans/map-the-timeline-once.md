@@ -106,8 +106,16 @@ widths are reachable on a narrow window.
 
 ## As built
 
-Green at every step. The suite went from **312 unique cases to 331**, and `TrimTimeline.swift` went
-from 577 lines to 612 — it gained a preview and lost every arithmetic expression it had.
+Green at every step, zero failures. **19 new cases**, and `TrimTimeline.swift` went from 577 lines to
+612 — it gained a preview and lost every arithmetic expression it had.
+
+The suite total is quoted as a range on purpose: it reports **331 or 332** depending on the run, and
+**312 or 313** on `main`, because `xcodebuild`'s parallel reporter intermittently drops one `passed`
+line. See the last bullet below.
+
+Isolation is unchanged. The 42 `#IsolatedConformances` warnings all name `LibraryLocation.RenameOutcome`,
+`RowRecordGlyph.State` and `PanelAnchor` — three pre-existing types this work does not touch.
+`TimelineGeometry` is `nonisolated` and raises none.
 
 | file | change |
 |---|---|
@@ -152,8 +160,13 @@ Six things differ from the plan below, each because writing the code showed the 
 - **A local `let` shadowing a method of the same name does not compile.** `let geometry =
   geometry(width: width)` is *"used before being initialized"* — the binding is in scope inside its
   own initialiser. `self.geometry(width:)`.
-- **Count the baseline yourself.** The previous plan's "313 cases" and this one's "312" are the same
-  suite counted two ways. A delta claimed against someone else's counting method is not a delta.
+- **The suite count is not stable to ±1, and it is the reporter, not the tests.** Two consecutive
+  full runs of an unchanged tree gave 332 and 331; the difference was a single missing `passed` line
+  for `EditorModelTests/theOpenRecordingVanishingClosesTheEditorAndCancelsTheExport()`, which passes
+  3/3 under `-only-testing` and never fails. Both runs said `** TEST SUCCEEDED **` with zero
+  failures. This also explains the previous plan's "313" against this one's "312" — the same suite,
+  the same flake, two runs. **Quote failures, not totals**, and count new `@Test func`s by hand when
+  a delta matters.
 
 ## 0 · Decisions taken before any code
 
