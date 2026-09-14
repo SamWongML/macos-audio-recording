@@ -52,9 +52,21 @@ struct ExportInspector: View {
     /// otherwise the sticky preference.
     private var effectivePreset: QualityPreset { perFilePreset ?? preference.preset }
 
-    /// Whether the effective preset can encode this file faithfully. Unavailable blocks Export and
-    /// shows a plain reason in place of the subtitle (ADR-0015).
-    private var effectiveEncodability: QualityPreset.Encodability { effectivePreset.encodability(for: format) }
+    /// Whether an Export may start, and if not, what the dock says (ADR-0042). The decision itself is
+    /// `ExportReadiness`'s — five ordered rules over six scalars, which the dock **renders** and
+    /// `ExportCoordinator` **refuses on**, so the two cannot drift apart again. This pane used to
+    /// hold its own copy, in seconds where the coordinator counted frames.
+    ///
+    /// `.unopenable` is unreachable from here: `EditorView.inspectorColumn` does not render this pane
+    /// at all for a Recording the decoder cannot open, because ADR-0034 gives the trailing column
+    /// nothing to say about one.
+    private var readiness: ExportReadiness {
+        .evaluate(isOpenable: recording.isOpenable,
+                  isCapturing: capture.isCapturing(recording),
+                  trimmedFrameCount: recording.trimmedFrameRange.count,
+                  preset: effectivePreset, format: format,
+                  isExporting: coordinator.isExporting)
+    }
 
     /// Choosing a rung. Picking one the sticky preset can encode updates the app-wide preference
     /// (issue #9); picking one it can't — an adopted file the sticky doesn't fit — is a per-file
@@ -458,11 +470,16 @@ struct ExportInspector: View {
 
     @ViewBuilder
     private var exportControl: some View {
-        if capture.isCapturing(recording) {
+        if case .refused(.stillCapturing) = readiness {
             // Its `.caf` is still growing and its Trim end is undefined until Stop (ADR-0012).
             // In ink, like every other sentence in this slot: `.secondary` here measured
             // **3.89 : 1 in Light** (issue #125), the same figure #119 rejected for the rungs.
-            dockSentence("This Recording is still capturing.", icon: "record.circle")
+            //
+            // **Ahead of the phase switch, and that ordering is load-bearing**: a Recording being
+            // written must never render a progress bar or a `Retry…`, whatever `subjectURL` says.
+            // It is the one refusal that outranks a telling, which is why it is matched here rather
+            // than left to `exportControlOrRefusal` below.
+            dockSentence(.stillCapturing)
         } else if coordinator.subjectURL == recording.url {
             switch coordinator.phase {
             case .idle: exportControlOrRefusal
@@ -475,20 +492,6 @@ struct ExportInspector: View {
         }
     }
 
-    /// Why an Export cannot be started right now, or `nil` when it can (ADR-0042).
-    ///
-    /// The three are ordered by what the user can do about them. A Trim that holds nothing is the
-    /// only one nothing else on screen explains; an unavailable Quality Preset is already stated on
-    /// its own rung at full strength (ADR-0041), so the dock names the situation and leaves the
-    /// specifics there; a running Export is reachable here only when the Recording was renamed
-    /// out from under it, which moves `recording.url` while `subjectURL` keeps the old one.
-    private var refusal: String? {
-        if recording.trimmedDuration <= 0 { return "Nothing in the Trim to export." }
-        if !effectiveEncodability.isAvailable { return "This quality can't encode this file." }
-        if coordinator.isExporting { return "An Export is already running." }
-        return nil
-    }
-
     /// **The dock states a refusal; it does not wear one** (ADR-0042). A disabled
     /// `.borderedProminent` button is dimmed twice — the control at α ≈ 0.69 over the column's
     /// ground and its label at a further α = 0.50 over that — which put `Export…` at
@@ -497,14 +500,19 @@ struct ExportInspector: View {
     /// which measures **12.66 / 13.87** and does not move when the window loses key.
     @ViewBuilder
     private var exportControlOrRefusal: some View {
-        if let refusal { dockSentence(refusal, icon: "square.and.arrow.up") }
+        if let reason = readiness.refusal { dockSentence(reason) }
         else { exportButton }
     }
 
-    /// The dock's one sentence shape. Holds the button's own box, so the dock keeps the single
-    /// declared height ADR-0025 pinned and nothing above it moves.
-    private func dockSentence(_ text: String, icon: String) -> some View {
-        Label(text, systemImage: icon)
+    /// The dock's one sentence shape, for every refusal there is. Holds the button's own box, so the
+    /// dock keeps the single declared height ADR-0025 pinned and nothing above it moves.
+    ///
+    /// It takes a `Reason` rather than a string and an icon name because the glyph is the reason's
+    /// own (`RowRecordGlyph.symbolName`'s idiom): the still-capturing sentence needed a branch of its
+    /// own up in `exportControl` purely because its icon differed, and asking the reason for both
+    /// halves is what lets one call draw all of them.
+    private func dockSentence(_ reason: ExportReadiness.Reason) -> some View {
+        Label(reason.sentence, systemImage: reason.symbolName)
             .font(.callout)
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -516,7 +524,7 @@ struct ExportInspector: View {
         // which is why the old `Export…` centred itself and the code's intent and the render
         // disagreed (issue #73, finding 37). Widening the label widens the button.
         Button {
-            coordinator.export(recording: recording, preset: effectivePreset)
+            coordinator.export(recording: recording, preset: effectivePreset, capture: capture)
         } label: {
             Text("Export…").frame(maxWidth: .infinity)
         }
@@ -599,7 +607,7 @@ struct ExportInspector: View {
             Spacer(minLength: Metrics.xs)
             Button("Retry…") {
                 coordinator.cancel()   // clear the failure, then re-present the save panel
-                coordinator.export(recording: recording, preset: effectivePreset)
+                coordinator.export(recording: recording, preset: effectivePreset, capture: capture)
             }
             .font(.caption)
         }
@@ -693,12 +701,30 @@ private func previewDock(_ recording: Recording,
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
-/// An empty Recording — a hand-adopted file with no audio in it. The dock refuses, and the wording is
-/// the inspector's own copy of a rule `ExportCoordinator` also holds (review candidate 4, untouched
-/// here).
-#Preview("Dock · nothing in the Trim") {
+/// An empty Recording — a hand-adopted file with no audio in it. Until ADR-0046 it was refused only
+/// because `Trim(duration: 0).length` happens to be 0; it is `ExportReadiness`'s own rule now.
+#Preview("Dock · refused · nothing in the Trim") {
     previewDock(.stub(seconds: 0), capture: PreviewCapture.settled,
                 coordinator: ExportCoordinator())
+}
+
+/// A 96 kHz adopted file against the default `high` sticky — the three AAC rungs refuse it (ADR-0015),
+/// so the dock names the situation while each rung states its own specific reason above (ADR-0041).
+/// **The state ADR-0041 could only photograph with a doctored Library and a `defaults write`**; here
+/// it is one line.
+#Preview("Dock · refused · unencodable") {
+    previewDock(.stub("ZZ Probe 96k", sampleRate: 96_000), capture: PreviewCapture.settled,
+                coordinator: ExportCoordinator())
+}
+
+/// An Export running on a *different* subject. Reachable in the running app only through issue #127 —
+/// a rename mid-encode moves `recording.url` while `subjectURL` keeps the old path — so this refusal
+/// has never been seen. Parked on a URL that is deliberately not this Recording's.
+#Preview("Dock · refused · already running") {
+    let coordinator = ExportCoordinator()
+    coordinator.park(in: .running(fraction: 0.42),
+                     subject: URL(filePath: "/Library/Some Other Recording.caf"))
+    return previewDock(.stub(), capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
 #endif
