@@ -5,6 +5,18 @@
 
 import SwiftUI
 
+/// Amplitude is drawn on a mild power curve; linear peaks make ordinary speech invisible next to
+/// one loud transient. 0.65 is close to how Logic and Audacity look.
+///
+/// One constant and one function, beside `Envelope.drawnHeadroom` in spirit: the two renderers
+/// below draw the same picture by two different routes, and the shaping was spelled out three
+/// times between them — once as a `private func` and twice inline — with the reason above written
+/// twice. Two pictures of one Recording must not quietly disagree about its shape.
+private let drawnCurve: Double = 0.65
+private func drawn(_ amplitude: Double) -> Double {
+    pow(min(1, max(0, amplitude)), drawnCurve)
+}
+
 /// The waveform itself. Deliberately dumb: it takes columns as a stored value and draws them —
 /// never reading out of a buffer the view cannot observe, so the `Canvas` redraws when its
 /// inputs change (issue #6).
@@ -12,9 +24,6 @@ struct WaveformShape: View {
     var columns: [Envelope.Column]
     var peakStyle: AnyShapeStyle
     var bodyStyle: AnyShapeStyle
-    /// Amplitude is drawn on a mild power curve; linear peaks make ordinary speech invisible
-    /// next to one loud transient. 0.65 is close to how Logic and Audacity look.
-    var curve: Double = 0.65
 
     var body: some View {
         Canvas(opaque: false, rendersAsynchronously: false) { context, size in
@@ -41,18 +50,16 @@ struct WaveformShape: View {
         var p = Path()
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, pair) in pairs.enumerated() {
-            let v = shape(Double(pair.1))
+            let v = drawn(Double(pair.1))
             p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - v * scale))
         }
         for (i, pair) in pairs.enumerated().reversed() {
-            let v = shape(Double(-pair.0))
+            let v = drawn(Double(-pair.0))
             p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + v * scale))
         }
         p.closeSubpath()
         return p
     }
-
-    private func shape(_ v: Double) -> Double { pow(min(1, max(0, v)), curve) }
 }
 
 /// Same picture, drawn as a `Shape` instead of a `Canvas`.
@@ -64,7 +71,6 @@ struct WaveformShape: View {
 /// lane, `Shape` for anything inside a `List` row.
 struct WaveformPath: Shape {
     var columns: [Envelope.Column]
-    var curve: Double = 0.65
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
@@ -73,11 +79,11 @@ struct WaveformPath: Shape {
         let step = rect.width / Double(columns.count)
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, column) in columns.enumerated() {
-            let v = pow(min(1, max(0, Double(column.max))), curve)
+            let v = drawn(Double(column.max))
             p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid - v * scale))
         }
         for (i, column) in columns.enumerated().reversed() {
-            let v = pow(min(1, max(0, Double(-column.min))), curve)
+            let v = drawn(Double(-column.min))
             p.addLine(to: CGPoint(x: (Double(i) + 0.5) * step, y: mid + v * scale))
         }
         p.closeSubpath()

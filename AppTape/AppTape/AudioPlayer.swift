@@ -113,7 +113,7 @@ final class AudioPlayer {
     /// Scrubbing: move the playhead, and if it was playing, re-schedule from the new point.
     func seek(to seconds: Double) {
         guard let recording else { return }
-        position = min(max(0, seconds), recording.duration)
+        position = seconds.clamped(to: 0...recording.duration)
         guard isPlaying else { return }
         node.stop()
         play()
