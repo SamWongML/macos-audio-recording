@@ -336,7 +336,12 @@ struct EditorView: View {
     @ViewBuilder
     private var inspectorColumn: some View {
         if let recording = model.selection, recording.isOpenable {
-            ExportInspector(recording: recording, capture: capture)
+            ExportInspector(recording: recording,
+                            capture: capture,
+                            preference: model.preference,
+                            coordinator: model.coordinator,
+                            correction: model.correction,
+                            player: model.player)
         } else {
             Color.clear
         }

@@ -17,9 +17,16 @@ struct ExportInspector: View {
     /// still arriving, which is what nothing about the Trim's length may be claimed under (ADR-0021).
     var capture: any CaptureState
 
-    @State private var preference = ExportPreference.shared
-    @State private var coordinator = ExportCoordinator.shared
-    @State private var editor = EditorModel.shared
+    /// The sticky Quality Preset and the Loudness switch (issue #9). `@Bindable` because the dock
+    /// writes them: the Toggle binds `normalizeLoudness` and picking a rung assigns `preset`.
+    @Bindable var preference: ExportPreference
+    /// The running Export, one at a time and app-wide (ADR-0012).
+    var coordinator: ExportCoordinator
+    /// The Loudness correction preview for this Trim (ADR-0013). Owned by the editor's model so a
+    /// resolved measurement outlives a redraw, and handed here rather than fetched off it.
+    var correction: LoudnessCorrectionModel
+    /// Playback, for the one thing this pane does to it: the combined preview gain (ADR-0013).
+    var player: AudioPlayer
 
     private var format: SourceFormat { recording.sourceFormat }
 
@@ -77,7 +84,7 @@ struct ExportInspector: View {
     /// The one dB scalar playback applies (Play == Export, ADR-0013): the correction when normalizing
     /// and resolved, plus this Recording's manual Gain. Zero correction while off or still measuring.
     private var playbackGainDB: Double {
-        (preference.normalizeLoudness ? editor.correction.correctionDB : 0) + recording.gain
+        (preference.normalizeLoudness ? correction.correctionDB : 0) + recording.gain
     }
 
     /// Soft detent at 0 (issue #55): a Gain within ±0.5 dB of centre snaps to exactly 0, so the
@@ -190,10 +197,10 @@ struct ExportInspector: View {
         .onChange(of: correctionKey, initial: true) {
             // Nothing to measure from a Trim whose end has not happened yet (ADR-0031).
             guard !isStillArriving else { return }
-            editor.correction.update(recording: recording, normalize: preference.normalizeLoudness)
+            correction.update(recording: recording, normalize: preference.normalizeLoudness)
         }
         .onChange(of: playbackGainDB, initial: true) {
-            editor.player.setGlobalGainDB(playbackGainDB)
+            player.setGlobalGainDB(playbackGainDB)
         }
     }
 
@@ -392,7 +399,7 @@ struct ExportInspector: View {
         // Matches the rungs' `size not yet known` while the audio arrives: what the dash means,
         // spoken (ADR-0031).
         guard !isStillArriving else { return "not yet known" }
-        return switch editor.correction.state {
+        return switch correction.state {
         case .off, .measuring: "Measuring"
         case .measured(let correction):
             [correction.figureText, correction.caption].compactMap { $0 }.joined(separator: ", ")
@@ -408,7 +415,7 @@ struct ExportInspector: View {
             // its own clock — a BS.1770 pass landing seconds later — so it is exactly ADR-0028's
             // "a state change they must notice and did not cause". Scoped to the readout, which is
             // the smallest view containing the change.
-            .motion(Metrics.motionState, value: editor.correction.state)
+            .motion(Metrics.motionState, value: correction.state)
     }
 
     @ViewBuilder
@@ -427,7 +434,7 @@ struct ExportInspector: View {
         if isStillArriving {
             Text(verbatim: "—").foregroundStyle(.secondary)
         } else {
-            switch editor.correction.state {
+            switch correction.state {
             case .off, .measuring:
                 Text("Measuring…").foregroundStyle(.secondary)
             case .measured(let correction):
@@ -615,3 +622,81 @@ private extension View {
             .accessibilityValue(value)
     }
 }
+
+// MARK: - Previews
+
+// `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too.
+#if DEBUG
+
+/// The dock's states, and the reason the pane accepts its four collaborators rather than reaching for
+/// them (ADR-0045). The three Export phases below need a coordinator parked in one, which the running
+/// app reaches only by starting a real Export through the save panel — so ADR-0012's claim that all
+/// four phases render at **one height** is checkable here for the first time. Read them together:
+/// nothing in the column may move as the phase changes.
+
+/// A pane over a Recording that does not exist, with its own defaults suite so a preview can never
+/// write the user's sticky Quality Preset (issue #9).
+///
+/// No default arguments, though two of the three would read well as one: a default argument is
+/// evaluated in a nonisolated context, and every object here is main-actor isolated — the same reason
+/// `EditorModel` and `LibraryStore` each have two initializers rather than one.
+@MainActor
+private func previewDock(_ recording: Recording,
+                         capture: any CaptureState,
+                         coordinator: ExportCoordinator) -> some View {
+    ExportInspector(recording: recording,
+                    capture: capture,
+                    preference: ExportPreference(defaults: UserDefaults(suiteName: "com.apptape.previews")
+                        ?? .standard),
+                    coordinator: coordinator,
+                    correction: LoudnessCorrectionModel(),
+                    player: AudioPlayer())
+        .frame(width: 276)
+        .background(Color(nsColor: .controlBackgroundColor))
+}
+
+#Preview("Dock · ready") {
+    previewDock(.stub(), capture: PreviewCapture.settled, coordinator: ExportCoordinator())
+}
+
+/// The Recording being written right now: its `.caf` is still growing and its Trim end is undefined
+/// until Stop, so the dock states that instead of offering Export (ADR-0012).
+#Preview("Dock · still capturing") {
+    let recording = Recording.stub(seconds: 93)
+    return previewDock(recording, capture: PreviewCapture.capturing(recording),
+                       coordinator: ExportCoordinator())
+}
+
+#Preview("Dock · running") {
+    let recording = Recording.stub()
+    return previewDock(recording, capture: PreviewCapture.settled,
+                       coordinator: ExportCoordinator(previewing: .running(fraction: 0.42),
+                                                      subject: recording.url))
+}
+
+#Preview("Dock · succeeded") {
+    let recording = Recording.stub()
+    return previewDock(recording, capture: PreviewCapture.settled,
+                       coordinator: ExportCoordinator(previewing: .succeeded(url: recording.url),
+                                                      subject: recording.url))
+}
+
+/// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to.
+#Preview("Dock · failed") {
+    let recording = Recording.stub()
+    let message = "The destination is on a volume that has since been ejected."
+    return previewDock(recording, capture: PreviewCapture.settled,
+                       coordinator: ExportCoordinator(previewing: .failed(message: message),
+                                                      subject: recording.url))
+}
+
+/// An empty Recording — a hand-adopted file with no audio in it. The dock refuses, and the wording is
+/// the inspector's own copy of a rule `ExportCoordinator` also holds (review candidate 4, untouched
+/// here).
+#Preview("Dock · nothing in the Trim") {
+    previewDock(.stub(seconds: 0), capture: PreviewCapture.settled,
+                coordinator: ExportCoordinator())
+}
+
+#endif
+

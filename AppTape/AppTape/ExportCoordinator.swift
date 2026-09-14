@@ -48,6 +48,21 @@ final class ExportCoordinator {
 
     var isExporting: Bool { if case .running = phase { return true } else { return false } }
 
+    /// The app's one coordinator starts idle. Spelled out because the preview initializer below
+    /// would otherwise take the implicit one's place.
+    init() {}
+
+#if DEBUG
+    /// A coordinator parked in one phase, for a preview. The four phases are reachable in the running
+    /// app only by starting a real Export through the save panel, which is exactly why ADR-0012's
+    /// claim that they all render at **one height** went unseen until a two-second job moved the dock
+    /// twice (issue #78). Debug-only, and the app's own path still goes through `export`.
+    init(previewing phase: Phase, subject subjectURL: URL?) {
+        self.phase = phase
+        self.subjectURL = subjectURL
+    }
+#endif
+
     /// The parameters an Export is launched with — snapshotted from the Recording at click, before
     /// the save panel, so a later Trim or preset edit never reaches the running encode (ADR-0012).
     /// A value carried as one thing rather than threaded as loose arguments; the chosen destination
