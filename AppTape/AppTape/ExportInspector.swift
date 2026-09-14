@@ -681,11 +681,14 @@ private func previewDock(_ recording: Recording,
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
-/// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to.
+/// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to. The
+/// message is one the app actually produces, and it is the longest of them: issue #103 found the
+/// sentence shortened to fit these two `.caption` lines beside `Try Again…`, so a preview carrying a
+/// made-up longer one would be testing a straw man.
 #Preview("Dock · failed") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .failed(message: "The destination is on a volume that has since been ejected."),
+    coordinator.park(in: .failed(message: "Not enough space: needs 5.41 MB, 2.96 MB free."),
                      subject: recording.url)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }

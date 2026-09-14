@@ -962,20 +962,20 @@ extension FocusedValues {
 // that does not ship has to be guarded where it is used as well as where it is defined.
 #if DEBUG
 
-/// The whole editor over a Library that does not exist. It used to be `EditorView()`, which bound to
+/// The whole editor, over a Library that does not exist. It used to be `EditorView()`, which bound to
 /// `EditorModel.shared` and `RecordingController.shared` and therefore listed whatever was in the real
 /// Library folder and opened Core Audio to do it (ADR-0045).
-#Preview("Editor") {
-    EditorView(model: .preview(), capture: PreviewCapture.settled)
-}
-
-/// The same editor with its newest Recording still being written: no waveform, no Play, a live clock
-/// in the row and a growing figure in the brief (ADR-0031).
-#Preview("Editor · capturing") {
-    let library = Recording.previewLibrary()
-    let capturing = library.max { ($0.recordedAt ?? .distantPast) < ($1.recordedAt ?? .distantPast) }
-    return EditorView(model: .preview(recordings: library),
-                      capture: capturing.map { PreviewCapture.capturing($0) } ?? PreviewCapture.settled)
+///
+/// **Empty, and not by choice**: the preview host cannot render this window with rows in the sidebar.
+/// A populated Library dies in SwiftUI's own outline diffing —
+/// `TableViewListCore_Mac2.swift:5538`, inside `OutlineListCoordinator.recursivelyDiffRows` →
+/// `NSOutlineView.expandItem` — with three rows in one day as surely as with twelve across three, and
+/// whether the store lists before the view mounts or from its own `.task`. The running app renders
+/// the same `List` fine, and nothing here touches it. So the editor's populated states are previewed
+/// one component at a time — the lane, the brief and the dock, each in this file or its own — and
+/// this one stands for ADR-0034's empty state, which it renders correctly.
+#Preview("Editor · empty") {
+    EditorView(model: .preview(recordings: []), capture: PreviewCapture.settled)
 }
 
 /// The two states of the brief's `Master` row that ADR-0031 is about, neither of which could be seen
@@ -989,7 +989,7 @@ extension FocusedValues {
 
 #Preview("Brief · capturing") {
     let recording = Recording.stub(seconds: 93)
-    RecordingBrief(recording: recording, capture: PreviewCapture.capturing(recording))
+    return RecordingBrief(recording: recording, capture: PreviewCapture.capturing(recording))
         .frame(width: 420)
         .padding(Metrics.xl)
 }
