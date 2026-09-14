@@ -11,7 +11,10 @@ import UserNotifications
 /// fall back to a pure `.accessory` menu-bar utility rather than terminating.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let menuBar = MenuBarController()
+    /// **The other of the two places an app singleton is named** (ADR-0045); `AppTapeApp` is the
+    /// SwiftUI one. The status item and the panel it hosts are handed the transport rather than
+    /// reaching for it.
+    let menuBar = MenuBarController(recorder: .shared, presenter: .shared)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         menuBar.install()
