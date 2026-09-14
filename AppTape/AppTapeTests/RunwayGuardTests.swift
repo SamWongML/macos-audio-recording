@@ -132,9 +132,9 @@ struct RunwayGuardTests {
     @Test func refusalCopyNamesTheFreeSpaceAndTheFloor() {
         // Assert against the formatter's own output rather than a literal "1.8 GB", since the
         // separator between number and unit is locale/OS-dependent.
-        let refusal = DiskGuardRefusal(freeBytes: 1_800_000_000)
-        #expect(refusal.message.contains(DiskGuardRefusal.formatted(1_800_000_000)))
-        #expect(refusal.message.contains(DiskGuardRefusal.formatted(RunwayGuard.floorBytes)))
-        #expect(refusal.message.contains("press record again"))
+        let blocker = DiskGuardBlocker(freeBytes: 1_800_000_000)
+        #expect(blocker.message.contains(DiskGuardBlocker.formatted(1_800_000_000)))
+        #expect(blocker.message.contains(DiskGuardBlocker.formatted(RunwayGuard.floorBytes)))
+        #expect(blocker.message.contains("press record again"))
     }
 }

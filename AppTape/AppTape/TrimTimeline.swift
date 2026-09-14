@@ -55,7 +55,7 @@ struct TrimTimeline: View {
 
     /// What the lane says in place of that picture. A capture in progress is named as such; a file
     /// merely arriving in the Library has no better word than that it holds no audio yet.
-    private var arrivingTelling: String {
+    private var arrivingMessage: String {
         capture.isCapturing(recording) ? "Still capturing" : "No audio yet"
     }
 
@@ -89,16 +89,16 @@ struct TrimTimeline: View {
                 //
                 // Deliberately *not* a `Signal` token: ADR-0019 puts the accent on content, and the
                 // whole point here is that there is no content yet. This is chrome telling you so.
-                Text(arrivingTelling)
+                Text(arrivingMessage)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(width: width, height: height)
             } else {
                 waveform(geometry)
 
-                // Seams draw as hatched bands over the waveform, each carrying `minimumSeamWidth`
+                // Dropouts draw as hatched bands over the waveform, each carrying `minimumDropoutWidth`
                 // so one that is sub-pixel on an always-fits-the-width lane stays visible (ADR-0010).
-                seamBands(geometry, height: height)
+                dropoutBands(geometry, height: height)
 
                 handle(.start, at: geometry.x(atTime: recording.trim.lowerBound), height: height)
                 handle(.end, at: geometry.x(atTime: recording.trim.upperBound), height: height)
@@ -126,7 +126,7 @@ struct TrimTimeline: View {
     /// What the lane says when VoiceOver lands on it: how long the Recording is and what the Trim
     /// currently keeps, in words, since none of that is otherwise readable without a mouse.
     private var laneAccessibilityValue: String {
-        if isStillArriving { return arrivingTelling }
+        if isStillArriving { return arrivingMessage }
         let whole = "\(Format.time(recording.duration)) long"
         return recording.isTrimmed
             ? "\(whole), trimmed to \(recording.trimRangeText)"
@@ -225,24 +225,24 @@ struct TrimTimeline: View {
         }
     }
 
-    // MARK: - Seams
+    // MARK: - Dropouts
 
-    /// The narrowest a Seam band may draw in the lane, so one that is sub-pixel on an
+    /// The narrowest a Dropout band may draw in the lane, so one that is sub-pixel on an
     /// always-fits-the-width timeline is still visible (ADR-0010). The loupe deliberately has no
-    /// such floor — see `loupeSeams`.
-    static let minimumSeamWidth: Double = 3
+    /// such floor — see `loupeDropouts`.
+    static let minimumDropoutWidth: Double = 3
 
-    /// The hatched bands for the lane-visible Seams (rebuild-class; the tiny overrun Seams live in
+    /// The hatched bands for the lane-visible Dropouts (rebuild-class; the tiny overrun Dropouts live in
     /// the editor summary, not here — ADR-0010). Each carries the floor above so it never vanishes.
     @ViewBuilder
-    private func seamBands(_ geometry: TimelineGeometry, height: Double) -> some View {
+    private func dropoutBands(_ geometry: TimelineGeometry, height: Double) -> some View {
         let rate = recording.sampleRate
-        ForEach(Array(recording.laneSeams.enumerated()), id: \.offset) { _, seam in
-            let start = seam.startSeconds(sampleRate: rate)
-            let end = seam.endSeconds(sampleRate: rate)
-            SeamBand()
+        ForEach(Array(recording.laneDropouts.enumerated()), id: \.offset) { _, dropout in
+            let start = dropout.startSeconds(sampleRate: rate)
+            let end = dropout.endSeconds(sampleRate: rate)
+            DropoutBand()
                 .frame(width: geometry.points(from: start, to: end,
-                                              minimum: Self.minimumSeamWidth),
+                                              minimum: Self.minimumDropoutWidth),
                        height: height)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .offset(x: geometry.x(atTime: start))
@@ -250,19 +250,19 @@ struct TrimTimeline: View {
         }
     }
 
-    /// Seam bands inside the loupe, at **true width** (no minimum) — the loupe exists to show raw
-    /// detail, so a Seam is drawn exactly as wide as it is against the ±2 s window (ADR-0010).
-    private func loupeSeams(centre: Double, span: Double, boxWidth: Double, boxHeight: Double) -> some View {
+    /// Dropout bands inside the loupe, at **true width** (no minimum) — the loupe exists to show raw
+    /// detail, so a Dropout is drawn exactly as wide as it is against the ±2 s window (ADR-0010).
+    private func loupeDropouts(centre: Double, span: Double, boxWidth: Double, boxHeight: Double) -> some View {
         let rate = recording.sampleRate
         let lo = centre - span / 2
-        return ForEach(Array(recording.seams.enumerated()), id: \.offset) { _, seam in
-            let start = seam.startSeconds(sampleRate: rate)
-            let end = seam.endSeconds(sampleRate: rate)
+        return ForEach(Array(recording.dropouts.enumerated()), id: \.offset) { _, dropout in
+            let start = dropout.startSeconds(sampleRate: rate)
+            let end = dropout.endSeconds(sampleRate: rate)
             // Fraction of the box each edge lands on, clamped to the visible window.
             let f0 = max(0, min(1, (start - lo) / span))
             let f1 = max(0, min(1, (end - lo) / span))
             if f1 > f0 {
-                SeamBand(spacing: 4)
+                DropoutBand(spacing: 4)
                     .frame(width: boxWidth * (f1 - f0), height: boxHeight)
                     .offset(x: boxWidth * f0 - boxWidth / 2 + boxWidth * (f1 - f0) / 2)
             }
@@ -419,8 +419,8 @@ struct TrimTimeline: View {
                     }
                 }
 
-                // Seams at true width inside the loupe, drawn over the waveform silence they pad.
-                loupeSeams(centre: centre, span: span, boxWidth: boxWidth,
+                // Dropouts at true width inside the loupe, drawn over the waveform silence they pad.
+                loupeDropouts(centre: centre, span: span, boxWidth: boxWidth,
                            boxHeight: Self.loupeBoxHeight)
 
                 // The crosshair is the contract made visible: it sits at the box's centre, and
@@ -526,7 +526,7 @@ struct TrimTimeline: View {
     // MARK: - The loupe's own scale
 
     /// The window the loupe shows, in seconds — the ±2 s of the file header. Stated once here and
-    /// read by the box, the Seam bands and the caption, which each used to say it for themselves.
+    /// read by the box, the Dropout bands and the caption, which each used to say it for themselves.
     private static let loupeSpan: Double = 4
 
     /// The box, in points. It is deliberately **not** `loupeColumns`: the window is bucketed on a
@@ -578,7 +578,7 @@ struct TrimTimeline: View {
 /// the leading edge entirely (ADR-0047).
 ///
 /// The loupe itself is not in this picture, and cannot be: it shows only while `draggingHandle` is
-/// set, which is `@State` with no seam to set it from outside. That clamp is covered by
+/// set, which is `@State` with no dropout to set it from outside. That clamp is covered by
 /// `TimelineGeometryTests` instead — which is the point of moving it out of the view. What this
 /// does show is the rest of the lane at that width: the ruler's labels pulled inside the trailing
 /// edge, and the handles still landing where the mapping says.

@@ -40,13 +40,13 @@ final class StubRecordingReader: RecordingReading {
                source: String? = "Google Chrome",
                recordedAt: Date? = nil,
                storedTrim: Trim? = nil,
-               seams: [Seam] = [],
+               dropouts: [Dropout] = [],
                isOpenable: Bool = true) -> Recording {
         nextInode += 1
         let recording = Recording.stub(name, seconds: seconds, storedSource: source,
                                        recordedAt: recordedAt,
                                        identity: FileIdentity(device: 1, inode: nextInode),
-                                       storedTrim: storedTrim, seams: seams, isOpenable: isOpenable)
+                                       storedTrim: storedTrim, dropouts: dropouts, isOpenable: isOpenable)
         register(recording)
         return recording
     }

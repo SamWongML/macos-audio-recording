@@ -12,7 +12,7 @@ import Foundation
 ///
 /// Kept beside `PermissionRecovery` as the panel's other pinned copy, so the exact figures and the
 /// load-bearing wording are held by a test rather than buried in a view.
-struct DiskGuardRefusal: Equatable {
+struct DiskGuardBlocker: Equatable {
     /// Free space at the moment of refusal, so the copy can name the exact figure the user sees in
     /// Finder.
     let freeBytes: Int64

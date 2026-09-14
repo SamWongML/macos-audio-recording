@@ -120,7 +120,7 @@ struct ExportInspector: View {
                 // shape in which ADR-0019's "the selected rung gains a leading checkmark, always"
                 // means anything: inside a `Picker` the checkmark lives in a menu nobody sees.
                 ForEach(QualityPreset.allCases) { preset in
-                    rung(preset)
+                    presetRow(preset)
                 }
                 sourceFormatLine
             }
@@ -241,7 +241,7 @@ struct ExportInspector: View {
     /// the explicit `.opacity` alone recovers only 4.03 / 3.01, because the system's half is still
     /// applied. Lifting it clear of the `Button` recovers **11.71 / 13.02**, which is where
     /// ADR-0037 put the dock's sentences.
-    private func rung(_ preset: QualityPreset) -> some View {
+    private func presetRow(_ preset: QualityPreset) -> some View {
         let encodability = preset.encodability(for: format)
         let isSelected = preset == effectivePreset
         return VStack(alignment: .leading, spacing: 1) {
@@ -378,13 +378,13 @@ struct ExportInspector: View {
 
         if preference.normalizeLoudness {
             LabeledContent("Correction") { correctionReadout }
-                .readAloud("Correction", correctionSpokenValue)
+                .accessibilityLabeledValue("Correction", correctionSpokenValue)
         }
 
         LabeledContent("Gain") {
             Text(LoudnessCorrection.signedDecibels(recording.gain)).monospacedDigit()
         }
-        .readAloud("Gain", LoudnessCorrection.signedDecibels(recording.gain))
+        .accessibilityLabeledValue("Gain", LoudnessCorrection.signedDecibels(recording.gain))
         // The slider's own label is hidden, not removed: the `LabeledContent` row directly above
         // already names this control, and printing both made the inspector read
         // "Gain … 0.0 dB / Gain −12 ▬ +12" (issue #73, finding 12). `.labelsHidden()` keeps the
@@ -460,7 +460,7 @@ struct ExportInspector: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(correction.figureText)
                         .monospacedDigit()
-                        .foregroundStyle(correction.landing == .undefined ? AnyShapeStyle(.secondary)
+                        .foregroundStyle(correction.gainResult == .undefined ? AnyShapeStyle(.secondary)
                                                                           : AnyShapeStyle(.primary))
                     if let caption = correction.caption {
                         Text(caption)
@@ -489,13 +489,13 @@ struct ExportInspector: View {
             dockSentence(.stillCapturing)
         } else if coordinator.subjectURL == recording.url {
             switch coordinator.phase {
-            case .idle: exportControlOrRefusal
+            case .idle: exportControlOrBlocker
             case .running(let fraction): runningControl(fraction)
             case .succeeded(let url): succeededControl(url)
             case .failed(let message): failedControl(message)
             }
         } else {
-            exportControlOrRefusal
+            exportControlOrBlocker
         }
     }
 
@@ -506,8 +506,8 @@ struct ExportInspector: View {
     /// button: when an Export cannot start, the button is replaced by the sentence that says why,
     /// which measures **12.66 / 13.87** and does not move when the window loses key.
     @ViewBuilder
-    private var exportControlOrRefusal: some View {
-        if let reason = readiness.refusal { dockSentence(reason) }
+    private var exportControlOrBlocker: some View {
+        if let reason = readiness.blocker { dockSentence(reason) }
         else { exportButton }
     }
 
@@ -631,7 +631,7 @@ private extension View {
     /// .combine)` collapses the pair but drops the value with it: measured in the running app, the
     /// row was left with an `AXDescription` of `Length` and **no `AXValueDescription` at all**, which
     /// trades a stale number for no number. Stating both explicitly is the only form that survives.
-    func readAloud(_ label: LocalizedStringKey, _ value: String) -> some View {
+    func accessibilityLabeledValue(_ label: LocalizedStringKey, _ value: String) -> some View {
         accessibilityElement(children: .ignore)
             .accessibilityLabel(label)
             .accessibilityValue(value)
@@ -685,14 +685,14 @@ private func previewDock(_ recording: Recording,
 #Preview("Dock · running") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .running(fraction: 0.42), subject: recording)
+    coordinator.enter(phase: .running(fraction: 0.42), subject: recording)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
 #Preview("Dock · succeeded") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .succeeded(url: recording.url), subject: recording)
+    coordinator.enter(phase: .succeeded(url: recording.url), subject: recording)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
@@ -703,7 +703,7 @@ private func previewDock(_ recording: Recording,
 #Preview("Dock · failed") {
     let recording = Recording.stub()
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .failed(message: "Not enough space: needs 5.41 MB, 2.96 MB free."),
+    coordinator.enter(phase: .failed(message: "Not enough space: needs 5.41 MB, 2.96 MB free."),
                      subject: recording)
     return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
@@ -731,7 +731,7 @@ private func previewDock(_ recording: Recording,
 /// app, and this is where it is looked at. Parked on a Recording that is deliberately not this one.
 #Preview("Dock · refused · already running") {
     let coordinator = ExportCoordinator()
-    coordinator.park(in: .running(fraction: 0.42), subject: .stub("Some Other Recording"))
+    coordinator.enter(phase: .running(fraction: 0.42), subject: .stub("Some Other Recording"))
     return previewDock(.stub(), capture: PreviewCapture.settled, coordinator: coordinator)
 }
 

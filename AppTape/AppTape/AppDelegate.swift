@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.install()
         // A fault notification's click opens the editor on that Recording (ADR-0010).
         UNUserNotificationCenter.current().delegate = FaultNotificationDelegate.shared
-        // Sleep, fast user switching, and logout end a Recording on notification, no Seam (ADR-0007).
+        // Sleep, fast user switching, and logout end a Recording on notification, no Dropout (ADR-0007).
         RecordingController.shared.installLifecycleObservers()
     }
 
@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// ends any running Recording as the quit end — finalized and saved, unwarned (ADR-0004/0007).
     /// The destination is untouched until the atomic swap, so a quit mid-encode loses only redoable
     /// work and never a partial file. `endForQuit` finalizes synchronously here, so the CAF and its
-    /// Seams are on disk before this returns; the crash-safe CAF (ADR-0003) is the backstop if the
+    /// Dropouts are on disk before this returns; the crash-safe CAF (ADR-0003) is the backstop if the
     /// OS kills us before it finishes.
     func applicationWillTerminate(_ notification: Notification) {
         ExportCoordinator.shared.cancel()

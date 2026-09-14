@@ -3,7 +3,7 @@
 //  AppTape
 //
 
-/// The Capture Engine's observation→decision seam: a pure value reducer that
+/// The Capture Engine's observation→decision dropout: a pure value reducer that
 /// turns "a chunk of frames arrived, and here is where its first sound is" into
 /// "elide / begin / append", and tracks the master's frame count.
 ///
@@ -26,7 +26,7 @@
 nonisolated struct CaptureReducer {
     /// Audio frames committed to the master so far. Sits at `00:00` through the armed window and
     /// only advances at the first sound (ADR-0016). Once faults can pad silence, the menu-bar timer
-    /// reads the engine's `SeamReconciler.masterFrames` instead — that count includes padding Seams,
+    /// reads the engine's `DropoutReconciler.masterFrames` instead — that count includes padding Dropouts,
     /// so the displayed duration stays wall-clock true; this one counts only the audio (ADR-0010).
     private(set) var masterFrames: Int = 0
 

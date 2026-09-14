@@ -236,7 +236,7 @@ struct EditorView: View {
             // the one that changed what the column *is* changed no pixel of its colour. The fill
             // used to begin at **y = 52 pt**, below the title bar, with a square top corner against a
             // rounded window — a rectangle stuck to the right-hand side rather than a pane. Report
-            // 0006's primary source is that Apple does the opposite: Xcode's inspector seam starts at
+            // 0006's primary source is that Apple does the opposite: Xcode's inspector dropout starts at
             // the literal top of the window, and WWDC20's *Adopt the new look of macOS* calls
             // dividers reaching the top of the window the point of `fullSizeContentView` — which is
             // why issue #7 hid the toolbar background here in the first place.
@@ -371,11 +371,11 @@ struct EditorView: View {
     /// brief instead.
     ///
     /// **Everything above the bar has a height that does not depend on which Recording is shown.**
-    /// The Seam line used to be its own conditionally-present row, and the brief dropped `Captured`
+    /// The Dropout line used to be its own conditionally-present row, and the brief dropped `Captured`
     /// or `Master` when it had nothing to put there, so the stack was between three and five rows
     /// tall depending on the file — and because the lane takes what is left, arrowing down the
     /// Library made the lane shrink and grow under the pointer on every keystroke. The brief is now
-    /// always exactly five rows, Seams among them, and the lane resolves to the same height for
+    /// always exactly five rows, Dropouts among them, and the lane resolves to the same height for
     /// every Recording at a given window size.
     @ViewBuilder
     private func editorDetail(_ recording: Recording) -> some View {
@@ -389,7 +389,7 @@ struct EditorView: View {
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.lg)
 
-            RecordingBrief(recording: recording, capture: capture)
+            RecordingSummary(recording: recording, capture: capture)
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.xl)
 
@@ -609,7 +609,7 @@ struct EditorView: View {
 /// filler — *measures −21.4 LUFS, corrected to −16.0 at Export* — is forbidden in as many words:
 /// the figure shown is always dB, and the measured LUFS is never shown to the user. The correction
 /// in dB is already an inspector row, so there is nothing left for this block to add.
-private struct RecordingBrief: View {
+private struct RecordingSummary: View {
     var recording: Recording
     /// Accepted from the window (ADR-0045). The brief asks it for the growing master's figure and
     /// for whether there is a dependable one to state at all (ADR-0031).
@@ -634,12 +634,12 @@ private struct RecordingBrief: View {
             // merely arriving in the Library rather than being captured: nothing is watching that
             // one, so there is no figure to be current about.
             row("Master", masterText)
-            // Seams were a separate line under the lane, present only for Recordings that have
+            // Dropouts were a separate line under the lane, present only for Recordings that have
             // any. That made the pane two different heights, and the lane above it took up the
             // slack — so arrowing down the Library resized the waveform on every keystroke. It is
             // a fact about the master like the four above it, so it is a row like them, and it is
             // always here (ADR-0010, ADR-0023).
-            seamRow
+            dropoutRow
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -664,14 +664,14 @@ private struct RecordingBrief: View {
         return recording.openedByteCount?.formatted(.byteCount(style: .file)) ?? "—"
     }
 
-    private var seamRow: some View {
+    private var dropoutRow: some View {
         GridRow {
-            Text("Seams")
+            Text("Dropouts")
                 .font(Metrics.metadata)
                 .foregroundStyle(.secondary)
                 .gridColumnAlignment(.leading)
             Group {
-                if let summary = recording.seamSummary {
+                if let summary = recording.dropoutSummary {
                     HStack(spacing: Metrics.xs) {
                         Image(systemName: "rectangle.dashed").foregroundStyle(.tertiary)
                         Text(summary)
@@ -683,8 +683,8 @@ private struct RecordingBrief: View {
             .font(Metrics.metadata)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Seams")
-        .accessibilityValue(recording.seamSummary.map { String(localized: $0) } ?? "None")
+        .accessibilityLabel("Dropouts")
+        .accessibilityValue(recording.dropoutSummary.map { String(localized: $0) } ?? "None")
     }
 
     private func row(_ label: LocalizedStringKey, _ value: String) -> some View {
@@ -739,7 +739,7 @@ private struct LibraryRow: View {
 
     @FocusState private var isEditing: Bool
     @State private var draft = ""
-    @State private var refusal: LibraryLocation.NameRefusal?
+    @State private var blocker: LibraryLocation.NameValidationError?
     /// The row asks whether it is the one capturing, as the lane, the transport and the inspector
     /// already do (ADR-0031) — accepted from the window, like `model` above it (ADR-0045).
     var capture: any CaptureState
@@ -777,7 +777,7 @@ private struct LibraryRow: View {
         // stretched across the row, the same lie in the sidebar that [#80] fixed in the lane. The
         // row is not left blank by it: the live clock is what tells this one apart.
         .background(alignment: .leading) {
-            if !isRenaming, recording.isOpenable, !isStillArriving { silhouette }
+            if !isRenaming, recording.isOpenable, !isStillArriving { rowWaveform }
         }
         .contextMenu {
             // Exactly three (issue #75). `Duplicate` is out of scope: a master is 1.4 GB/hour
@@ -811,7 +811,7 @@ private struct LibraryRow: View {
 
             if recording.isOpenable {
                 // A **fixed-width slot**, so the durations line up down the column whether a
-                // Recording is trimmed, has Seams, or neither. The glyphs are drawn at zero opacity
+                // Recording is trimmed, has Dropouts, or neither. The glyphs are drawn at zero opacity
                 // rather than omitted: an `if` here shifted the duration by the width of a glyph on
                 // every row that differed, which is the ragged trailing lane #78 was filed about.
                 // Hidden from accessibility when invisible, so VoiceOver does not read a glyph that
@@ -830,16 +830,16 @@ private struct LibraryRow: View {
                         .accessibilityHidden(!recording.isTrimmed)
                         .help(recording.isTrimmed ? "Trimmed" : "")
 
-                    // A subtle trailing glyph on Recordings with surfaced Seams — the Library is
+                    // A subtle trailing glyph on Recordings with surfaced Dropouts — the Library is
                     // where a user arrives weeks later, when the moment's telling is long gone
                     // (ADR-0010). Tertiary, not tinted: it is *no data here*, not a warning.
                     Image(systemName: "rectangle.dashed")
                         .foregroundStyle(isSelected ? AnyShapeStyle(.secondary)
                                                     : AnyShapeStyle(.tertiary))
-                        .opacity(recording.isSurfacedForSeams ? 1 : 0)
-                        .accessibilityHidden(!recording.isSurfacedForSeams)
-                        .help(recording.isSurfacedForSeams
-                              ? "Contains Seams — silence padded in where audio was interrupted" : "")
+                        .opacity(recording.isSurfacedForDropouts ? 1 : 0)
+                        .accessibilityHidden(!recording.isSurfacedForDropouts)
+                        .help(recording.isSurfacedForDropouts
+                              ? "Contains Dropouts — silence padded in where audio was interrupted" : "")
                 }
                 .font(.caption2)
                 .frame(width: 26, alignment: .trailing)
@@ -886,15 +886,15 @@ private struct LibraryRow: View {
                 draft = recording.name   // the base name: the extension is never the user's to edit
                 isEditing = true
             }
-            .onChange(of: draft) { refusal = nil }
+            .onChange(of: draft) { blocker = nil }
             .onChange(of: isEditing) { _, focused in
                 // Focus left the field — another row, or the window. Finder commits here; a name
                 // it would refuse is abandoned instead, because there is no longer a field to hold
                 // open and a popover over a row the user has left is noise.
                 if !focused, isRenaming { commit(keepingFocus: false) }
             }
-            .popover(isPresented: refusalPresented, arrowEdge: .trailing) {
-                Text(refusal?.message ?? "")
+            .popover(isPresented: blockerPresented, arrowEdge: .trailing) {
+                Text(blocker?.message ?? "")
                     .font(.callout)
                     // Wraps rather than truncates: the reason is the whole point of the popover,
                     // and a name long enough to collide is long enough to overflow one line.
@@ -905,8 +905,8 @@ private struct LibraryRow: View {
             }
     }
 
-    private var refusalPresented: Binding<Bool> {
-        Binding(get: { refusal != nil }, set: { if !$0 { refusal = nil } })
+    private var blockerPresented: Binding<Bool> {
+        Binding(get: { blocker != nil }, set: { if !$0 { blocker = nil } })
     }
 
     private func commit(keepingFocus: Bool) {
@@ -915,7 +915,7 @@ private struct LibraryRow: View {
             model.endRename()
         case .refused(let why):
             guard keepingFocus else { model.endRename(); return }
-            refusal = why
+            blocker = why
             isEditing = true
         }
     }
@@ -926,7 +926,7 @@ private struct LibraryRow: View {
     /// focused selection and dark on an unfocused one — so one rule covers both fills. The alpha is
     /// what keeps it a ground: at full strength `.primary` is the name's own colour and the shape
     /// would compete with the text it sits behind (ADR-0025).
-    private var silhouette: some View {
+    private var rowWaveform: some View {
         WaveformPath(columns: recording.envelope.columns(
             over: TimelineGeometry.wholeRange(duration: recording.duration), count: 120))
             .fill(isSelected ? AnyShapeStyle(.primary.opacity(0.30))
@@ -982,14 +982,14 @@ extension FocusedValues {
 /// before the brief accepted its capture state: a settled Recording states the length it was read at,
 /// and the one being written states what it weighs right now.
 #Preview("Brief · settled") {
-    RecordingBrief(recording: .stub(), capture: PreviewCapture.settled)
+    RecordingSummary(recording: .stub(), capture: PreviewCapture.settled)
         .frame(width: 420)
         .padding(Metrics.xl)
 }
 
 #Preview("Brief · capturing") {
     let recording = Recording.stub(seconds: 93)
-    return RecordingBrief(recording: recording, capture: PreviewCapture.capturing(recording))
+    return RecordingSummary(recording: recording, capture: PreviewCapture.capturing(recording))
         .frame(width: 420)
         .padding(Metrics.xl)
 }

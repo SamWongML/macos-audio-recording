@@ -10,7 +10,7 @@ import Testing
 /// One press's whole life, with Core Audio, a `statfs`, a notification centre and a window replaced
 /// by doubles, and with time handed in rather than waited for.
 ///
-/// The three things that were untestable before the seam and are the reason for it: ADR-0010's
+/// The three things that were untestable before the dropout and are the reason for it: ADR-0010's
 /// **generation rule** — a slow or cancelled bring-up must not attach to a later press, which used
 /// to be one line hand-copied to eight sites; the **wedge**, armed only after the first successful
 /// capture so a ~90 s TCC prompt is never mistaken for a hang (ADR-0008); and **six ends**, each
@@ -27,7 +27,7 @@ struct CaptureRunTests {
     struct Rig {
         let builder: FakeCaptureBuilder
         let runway: StubRunway
-        let telling: TellingLog
+        let reporter: CaptureReportLog
         /// The growing master's length, and nothing else: the run's one file read (ADR-0044).
         let reader: StubRecordingReader
         let run: CaptureRun
@@ -36,13 +36,13 @@ struct CaptureRunTests {
         init(freeBytes: Int64? = 500_000_000_000) {
             let builder = FakeCaptureBuilder()
             let runway = StubRunway(freeBytes: freeBytes)
-            let telling = TellingLog()
+            let reporter = CaptureReportLog()
             let reader = StubRecordingReader()
             self.builder = builder
             self.runway = runway
-            self.telling = telling
+            self.reporter = reporter
             self.reader = reader
-            self.run = CaptureRun(builder: builder, runway: runway, telling: telling, reader: reader)
+            self.run = CaptureRun(builder: builder, runway: runway, reporter: reporter, reader: reader)
         }
 
         /// Press record and let the bring-up succeed — where every test that is not about bring-up
@@ -119,7 +119,7 @@ struct CaptureRunTests {
 
         #expect(rig.run.permissionRecovery)
         #expect(rig.run.isRecording == false)
-        #expect(rig.run.startRefusal == nil)   // the panel carries one blocking reason (ADR-0009)
+        #expect(rig.run.startBlocker == nil)   // the panel carries one blocking reason (ADR-0009)
 
         // And the capture that arrives afterwards is orphaned rather than left running.
         let orphan = rig.builder.finish()
@@ -205,7 +205,7 @@ struct CaptureRunTests {
         rig.builder.fail()
         #expect(rig.run.isRecording == false)
         #expect(rig.run.permissionRecovery == false)
-        #expect(rig.run.startRefusal == nil)
+        #expect(rig.run.startBlocker == nil)
     }
 
     // MARK: - The six ends (ADR-0007/0010)
@@ -216,7 +216,7 @@ struct CaptureRunTests {
         capture.outcome = CaptureOutcome(result: Rig.result, selfEndReason: nil)
         rig.run.stop()
 
-        #expect(rig.telling.told == [.authorizationRequested, .editorOpened(Rig.result.url)])
+        #expect(rig.reporter.reported == [.authorizationRequested, .editorOpened(Rig.result.url)])
         #expect(rig.run.hasCompletedACapture)
         #expect(rig.run.isRecording == false)
     }
@@ -227,11 +227,11 @@ struct CaptureRunTests {
         capture.outcome = CaptureOutcome(result: Rig.result, selfEndReason: nil)
         rig.run.endForQuit()
 
-        // The process is about to exit: the CAF must close and the Seams xattr must be written
+        // The process is about to exit: the CAF must close and the Dropouts xattr must be written
         // before `applicationWillTerminate` returns, so this is the one end that does not offload.
         #expect(capture.stopNowCount == 1)
         #expect(capture.stopCount == 0)
-        #expect(rig.telling.told.isEmpty)
+        #expect(rig.reporter.reported.isEmpty)
         #expect(rig.run.isRecording == false)
     }
 
@@ -244,7 +244,7 @@ struct CaptureRunTests {
 
         // The reason is named because the four ask different things of the user, and a generic
         // "Recording stopped" makes them open the app to find out which (ADR-0010).
-        #expect(rig.telling.told == [.end(reason, Rig.result.url)])
+        #expect(rig.reporter.reported == [.end(reason, Rig.result.url)])
         #expect(rig.run.isRecording == false)
     }
 
@@ -254,7 +254,7 @@ struct CaptureRunTests {
         // The capture already ended itself at the disk floor; the sleep notification lands after.
         capture.outcome = CaptureOutcome(result: Rig.result, selfEndReason: .diskGuard)
         rig.run.end(.sleep)
-        #expect(rig.telling.told == [.end(.diskGuard, Rig.result.url)])
+        #expect(rig.reporter.reported == [.end(.diskGuard, Rig.result.url)])
     }
 
     @Test func armThenNeverPlaySavesNothingAndTellsNothing() {
@@ -263,7 +263,7 @@ struct CaptureRunTests {
         rig.run.stop()
 
         #expect(capture.stopCount == 1)
-        #expect(rig.telling.told.isEmpty)
+        #expect(rig.reporter.reported.isEmpty)
         // No capture means nothing is known about the grant, so the wedge stays disarmed.
         #expect(rig.run.hasCompletedACapture == false)
     }
@@ -285,7 +285,7 @@ struct CaptureRunTests {
         rig.run.start(Rig.source, now: 0)
 
         #expect(rig.run.isRecording == false)
-        #expect(rig.run.startRefusal != nil)
+        #expect(rig.run.startBlocker != nil)
         #expect(rig.run.permissionRecovery == false)
         #expect(rig.builder.buildCount == 0)   // no tap is even asked for
     }
@@ -326,7 +326,7 @@ struct CaptureRunTests {
 
         // A posted warning is never retracted and never doubled: the 15-minute hysteresis holds it
         // to one for as long as the Recording stays in the band.
-        #expect(rig.telling.told.filter { $0 == .runwayLow }.count == 1)
+        #expect(rig.reporter.reported.filter { $0 == .runwayLow }.count == 1)
         #expect(rig.run.isRecording)         // a warning is not an end
     }
 
@@ -340,20 +340,20 @@ struct CaptureRunTests {
         rig.run.tick(now: 5.05)
 
         #expect(rig.run.isRecording == false)
-        #expect(rig.telling.told == [.end(.diskGuard, Rig.result.url)])
+        #expect(rig.reporter.reported == [.end(.diskGuard, Rig.result.url)])
     }
 
     @Test func anUnverifiableVolumeNeitherRefusesAPressNorEndsARecording() {
         let rig = Rig(freeBytes: nil)
         rig.run.start(Rig.source, now: 0)
         #expect(rig.run.isRecording)
-        #expect(rig.run.startRefusal == nil)
+        #expect(rig.run.startBlocker == nil)
         #expect(rig.run.runwayTier == .nominal)   // not pre-ambered either
 
         rig.builder.finish()
         for i in 1...(30 * 20) { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.isRecording)
-        #expect(rig.telling.told.isEmpty)
+        #expect(rig.reporter.reported.isEmpty)
     }
 
     // MARK: - Cadence and the meter

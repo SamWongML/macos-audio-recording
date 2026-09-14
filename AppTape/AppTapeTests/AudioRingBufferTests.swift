@@ -6,7 +6,7 @@
 import Testing
 @testable import AppTape
 
-/// The ring is the seam between the realtime IOProc and the writer thread: it must round-
+/// The ring is the dropout between the realtime IOProc and the writer thread: it must round-
 /// trip samples exactly, wrap correctly, and drop-with-a-count rather than overwrite on
 /// overrun (ADR-0003).
 struct AudioRingBufferTests {

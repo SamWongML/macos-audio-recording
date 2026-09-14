@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import AppTape
 
-/// The Library/Recording store seam (ADR-0006): listing the folder and reconciling a fresh scan
+/// The Library/Recording store dropout (ADR-0006): listing the folder and reconciling a fresh scan
 /// against what is already held. The `DispatchSource` watch and the activation re-read are thin
 /// wrappers over these two functions, which are what the tests pin.
 ///
@@ -158,7 +158,7 @@ struct LibraryStoreTests {
 
     @Test func persistingTheTrimAndGainDoesNotCostTheRecordingItsObject() throws {
         // The other side of ADR-0021: re-adoption keys on the file's **data length**, and Trim,
-        // Gain and Seams all ride in extended attributes, which sit outside it. If they did not,
+        // Gain and Dropouts all ride in extended attributes, which sit outside it. If they did not,
         // every gesture-end would silently drop the open Recording's object — and with it the very
         // live Trim and built envelope ADR-0006's same-object rule exists to protect. This one is
         // measured against the real file system on purpose: it is a claim about `st_size`.
@@ -303,12 +303,12 @@ struct LibraryStoreTests {
         let recording = try #require(store.recordings.first)
 
         let coordinator = ExportCoordinator()
-        coordinator.park(in: .running(fraction: 0.42), subject: recording)
+        coordinator.enter(phase: .running(fraction: 0.42), subject: recording)
 
         #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
 
         #expect(store.recordings[0] === recording)                     // the rename was followed
-        #expect(coordinator.subjectURL == recording.url)               // and so was the telling
+        #expect(coordinator.subjectURL == recording.url)               // and so was the reporter
         #expect(coordinator.subjectURL?.lastPathComponent == "Interview.caf")
         #expect(coordinator.phase == .running(fraction: 0.42))         // still running, still shown
     }

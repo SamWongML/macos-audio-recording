@@ -89,7 +89,7 @@ nonisolated struct TimelineGeometry: Equatable {
     ///
     /// The asymmetry with `time(atX:)` is correct and has never been written down before. This one
     /// must be free to leave `0...width`: a Trim handle at the very end draws at exactly `width`,
-    /// a Seam band's width is the difference of two of these, and clamping either would collapse a
+    /// a Dropout band's width is the difference of two of these, and clamping either would collapse a
     /// band that runs off an edge instead of clipping it. Callers that need a bounded result ask
     /// for one by name — `centredBoxX(at:boxWidth:)`, `labelX(at:reserving:)`.
     func x(atTime t: Double) -> Double {
@@ -99,8 +99,8 @@ nonisolated struct TimelineGeometry: Equatable {
 
     /// The distance between two times, in points, never below `minimum`.
     ///
-    /// The floor is the caller's: a Seam that is sub-pixel on an always-fits-the-width lane still
-    /// has to be visible (ADR-0010), while the same Seam inside the loupe is drawn at true width
+    /// The floor is the caller's: a Dropout that is sub-pixel on an always-fits-the-width lane still
+    /// has to be visible (ADR-0010), while the same Dropout inside the loupe is drawn at true width
     /// because the loupe exists to show raw detail.
     func points(from t0: Double, to t1: Double, minimum: Double) -> Double {
         Swift.max(minimum, x(atTime: t1) - x(atTime: t0))

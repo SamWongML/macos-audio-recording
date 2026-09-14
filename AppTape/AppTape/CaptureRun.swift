@@ -77,7 +77,7 @@ final class CaptureRun {
         phase.attempt == attempt
     }
 
-    private func mintAttempt() -> Attempt {
+    private func beginAttempt() -> Attempt {
         nextAttemptID += 1
         return Attempt(id: nextAttemptID)
     }
@@ -139,7 +139,7 @@ final class CaptureRun {
     /// blocking-message surface, sharing it with `permissionRecovery` — the panel carries at most
     /// one blocking reason at a time. Cleared on the next successful start, and by a denial taking
     /// the surface. Its action opens Finder at the Library.
-    private(set) var startRefusal: DiskGuardRefusal?
+    private(set) var startBlocker: DiskGuardBlocker?
 
     /// The Library file currently being written, once the first sound has created it. The editor
     /// refuses to export this one: its `.caf` is still growing in place and its Trim end is
@@ -197,17 +197,17 @@ final class CaptureRun {
 
     private let builder: any CaptureBuilding
     private let runway: any RunwayProbing
-    private let telling: any RunTelling
+    private let reporter: any CaptureReporting
     /// The one module that reads a Recording's facts off the disk (ADR-0044). The run holds it for
     /// exactly one read — the growing master's length, below — which is the only file the run has
     /// any business asking about.
     private let reader: any RecordingReading
 
-    init(builder: any CaptureBuilding, runway: any RunwayProbing, telling: any RunTelling,
+    init(builder: any CaptureBuilding, runway: any RunwayProbing, reporter: any CaptureReporting,
          reader: any RecordingReading) {
         self.builder = builder
         self.runway = runway
-        self.telling = telling
+        self.reporter = reporter
         self.reader = reader
     }
 
@@ -232,12 +232,12 @@ final class CaptureRun {
         // in the Library and teaches nothing. The refusal raises the panel's one blocking-message
         // surface, whose action opens Finder at the Library.
         if startDecision == .refuse, let free {
-            startRefusal = DiskGuardRefusal(freeBytes: free)
+            startBlocker = DiskGuardBlocker(freeBytes: free)
             permissionRecovery = false
             return
         }
 
-        startRefusal = nil
+        startBlocker = nil
         permissionRecovery = false   // retry clears the last denial's banner
         recordingSourceID = source.bundleID
         elapsed = 0
@@ -246,7 +246,7 @@ final class CaptureRun {
         lastRunwayPollAt = nil
         resetMeter()
 
-        let attempt = mintAttempt()
+        let attempt = beginAttempt()
         phase = .bringingUp(attempt, pressedAt: now)
 
         // Begin amber if already inside the 3-hour tier, so a Recording the guard would paint amber
@@ -313,7 +313,7 @@ final class CaptureRun {
 
     /// An end arriving from outside the run: system sleep, or fast user switching folded into it
     /// (ADR-0007). Ends the Recording **on the notification**, while the machine is still awake, so
-    /// the file is finalized at its last real sample and there is no gap to reconcile — no Seam.
+    /// the file is finalized at its last real sample and there is no gap to reconcile — no Dropout.
     func end(_ reason: RecordingEndReason) {
         guard let attempt = phase.attempt else { return }
         finalize(reason: reason, attempt)
@@ -322,9 +322,9 @@ final class CaptureRun {
     /// App quit or logout: finalize and save unwarned, as ADR-0004 accepts for a left-click. A
     /// requested end — no notification, no window. Unlike the other ends this finalizes
     /// **synchronously**, because the process is about to exit: the writer must finish draining,
-    /// close the CAF, and write the Seams xattr before `applicationWillTerminate` returns. The CAF
+    /// close the CAF, and write the Dropouts xattr before `applicationWillTerminate` returns. The CAF
     /// is crash-safe even if the OS kills us first (ADR-0003), but a synchronous close also secures
-    /// the Seam mark and the tail.
+    /// the Dropout mark and the tail.
     func endForQuit() {
         guard isRecording else { return }
         let capture = phase.capture
@@ -370,13 +370,13 @@ final class CaptureRun {
         case .userStopped:
             // The first *completed* Recording is where notification authorization is requested, so a
             // later unrequested end has a channel — never stacked onto a failure (ADR-0009).
-            telling.requestNotificationAuthorizationOnce()
-            telling.openEditor(selecting: result.url)
+            reporter.requestNotificationAuthorizationOnce()
+            reporter.openEditor(selecting: result.url)
         case .quit:
             break   // you asked for it; the app is leaving. No window, no notification.
         case .diskGuard, .recoveryExhausted, .formatMismatch, .sleep:
             // Name the reason and open the editor on the click — or directly, if auth is absent.
-            telling.tell(end: outcome.selfEndReason ?? requested, recordingURL: result.url)
+            reporter.report(end: outcome.selfEndReason ?? requested, recordingURL: result.url)
         }
     }
 
@@ -394,7 +394,7 @@ final class CaptureRun {
         let capture = phase.capture
         returnToIdle()
         capture?.discard()
-        startRefusal = nil   // the panel carries at most one blocking reason (ADR-0009)
+        startBlocker = nil   // the panel carries at most one blocking reason (ADR-0009)
         permissionRecovery = true
     }
 
@@ -484,7 +484,7 @@ final class CaptureRun {
         guard let free = runway.freeBytesForLibraryVolume() else { return }
         let decision = runwayGuard.receive(freeBytes: free, ratePerSecond: capture.bytesPerSecond)
         runwayTier = decision.tier
-        if decision.shouldWarn { telling.tellRunwayLow() }
+        if decision.shouldWarn { reporter.reportRunwayLow() }
         if decision.shouldEnd, let attempt = phase.attempt {
             finalize(reason: .diskGuard, attempt)
         }

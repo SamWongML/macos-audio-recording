@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// A Recording ends for **exactly six reasons** and no more (ADR-0007). Everything else is a Seam
+/// A Recording ends for **exactly six reasons** and no more (ADR-0007). Everything else is a Dropout
 /// to pad or an event to ignore. The six split in two: *you asked for it* — a user stop, an app
 /// quit or logout — and *you didn't* — the disk guard, rebuilding exhausted, a format mismatch, or
 /// sleep. The four unrequested ends each post a notification naming their reason, because they ask

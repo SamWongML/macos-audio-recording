@@ -21,11 +21,11 @@ nonisolated enum RecordingMetadata {
     static let trimKey = "com.apptape.trim"
     /// The hand-chosen Gain offset in dB (issue #24/#25 own its meaning; the editor only persists it).
     static let gainKey = "com.apptape.gain"
-    /// The Seam list, a JSON array of `{start, frames, cause}` in master frames (ADR-0010). Named
+    /// The Dropout list, a JSON array of `{start, frames, cause}` in master frames (ADR-0010). Named
     /// under the same `com.apptape.` namespace as the others, so it travels with the file and comes
-    /// back on the next open. (The ADR text names it `com.samwongml.apptape.seams`; the shipped
+    /// back on the next open. (The ADR text names it `com.samwongml.apptape.dropouts`; the shipped
     /// attributes all use the `com.apptape.` prefix, so it follows them for a single namespace.)
-    static let seamsKey = "com.apptape.seams"
+    static let dropoutsKey = "com.apptape.seams"
 
     static func writeSource(_ source: String, to url: URL) throws {
         try write(source, forKey: sourceKey, to: url)
@@ -61,31 +61,31 @@ nonisolated enum RecordingMetadata {
         return value
     }
 
-    /// A Seam list rides in one JSON xattr (ADR-0010), written once at Stop like the others — never
+    /// A Dropout list rides in one JSON xattr (ADR-0010), written once at Stop like the others — never
     /// per frame. `start` and `frames` are integers, so there is no `NaN` to reach the file.
-    static func writeSeams(_ seams: [Seam], to url: URL) throws {
-        let dto = seams.map { SeamDTO(start: $0.start, frames: $0.frames, cause: $0.cause.rawValue) }
+    static func writeDropouts(_ dropouts: [Dropout], to url: URL) throws {
+        let dto = dropouts.map { DropoutDTO(start: $0.start, frames: $0.frames, cause: $0.cause.rawValue) }
         let data = try JSONEncoder().encode(dto)
         guard let json = String(data: data, encoding: .utf8) else { return }
-        try write(json, forKey: seamsKey, to: url)
+        try write(json, forKey: dropoutsKey, to: url)
     }
 
     /// An unreadable or absent value reads as a **clean** Recording — the safe direction, and the
     /// same graceful degradation the other attributes give (ADR-0010). A malformed `cause` drops
-    /// that one Seam rather than poisoning the list; a non-positive length drops it too.
-    static func readSeams(from url: URL) -> [Seam] {
-        guard let raw = read(forKey: seamsKey, from: url),
+    /// that one Dropout rather than poisoning the list; a non-positive length drops it too.
+    static func readDropouts(from url: URL) -> [Dropout] {
+        guard let raw = read(forKey: dropoutsKey, from: url),
               let data = raw.data(using: .utf8),
-              let dto = try? JSONDecoder().decode([SeamDTO].self, from: data)
+              let dto = try? JSONDecoder().decode([DropoutDTO].self, from: data)
         else { return [] }
         return dto.compactMap { entry in
-            guard let cause = Seam.Cause(rawValue: entry.cause), entry.frames > 0, entry.start >= 0
+            guard let cause = Dropout.Cause(rawValue: entry.cause), entry.frames > 0, entry.start >= 0
             else { return nil }
-            return Seam(start: entry.start, frames: entry.frames, cause: cause)
+            return Dropout(start: entry.start, frames: entry.frames, cause: cause)
         }
     }
 
-    private struct SeamDTO: Codable { var start: Int; var frames: Int; var cause: String }
+    private struct DropoutDTO: Codable { var start: Int; var frames: Int; var cause: String }
 
     private static func write(_ value: String, forKey key: String, to url: URL) throws {
         let data = Data(value.utf8)

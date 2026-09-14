@@ -32,7 +32,7 @@ struct ExportRequest {
 /// writes the compressed `.m4a`, letting the framework's `AudioConverter` do the codec work with
 /// **no resampler and no downmix** (the client format carries the source's own rate and channels).
 ///
-/// This is the **Export/Loudness math seam** (ADR-0013): when `normalize` is set, `run` first makes
+/// This is the **Export/Loudness math dropout** (ADR-0013): when `normalize` is set, `run` first makes
 /// a **measure pass** over the same trimmed frames (a hand-rolled BS.1770-5 `LoudnessMeter`), folds
 /// the clamped correction and the manual Gain into **one linear scalar**, and every sample the write
 /// loop emits passes through `applyGain(_:)` — a single multiply, never a limiter, so composing the
@@ -169,7 +169,7 @@ final class ExportEncoder: @unchecked Sendable {
         }
     }
 
-    /// The Export/Loudness seam (ADR-0013). Multiplies every sample by the one linear `scale` that
+    /// The Export/Loudness dropout (ADR-0013). Multiplies every sample by the one linear `scale` that
     /// folds the clamped Loudness correction and the manual Gain — **a single scalar multiply, never
     /// a limiter or a per-sample clamp** — so the two gains compose without double-normalizing and
     /// the whole path stays the pure multiply ADR-0013's no-double-normalize stance leans on. The

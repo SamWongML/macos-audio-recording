@@ -28,7 +28,7 @@ final class Recording: Identifiable {
     let sampleRate: Double
 
     /// The file's data length at the moment this Recording was read. Everything below —
-    /// `frameCount` above all, but also `sampleRate`, the channel count and the Seams — was read
+    /// `frameCount` above all, but also `sampleRate`, the channel count and the Dropouts — was read
     /// in one pass by `RecordingReader.adopt`, which is exactly right for a finalized master,
     /// because ADR-0003 makes it immutable. It is wrong for a file that is **still being written**: a master mid-capture, or
     /// a large file still being copied into the Library. This is how the store tells the two apart
@@ -70,38 +70,38 @@ final class Recording: Identifiable {
     /// it live so playback tracks it, and `persistGain()` writes the xattr once, at gesture-end.
     var gain: Double
 
-    /// The Seams padded into this Recording's master (ADR-0010), read once at open. The mark
+    /// The Dropouts padded into this Recording's master (ADR-0010), read once at open. The mark
     /// describes the **master, not the Trim** — ADR-0003 makes the master immutable and the Trim a
     /// view over it, so a badge that vanished when a handle moved would read as a repair. An absent
     /// or unreadable attribute reads as **none**, so a hand-adopted file the app never captured is
     /// correctly unmarked. Immutable like `frameCount`: capture writes it at Stop, the editor reads it.
-    let seams: [Seam]
+    let dropouts: [Dropout]
 
-    /// Whether the Recording carries the Seam mark — a single Seam ≥ 250 ms or a total ≥ 250 ms.
-    var isSurfacedForSeams: Bool { SeamSurfacing.isSurfaced(seams, sampleRate: sampleRate) }
+    /// Whether the Recording carries the Dropout mark — a single Dropout ≥ 250 ms or a total ≥ 250 ms.
+    var isSurfacedForDropouts: Bool { DropoutSurfacing.isSurfaced(dropouts, sampleRate: sampleRate) }
 
-    /// The Seams big enough to draw as hatched bands in the waveform lane (ADR-0010).
-    var laneSeams: [Seam] { SeamSurfacing.laneVisible(seams, sampleRate: sampleRate) }
+    /// The Dropouts big enough to draw as hatched bands in the waveform lane (ADR-0010).
+    var laneDropouts: [Dropout] { DropoutSurfacing.laneVisible(dropouts, sampleRate: sampleRate) }
 
-    /// The one-line editor summary of Seams too small to draw, or nil when there are none. Every
-    /// Seam is recorded even when it is not surfaced, and this is where the small ones are told.
+    /// The one-line editor summary of Dropouts too small to draw, or nil when there are none. Every
+    /// Dropout is recorded even when it is not surfaced, and this is where the small ones are told.
     ///
     /// A `LocalizedStringResource`, **not** a `String`: the inflection markup below is only parsed
     /// on the way through the localization machinery. Returned as a `String` it reached
-    /// `Text`'s non-localized initializer and the editor printed `^[3 Seam](inflect: true)` on
+    /// `Text`'s non-localized initializer and the editor printed `^[3 Dropout](inflect: true)` on
     /// screen verbatim (issue #73, finding 1). The sidebar footer's literal
     /// `Text("^[\(count) Recording](inflect: true)")` renders correctly for the same reason, which
     /// is why this went unnoticed.
-    var seamSummary: LocalizedStringResource? {
-        guard !seams.isEmpty, sampleRate > 0 else { return nil }
-        let subThreshold = SeamSurfacing.subThreshold(seams, sampleRate: sampleRate)
-        let total = SeamSurfacing.totalSeconds(seams, sampleRate: sampleRate)
-        if isSurfacedForSeams {
-            return "^[\(seams.count) Seam](inflect: true) · \(Self.paddedDurationText(total)) of silence padded in"
+    var dropoutSummary: LocalizedStringResource? {
+        guard !dropouts.isEmpty, sampleRate > 0 else { return nil }
+        let subThreshold = DropoutSurfacing.subThreshold(dropouts, sampleRate: sampleRate)
+        let total = DropoutSurfacing.totalSeconds(dropouts, sampleRate: sampleRate)
+        if isSurfacedForDropouts {
+            return "^[\(dropouts.count) Dropout](inflect: true) · \(Self.paddedDurationText(total)) of silence padded in"
         }
         guard !subThreshold.isEmpty else { return nil }
-        let subTotal = SeamSurfacing.totalSeconds(subThreshold, sampleRate: sampleRate)
-        return "^[\(subThreshold.count) brief Seam](inflect: true) · \(Self.paddedDurationText(subTotal)) padded, too short to hear"
+        let subTotal = DropoutSurfacing.totalSeconds(subThreshold, sampleRate: sampleRate)
+        return "^[\(subThreshold.count) brief Dropout](inflect: true) · \(Self.paddedDurationText(subTotal)) padded, too short to hear"
     }
 
     /// Padded silence read as milliseconds under a second, seconds above — the scale the user can act on.
@@ -204,7 +204,7 @@ final class Recording: Identifiable {
          recordedAt: Date? = nil,
          storedTrim: Trim? = nil,
          gain: Double = 0,
-         seams: [Seam] = []) {
+         dropouts: [Dropout] = []) {
         self.url = url
         self.frameCount = frameCount
         self.sampleRate = sampleRate
@@ -216,7 +216,7 @@ final class Recording: Identifiable {
         self.storedSource = storedSource
         self.recordedAt = recordedAt
         self.gain = gain
-        self.seams = seams
+        self.dropouts = dropouts
         // A missing or malformed Trim attribute reads as the full range (ADR-0006), and the stored
         // one has already been clamped against this duration by `Trim` itself.
         let duration = sampleRate > 0 ? Double(frameCount) / sampleRate : 0

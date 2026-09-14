@@ -9,7 +9,7 @@ import Foundation
 /// scale so ordinary speech is visible next to one loud transient (issue #59). The panel's
 /// per-row level meter reads the recording tap's current level through this.
 ///
-/// The whole point of the seam is the boundary case: a **dead tap reads exactly zero**. A
+/// The whole point of the dropout is the boundary case: a **dead tap reads exactly zero**. A
 /// soft-fault tap that has gone all-zero, a famine with no callbacks at all, or a row with no
 /// tap — each hands in `nil` or a non-positive peak, and each reads `0`, never a decaying ghost
 /// or a noise-floor smear. Any smoothing belongs to the view's animation, not to the number,

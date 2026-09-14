@@ -67,7 +67,7 @@ extension Recording {
                      identity: FileIdentity? = nil,
                      storedTrim: Trim? = nil,
                      gain: Double = 0,
-                     seams: [Seam] = [],
+                     dropouts: [Dropout] = [],
                      isOpenable: Bool = true,
                      in directory: URL = URL(filePath: "/Library")) -> Recording {
         let frameCount = AVAudioFramePosition((seconds * sampleRate).rounded())
@@ -84,7 +84,7 @@ extension Recording {
                          recordedAt: recordedAt,
                          storedTrim: storedTrim,
                          gain: gain,
-                         seams: seams)
+                         dropouts: dropouts)
     }
 }
 
@@ -121,7 +121,7 @@ extension Envelope {
 /// A Library that is not a folder: the Recordings a preview was handed, answered from memory.
 ///
 /// A third conformance of `RecordingReading`, and it does not weaken the two-conformance bar
-/// ADR-0043 set — that bar is about a second *production* conformance, which would make the seam a
+/// ADR-0043 set — that bar is about a second *production* conformance, which would make the dropout a
 /// layer. This one opens no files, which is the whole point: the editor preview below renders a
 /// 44-Recording Library on a machine that has none.
 struct PreviewLibraryReader: RecordingReading {

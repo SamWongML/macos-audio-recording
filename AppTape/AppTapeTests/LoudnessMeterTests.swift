@@ -8,7 +8,7 @@ import AVFoundation
 import Foundation
 @testable import AppTape
 
-/// The hand-rolled BS.1770-5 pass (ADR-0013), driven through the streaming `LoudnessAnalyzer` seam
+/// The hand-rolled BS.1770-5 pass (ADR-0013), driven through the streaming `LoudnessAnalyzer` dropout
 /// with engineered fixtures. The absolute anchor is the standard calibration a hand-derivation of the
 /// K-weighting confirms: a 0 dBFS 1 kHz sine reads −3.0 LUFS in one channel. The relative anchors are
 /// filter-independent by construction — halving amplitude is exactly −6.02 LU, and a matched stereo

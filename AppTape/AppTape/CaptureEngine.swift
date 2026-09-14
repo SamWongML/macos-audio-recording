@@ -28,7 +28,7 @@ nonisolated struct CaptureResult: Sendable {
 /// is a plain thread that may block, and the one place that must not block never does.
 ///
 /// Once the master has begun, this thread also carries fault recovery (ADR-0007, ADR-0010): it
-/// reconciles every host-time gap into a padded **Seam** via `SeamReconciler`, and it splits a
+/// reconciles every host-time gap into a padded **Dropout** via `DropoutReconciler`, and it splits a
 /// dead tap from a quiet Source via `FaultReducer` — a soft fault gets one rebuild that never ends
 /// the Recording, a hard fault spends one of three attempts, and a rebuild destroys and recreates
 /// the tap, re-resolving the Source's processes. All of it runs *after* the first sound; the
@@ -85,7 +85,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
 
     /// Master frames committed so far, published by the writer thread for the main-thread
     /// timer. Sits at 0 through the armed window, so the timer reads `00:00` until the first
-    /// sound (ADR-0016). Once begun it counts padded Seams too, so the timeline stays wall-clock true.
+    /// sound (ADR-0016). Once begun it counts padded Dropouts too, so the timeline stays wall-clock true.
     private let publishedFrames = Atomic<Int>(0)
     var masterFrameCount: Int { publishedFrames.load(ordering: .acquiring) }
     var elapsed: TimeInterval { sampleRate > 0 ? Double(masterFrameCount) / sampleRate : 0 }
@@ -112,8 +112,8 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     private var reducer = CaptureReducer()
     private var writer: CAFMasterWriter?
     private var denial = DenialDetector()
-    /// Reconciles host-time gaps into padded Seams; created once the format is known (ADR-0010).
-    private var reconciler: SeamReconciler
+    /// Reconciles host-time gaps into padded Dropouts; created once the format is known (ADR-0010).
+    private var reconciler: DropoutReconciler
     /// The soft/hard fault policy (ADR-0010).
     private var fault = FaultReducer()
 
@@ -125,7 +125,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     private var refMark: TimestampRing.Mark?
     /// True from the start of a rebuild until the next chunk is accounted, so the gap it opened is
     /// tagged `rebuild` rather than `overrun`. The reconciler sees only the gap; this names its cause.
-    private var pendingRebuildSeam = false
+    private var pendingRebuildDropout = false
 
     /// Whether any callback has ever produced frames — the famine detector arms only after the first
     /// (ADR-0010: a detector armed at start reads the first-run TCC prompt as a fault).
@@ -177,7 +177,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         format = tap.format
         sampleRate = tap.format.mSampleRate
         channels = max(1, Int(tap.format.mChannelsPerFrame))
-        reconciler = SeamReconciler(sampleRate: sampleRate)
+        reconciler = DropoutReconciler(sampleRate: sampleRate)
 
         let thread = Thread { [weak self] in self?.runWriterLoop() }
         thread.name = "com.apptape.master-writer"
@@ -278,10 +278,10 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         while drainOnce(into: &scratch) > 0 {}
 
         writer?.close()
-        if let writer, !reconciler.seams.isEmpty {
+        if let writer, !reconciler.dropouts.isEmpty {
             // The mark rides in an xattr, written once at finalize (ADR-0010). Best-effort like the
             // other metadata: a lost write reads back as a clean Recording.
-            try? RecordingMetadata.writeSeams(reconciler.seams, to: writer.url)
+            try? RecordingMetadata.writeDropouts(reconciler.dropouts, to: writer.url)
         }
         finished.signal()
         if let reason = selfEndReason { onEnded?(reason) }
@@ -323,13 +323,13 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         return produced
     }
 
-    /// Reconcile a written chunk against the wall clock, padding a Seam before it if a gap opened,
+    /// Reconcile a written chunk against the wall clock, padding a Dropout before it if a gap opened,
     /// or ending the Recording if the gap is beyond 30 s (ADR-0010).
     private func accountAndWrite(_ scratch: inout [Float], sampleCount: Int, skipFrames: Int, writtenFrames: Int) {
         let firstTapFrame = tapConsumedFrames + skipFrames
         let (host, valid) = hostTime(forTapFrame: firstTapFrame)
         switch reconciler.account(hostTimeSeconds: host, hostTimeValid: valid,
-                                  newFrames: writtenFrames, rebuildInFlight: pendingRebuildSeam) {
+                                  newFrames: writtenFrames, rebuildInFlight: pendingRebuildDropout) {
         case .append:
             writeChunk(&scratch, sampleCount: sampleCount, skipFrames: skipFrames)
         case .pad(let padFrames, _):
@@ -340,7 +340,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
             endSelf(.sleep)
             return
         }
-        pendingRebuildSeam = false
+        pendingRebuildDropout = false
     }
 
     /// The host time (seconds) of a given frame in the current tap's ring, interpolated from the
@@ -382,11 +382,11 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     }
 
     /// Destroy the tap and build a fresh one, re-resolving the Source's processes (ADR-0007). The
-    /// host-time gap this opens is padded as a `rebuild` Seam by the reconciler. A rebuilt tap whose
+    /// host-time gap this opens is padded as a `rebuild` Dropout by the reconciler. A rebuilt tap whose
     /// format does not match the master ends the Recording at once; a rebuild that cannot even be
     /// built is reported back as a hard fault, spending an attempt.
     private func rebuild() {
-        pendingRebuildSeam = true
+        pendingRebuildDropout = true
         tap.stop()
 
         let resolved = ProcessTap.resolveObjectIDs(matchingBundleIDs: sourceBundleIDs)
@@ -445,8 +445,8 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         }
     }
 
-    /// Pad `frames` of silence into the master — a Seam. Written in blocks so a 30 s gap does not
-    /// need a 30 s buffer. Seams are rare, so the per-Seam allocation is not a hot path.
+    /// Pad `frames` of silence into the master — a Dropout. Written in blocks so a 30 s gap does not
+    /// need a 30 s buffer. Dropouts are rare, so the per-Dropout allocation is not a hot path.
     private func writeSilence(frames: Int) {
         guard frames > 0, writer != nil else { return }
         let blockFrames = 16_384

@@ -10,7 +10,7 @@ import Foundation
 /// reserved trailing lane the waveform insets around. `circle` at rest; a `record.circle.fill`
 /// that pulses once the row is the one recording.
 ///
-/// The one subtlety the seam captures is bring-up: the pulsing "in-flight" glyph appears only
+/// The one subtlety the dropout captures is bring-up: the pulsing "in-flight" glyph appears only
 /// once bring-up has run past ~500 ms with no first sound, so a snappy start goes straight from
 /// `circle` to a recording glyph and never flashes a distinct in-flight state. (A first-ever
 /// Recording can block ~90 s behind the TCC prompt, ADR-0008 — there the in-flight glyph is the

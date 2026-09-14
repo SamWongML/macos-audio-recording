@@ -11,7 +11,7 @@ import Synchronization
 /// thread pops them to learn where, in wall-clock time, each drained chunk sits (ADR-0010).
 ///
 /// It carries the timestamps the sample ring cannot: a flat buffer of `Float` has no room for a
-/// per-buffer `mHostTime`, and the writer needs exactly that to reconcile gaps into Seams. Same
+/// per-buffer `mHostTime`, and the writer needs exactly that to reconcile gaps into Dropouts. Same
 /// index discipline as `AudioRingBuffer` — each side owns one monotonic index; the payload writes
 /// happen-before the release of `written`, so a mark read with acquire ordering is fully published.
 ///

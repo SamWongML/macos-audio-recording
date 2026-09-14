@@ -136,7 +136,7 @@ struct EditorModelTests {
         rig.model.activate(selecting: opened.url)
         // Parked *after* the open: opening is itself a selection change, which cancels (ADR-0012),
         // so an Export started before it would already be idle and the case would prove nothing.
-        rig.coordinator.park(in: .running(fraction: 0.4), subject: opened)
+        rig.coordinator.enter(phase: .running(fraction: 0.4), subject: opened)
 
         rig.reader.remove(opened)
         rig.model.activate()
@@ -157,7 +157,7 @@ struct EditorModelTests {
         let exporting = rig.reader.place("exporting", recordedAt: Date(timeIntervalSince1970: 2_000))
         let other = rig.reader.place("other", recordedAt: Date(timeIntervalSince1970: 1_000))
         rig.model.activate(selecting: exporting.url)
-        rig.coordinator.park(in: .running(fraction: 0.4), subject: exporting)
+        rig.coordinator.enter(phase: .running(fraction: 0.4), subject: exporting)
 
         rig.model.select(other)
 
@@ -170,7 +170,7 @@ struct EditorModelTests {
         let rig = Rig()
         let placed = rig.reader.place("exported")
         rig.model.activate(selecting: placed.url)
-        rig.coordinator.park(in: .succeeded(url: placed.url), subject: placed)
+        rig.coordinator.enter(phase: .succeeded(url: placed.url), subject: placed)
 
         // The same Recording, selected again — what a folder refresh does.
         rig.model.select(placed)

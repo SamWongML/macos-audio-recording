@@ -101,7 +101,7 @@ nonisolated enum ExportReadiness: Equatable {
     }
 
     /// The refusal, or nil when an Export may start — the shape both call sites want.
-    var refusal: Reason? {
+    var blocker: Reason? {
         switch self {
         case .ready: nil
         case .refused(let reason): reason

@@ -79,7 +79,7 @@ final class ExportCoordinator {
     /// Recording first — opening is itself a selection change, which cancels (ADR-0012), so a
     /// coordinator born running would be idle again before the case began. Debug-only; the app's own
     /// path is `export`.
-    func park(in phase: Phase, subject: Recording?) {
+    func enter(phase: Phase, subject: Recording?) {
         self.phase = phase
         self.subject = subject
     }
@@ -131,7 +131,7 @@ final class ExportCoordinator {
                                                  isCapturing: capture.isCapturing(recording),
                                                  trimmedFrameCount: frameCount,
                                                  preset: preset, format: recording.sourceFormat,
-                                                 isExporting: isExporting).refusal {
+                                                 isExporting: isExporting).blocker {
             present(.failed(message: reason.sentence), for: recording)
             return
         }
@@ -217,7 +217,7 @@ final class ExportCoordinator {
                 self?.hop { $0.finishSucceeded(destination, job: id) }
             } catch let failure as ExportEncoder.Failure {
                 try? FileManager.default.removeItem(at: temp)
-                if case .cancelled = failure { return }   // navigation/user cancel: no telling
+                if case .cancelled = failure { return }   // navigation/user cancel: no reporter
                 self?.hop { $0.finishFailed(failure.description, name: name, job: id) }
             } catch {
                 try? FileManager.default.removeItem(at: temp)

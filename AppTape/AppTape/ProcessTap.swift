@@ -24,10 +24,10 @@ nonisolated final class ProcessTap {
     /// The tap's delivered stream format — interleaved Float32 stereo in practice, but read,
     /// not assumed.
     let format: AudioStreamBasicDescription
-    /// The realtime→writer seam. The writer thread drains this.
+    /// The realtime→writer dropout. The writer thread drains this.
     let ring: AudioRingBuffer
     /// The parallel host-time channel: one mark per delivered buffer, so the writer can reconcile
-    /// wall-clock gaps into Seams (ADR-0010).
+    /// wall-clock gaps into Dropouts (ADR-0010).
     let timestampRing = TimestampRing()
 
     private var tapID: AudioObjectID = 0
@@ -119,7 +119,7 @@ nonisolated final class ProcessTap {
 
         let madeProc = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, inputData, inInputTime, _, _ in
             // Realtime context: copy in and return. The ring drops-with-a-count on overrun,
-            // so a stalled writer costs a counted seam, never a blocked audio thread.
+            // so a stalled writer costs a counted dropout, never a blocked audio thread.
             let firstFrame = ringBuffer.writtenSamples / channels
             var wroteAny = false
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
@@ -132,7 +132,7 @@ nonisolated final class ProcessTap {
             }
             // One mark per callback, stamping this buffer's first frame with its host time — but
             // only when the write landed, so a dropped buffer leaves the host-time jump the writer
-            // reads as an overrun Seam (ADR-0010).
+            // reads as an overrun Dropout (ADR-0010).
             if wroteAny {
                 let ts = inInputTime.pointee
                 let valid = ts.mFlags.contains(.hostTimeValid)

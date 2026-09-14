@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The seam between `CaptureRun` — which owns ADR-0007's six ends, ADR-0008's denial inference,
+/// The dropout between `CaptureRun` — which owns ADR-0007's six ends, ADR-0008's denial inference,
 /// ADR-0009's Runway guard and ADR-0010's generation rule — and the world those decisions are made
 /// against: Core Audio, the file system, the notification centre and the editor window.
 ///
@@ -14,7 +14,7 @@ import Foundation
 /// None of them carries a decision; each is a forwarding shell, so the whole of the policy stays in
 /// one testable place and the untestable parts stay this thin.
 
-// MARK: - Values crossing the seam
+// MARK: - Values crossing the dropout
 
 /// What a finalized capture hands back: the file, if a Recording was made at all — nil is the
 /// arm-then-never-play case, where the Source never made a sound and nothing was saved (ADR-0016) —
@@ -56,13 +56,13 @@ protocol Capturing: AnyObject {
     /// The master's on-disk byte rate — the divisor in the Runway's `(free − 2 GB) ÷ rate`
     /// (ADR-0009). Not a constant across Recordings, which is why the guard takes it as an input.
     var bytesPerSecond: Double { get }
-    /// Stop, drain the tail, close the file and write the Seam mark — **off the main thread**,
+    /// Stop, drain the tail, close the file and write the Dropout mark — **off the main thread**,
     /// because all of that may block (ADR-0003) — then hand the outcome back on the main actor.
     /// Also the orphan teardown: a capture the world has moved past is stopped, not discarded,
     /// because a bring-up that never produced a first sound left no file to remove.
     func stop(then: @escaping @Sendable @MainActor (CaptureOutcome) -> Void)
     /// Stop and finalize **on this thread**. The quit path only: the process is about to exit, so
-    /// the writer must finish draining, close the CAF and write the Seams xattr before
+    /// the writer must finish draining, close the CAF and write the Dropouts xattr before
     /// `applicationWillTerminate` returns (ADR-0003).
     func stopNow() -> CaptureResult?
     /// Tear down and **remove** any file outright — the denial path (ADR-0008). A Recording that
@@ -91,17 +91,17 @@ protocol RunwayProbing {
 }
 
 /// Everything the run says to the world when a Recording ends: the notification channel and the
-/// editor window (ADR-0009/0010). One interface, so the suite reads back *what was told* rather
+/// editor window (ADR-0009/0010). One interface, so the suite reads back *what was reported* rather
 /// than watching a notification centre it cannot drive.
 @MainActor
-protocol RunTelling {
+protocol CaptureReporting {
     /// Requested at the end of the first *completed* Recording, so a later unrequested end has a
     /// channel — never stacked onto a failure (ADR-0009).
     func requestNotificationAuthorizationOnce()
     /// Name an unrequested end and, on the click, open the editor on that Recording (ADR-0010).
-    func tell(end reason: RecordingEndReason, recordingURL: URL)
+    func report(end reason: RecordingEndReason, recordingURL: URL)
     /// The 30-minute Runway warning, posted once (ADR-0009).
-    func tellRunwayLow()
+    func reportRunwayLow()
     /// Open the editor directly — the user stop's own ending.
     func openEditor(selecting url: URL)
 }
@@ -180,14 +180,14 @@ struct LibraryVolumeProbe: RunwayProbing {
 /// The notification channel and the editor window — the only place `FaultNotifier` and
 /// `EditorPresenter` are named on the capture path.
 @MainActor
-struct ShellTelling: RunTelling {
+struct SystemCaptureReporter: CaptureReporting {
     func requestNotificationAuthorizationOnce() { FaultNotifier.requestAuthorizationOnce() }
 
-    func tell(end reason: RecordingEndReason, recordingURL: URL) {
+    func report(end reason: RecordingEndReason, recordingURL: URL) {
         FaultNotifier.recordingEnded(reason: reason, recordingURL: recordingURL)
     }
 
-    func tellRunwayLow() { FaultNotifier.runwayLow() }
+    func reportRunwayLow() { FaultNotifier.runwayLow() }
 
     func openEditor(selecting url: URL) { EditorPresenter.shared.open(selecting: url) }
 }

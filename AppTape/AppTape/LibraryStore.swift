@@ -7,7 +7,7 @@ import AppKit
 import Foundation
 import Observation
 
-/// The **Library/Recording store** seam: the one thing the editor renders and mutates, and the
+/// The **Library/Recording store** dropout: the one thing the editor renders and mutates, and the
 /// one thing that touches the folder. ADR-0006 makes the Library an ordinary visible folder with
 /// no index of its own, so Finder is a legitimate second UI and this cannot assume it owns the
 /// directory. It therefore watches the folder with a `DispatchSource` and re-reads on activation,
@@ -140,7 +140,7 @@ final class LibraryStore {
     /// refresh, and a reading is only worth keeping while it is still true — so a master that has
     /// grown since it was listed, which is every master adopted mid-capture, is re-read instead
     /// (ADR-0021). Extended attributes sit outside the data length, so persisting a Trim, a Gain
-    /// or the Seams never trips this.
+    /// or the Dropouts never trips this.
     static func reconcile(existing: [Recording], urls: [URL],
                           reader: any RecordingReading) -> [Recording] {
         let byURL = Dictionary(existing.map { ($0.url, $0) }, uniquingKeysWith: { first, _ in first })

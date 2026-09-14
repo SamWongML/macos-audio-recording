@@ -44,7 +44,7 @@ nonisolated struct LoudnessCorrection: Equatable {
     /// How the correction landed relative to the target, so the inspector can caption *why* it fell
     /// short. The three land-short cases are distinct on purpose: the cap guards hiss, the ceiling
     /// guards clipping, and an undefined range has nothing to correct at all.
-    enum Landing: Equatable {
+    enum GainResult: Equatable {
         /// Reached the target exactly — the figure shows alone, no caption.
         case full
         /// The +12 dB amplification cap bound the gain (a very quiet, noisy range left below target).
@@ -57,7 +57,7 @@ nonisolated struct LoudnessCorrection: Equatable {
 
     /// The correction in dB. Zero when the landing is `.undefined`.
     let decibels: Double
-    let landing: Landing
+    let gainResult: GainResult
 
     /// Computes the clamped gain for a measurement against the fixed contract (ADR-0013). Defaults
     /// are the shipped numbers; parameters exist so a test can drive the boundary directly.
@@ -67,7 +67,7 @@ nonisolated struct LoudnessCorrection: Equatable {
                         cap: Double = LoudnessTarget.amplificationCapDB) -> LoudnessCorrection {
         // An undefined measurement gets no correction — never one invented from a missing figure.
         guard let integrated = measurement.integratedLUFS else {
-            return LoudnessCorrection(decibels: 0, landing: .undefined)
+            return LoudnessCorrection(decibels: 0, gainResult: .undefined)
         }
 
         let desired = target - integrated
@@ -79,21 +79,21 @@ nonisolated struct LoudnessCorrection: Equatable {
         // Attenuation is uncapped (it lowers noise with signal); the ceiling can only ask for *more*.
         if desired <= 0 {
             let gain = min(desired, ceilingLimit)
-            let landing: Landing = gain < desired - 1e-9 ? .ceilingReached : .full
-            return LoudnessCorrection(decibels: gain, landing: landing)
+            let gainResult: GainResult = gain < desired - 1e-9 ? .ceilingReached : .full
+            return LoudnessCorrection(decibels: gain, gainResult: gainResult)
         }
 
         // Amplify toward the target, capped at +12 dB, then clamped under the ceiling.
         let capped = min(desired, cap)
         let gain = min(capped, ceilingLimit)
-        let landing: Landing
+        let gainResult: GainResult
         if gain < desired - 1e-9 {
             // Bound short. The ceiling is the tighter constraint when it undercuts the +12 dB cap.
-            landing = ceilingLimit < capped - 1e-9 ? .ceilingReached : .amplificationCapped
+            gainResult = ceilingLimit < capped - 1e-9 ? .ceilingReached : .amplificationCapped
         } else {
-            landing = .full
+            gainResult = .full
         }
-        return LoudnessCorrection(decibels: gain, landing: landing)
+        return LoudnessCorrection(decibels: gain, gainResult: gainResult)
     }
 
     // MARK: - Rendering (dB, never LUFS)
@@ -101,13 +101,13 @@ nonisolated struct LoudnessCorrection: Equatable {
     /// The correction as its own decibel figure (`+4.2 dB`), or `No correction` when undefined. The
     /// figure is **always dB** — the measured LUFS is never shown to the user (ADR-0013).
     var figureText: String {
-        landing == .undefined ? "No correction" : Self.signedDecibels(decibels)
+        gainResult == .undefined ? "No correction" : Self.signedDecibels(decibels)
     }
 
     /// The one land-short caption for this case, or `nil` for a full hit. Distinct per case so the
     /// user can tell hiss-guarding from clip-guarding.
     var caption: String? {
-        switch landing {
+        switch gainResult {
         case .full: return nil
         case .amplificationCapped: return "limited to keep the noise floor down"
         case .ceilingReached: return "peak ceiling reached"

@@ -90,7 +90,7 @@ struct LibraryRenameTests {
         // `/` and `:` are the only two characters an APFS filename cannot hold. Capture folds them
         // to a hyphen because a Source name is not the user's to type; a name the user typed is.
         guard case .refused(.illegalCharacter) = rename("A.caf", to: proposed) else {
-            Issue.record("expected an illegalCharacter refusal for \(proposed)")
+            Issue.record("expected an illegalCharacter blocker for \(proposed)")
             return
         }
     }

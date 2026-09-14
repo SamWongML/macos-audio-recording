@@ -67,7 +67,7 @@ extension LibraryLocation {
     /// into "Interview 2" is a lie about what they asked for. (Capture has no human to ask, which
     /// is why `uniqueFileName` above resolves a clash silently instead — the same question, a
     /// different answer, for the reason ADR-0006 gives.)
-    enum NameRefusal: Equatable {
+    enum NameValidationError: Equatable {
         /// Empty, or nothing but whitespace.
         case empty
         /// `/` or `:` — the only two characters an APFS filename cannot hold.
@@ -107,7 +107,7 @@ extension LibraryLocation {
         case unchanged
         /// Rename the file to this full filename, extension included.
         case rename(to: String)
-        case refused(NameRefusal)
+        case refused(NameValidationError)
     }
 
     /// Resolve a rename. `proposed` is the **base name** the user typed — the extension is never

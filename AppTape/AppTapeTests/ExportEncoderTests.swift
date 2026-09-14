@@ -10,7 +10,7 @@ import Foundation
 @testable import AppTape
 
 /// The encode loop end to end (ADR-0012): a real CAF master in, a real `.m4a` out, decoded back and
-/// checked. These are the tests that prove the seam actually produces files — the four presets pick
+/// checked. These are the tests that prove the dropout actually produces files — the four presets pick
 /// the codec, the trim range is honoured to the frame, nothing is resampled or downmixed, and
 /// cancellation throws before touching the destination.
 @MainActor

@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The Capture Engine's fault-policy seam: a pure value reducer, off the realtime thread, that
+/// The Capture Engine's fault-policy dropout: a pure value reducer, off the realtime thread, that
 /// turns observations of the tap's health into "rebuild" or "end", encoding the split ADR-0010
 /// draws between two kinds of fault.
 ///
@@ -68,7 +68,7 @@ nonisolated struct FaultReducer {
 /// mid-Recording silence is exactly what it must survive without spending anything (ADR-0010).
 nonisolated struct SoftFaultDetector {
     /// Ten seconds — ten times the ~1 s restore window, so it can never race the free recovery; and
-    /// longer than essentially all in-content dead air, so a podcast's pauses make no Seam (ADR-0010).
+    /// longer than essentially all in-content dead air, so a podcast's pauses make no Dropout (ADR-0010).
     static let window: TimeInterval = 10
 
     /// Start of the current continuous all-zero-while-running run, or nil when none is in progress.

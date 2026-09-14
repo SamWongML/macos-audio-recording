@@ -73,7 +73,7 @@ struct TimelineGeometryTests {
     }
 
     /// `x(atTime:)` is **not** clamped, and that asymmetry is the decision: a handle at the very end
-    /// draws at exactly `width`, and a Seam band's width is the difference of two of these.
+    /// draws at exactly `width`, and a Dropout band's width is the difference of two of these.
     @Test func xIsDeliberatelyUnclamped() {
         #expect(lane.x(atTime: 180) > lane.width)
         #expect(lane.x(atTime: -10) < 0)
@@ -165,10 +165,10 @@ struct TimelineGeometryTests {
         #expect(TimelineGeometry(width: 10, duration: 90).labelX(at: 90, reserving: 30) == 0)
     }
 
-    // MARK: - Seam bands
+    // MARK: - Dropout bands
 
-    /// A Seam that is sub-pixel on an always-fits-the-width lane still has to be visible (ADR-0010).
-    @Test func aSubPixelSeamKeepsItsFloor() {
+    /// A Dropout that is sub-pixel on an always-fits-the-width lane still has to be visible (ADR-0010).
+    @Test func aSubPixelDropoutKeepsItsFloor() {
         #expect(lane.points(from: 10, to: 10.0001, minimum: 3) == 3)
         #expect(abs(lane.points(from: 0, to: 45, minimum: 3) - 380) < 1e-9)
         // The loupe asks for no floor, because it exists to show raw detail.
@@ -243,7 +243,7 @@ struct TimelineGeometryTests {
         let ticks = lane.ticks
         #expect(ticks.first == 0)
         #expect(ticks.allSatisfy { $0 <= lane.duration + 1e-9 })
-        #expect(ticks == [0, 10, 20, 30, 40, 50, 60, 70, 80, 90])  // 90 s across 760 pt: the 10 s rung
+        #expect(ticks == [0, 10, 20, 30, 40, 50, 60, 70, 80, 90])  // 90 s across 760 pt: the 10 s presetRow
     }
 
     // MARK: - Columns

@@ -82,36 +82,36 @@ struct RecordingMetadataTests {
         #expect(reopened.isTrimmed)
     }
 
-    @Test func seamsRoundTripThroughTheXattr() throws {
+    @Test func dropoutsRoundTripThroughTheXattr() throws {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 5)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        #expect(RecordingMetadata.readSeams(from: url).isEmpty)   // missing → clean
+        #expect(RecordingMetadata.readDropouts(from: url).isEmpty)   // missing → clean
 
-        let seams = [Seam(start: 1000, frames: 512, cause: .overrun),
-                     Seam(start: 96_000, frames: 48_000, cause: .rebuild)]
-        try RecordingMetadata.writeSeams(seams, to: url)
-        #expect(RecordingMetadata.readSeams(from: url) == seams)
+        let dropouts = [Dropout(start: 1000, frames: 512, cause: .overrun),
+                     Dropout(start: 96_000, frames: 48_000, cause: .rebuild)]
+        try RecordingMetadata.writeDropouts(dropouts, to: url)
+        #expect(RecordingMetadata.readDropouts(from: url) == dropouts)
     }
 
-    @Test func aMalformedSeamsValueReadsAsClean() throws {
+    @Test func aMalformedDropoutsValueReadsAsClean() throws {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 2)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        // Write junk directly under the Seams key — an unreadable value reads as a clean Recording,
+        // Write junk directly under the Dropouts key — an unreadable value reads as a clean Recording,
         // the safe direction (ADR-0010), never a trap.
         let junk = "not json at all"
         junk.withCString { _ in
             _ = url.withUnsafeFileSystemRepresentation { path in
                 junk.utf8CString.withUnsafeBytes { bytes in
-                    setxattr(path, RecordingMetadata.seamsKey, bytes.baseAddress, junk.utf8.count, 0, 0)
+                    setxattr(path, RecordingMetadata.dropoutsKey, bytes.baseAddress, junk.utf8.count, 0, 0)
                 }
             }
         }
-        #expect(RecordingMetadata.readSeams(from: url).isEmpty)
+        #expect(RecordingMetadata.readDropouts(from: url).isEmpty)
     }
 
-    @Test func aSeamWithABadCauseIsDroppedNotFatal() throws {
+    @Test func aDropoutWithABadCauseIsDroppedNotFatal() throws {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 2)
         defer { try? FileManager.default.removeItem(at: url) }
 
@@ -119,10 +119,10 @@ struct RecordingMetadataTests {
         let json = #"[{"start":0,"frames":512,"cause":"overrun"},{"start":9,"frames":9,"cause":"nonsense"}]"#
         _ = url.withUnsafeFileSystemRepresentation { path in
             json.utf8CString.withUnsafeBytes { bytes in
-                setxattr(path, RecordingMetadata.seamsKey, bytes.baseAddress, json.utf8.count, 0, 0)
+                setxattr(path, RecordingMetadata.dropoutsKey, bytes.baseAddress, json.utf8.count, 0, 0)
             }
         }
-        #expect(RecordingMetadata.readSeams(from: url) == [Seam(start: 0, frames: 512, cause: .overrun)])
+        #expect(RecordingMetadata.readDropouts(from: url) == [Dropout(start: 0, frames: 512, cause: .overrun)])
     }
 
     @Test func metadataTravelsWithARename() throws {

@@ -80,11 +80,11 @@ struct RecordingReader: RecordingReading {
                          recordedAt: dates?.creationDate ?? dates?.contentModificationDate,
                          storedTrim: file == nil ? nil : RecordingMetadata.readTrim(from: url, duration: duration),
                          gain: file == nil ? 0 : RecordingMetadata.readGain(from: url),
-                         seams: file == nil ? [] : RecordingMetadata.readSeams(from: url))
+                         dropouts: file == nil ? [] : RecordingMetadata.readDropouts(from: url))
     }
 
     /// The file's data length, or nil if it cannot be stat'd. Extended attributes live outside it,
-    /// so writing the Trim, Gain or Seams xattr never changes this — which is what keeps ADR-0006's
+    /// so writing the Trim, Gain or Dropouts xattr never changes this — which is what keeps ADR-0006's
     /// same-object guarantee intact for everything the app itself writes.
     ///
     /// A bare `stat`, and **not** `URL.resourceValues(forKeys: [.fileSizeKey])`: resource values are

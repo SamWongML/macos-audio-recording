@@ -24,7 +24,7 @@ struct PanelView: View {
     @State private var model = SourceModel()
     /// The transport, accepted from the status item that hosts this panel (ADR-0045). Concrete, not
     /// an interface: the panel reads nine members of it and is one of the two surfaces that
-    /// *commands* capture, so an interface here would be a layer over the shell rather than a seam
+    /// *commands* capture, so an interface here would be a layer over the shell rather than a dropout
     /// under it — the editor's `CaptureState` is the read-only half, and this is not it.
     var recorder: RecordingController
     /// How the panel hands its `openWindow` action to the shell, below.
@@ -102,8 +102,8 @@ struct PanelView: View {
     /// ADR-0009's deferral to issue #22, not decided by this ordering — which only picks a branch when,
     /// by construction, just one arm can be taken.
     @ViewBuilder private var blockingBanner: some View {
-        if let refusal = recorder.startRefusal {
-            diskRefusalBanner(refusal)
+        if let blocker = recorder.startBlocker {
+            diskBlockerBanner(blocker)
         } else if recorder.permissionRecovery {
             recoveryBanner
         }
@@ -112,8 +112,8 @@ struct PanelView: View {
     /// Shown when a start is refused below the 2 GB floor (ADR-0009). It names the free space and the
     /// floor, and its action opens Finder at the Library rather than a Settings pane — there being
     /// none to send the user to. Retry, as with the denial banner, is simply pressing record again.
-    @ViewBuilder private func diskRefusalBanner(_ refusal: DiskGuardRefusal) -> some View {
-        banner(title: refusal.title, message: refusal.message, action: "Show in Finder") {
+    @ViewBuilder private func diskBlockerBanner(_ blocker: DiskGuardBlocker) -> some View {
+        banner(title: blocker.title, message: blocker.message, action: "Show in Finder") {
             FaultNotifier.revealLibrary()
         }
     }

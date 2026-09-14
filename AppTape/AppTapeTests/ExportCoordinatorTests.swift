@@ -156,7 +156,7 @@ struct ExportCoordinatorTests {
         @Test func aCallDuringASucceededTellingIsStillSwallowed() {
             let coordinator = ExportCoordinator()
             let recording = Recording.stub()
-            coordinator.park(in: .succeeded(url: recording.url), subject: recording)
+            coordinator.enter(phase: .succeeded(url: recording.url), subject: recording)
 
             coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
             #expect(coordinator.phase == .succeeded(url: recording.url))   // unchanged, not refused
@@ -188,7 +188,7 @@ struct ExportCoordinatorTests {
         @Test func aRenamedSubjectTakesItsTellingWithIt() {
             let coordinator = ExportCoordinator()
             let recording = Recording.stub()
-            coordinator.park(in: .running(fraction: 0.42), subject: recording)
+            coordinator.enter(phase: .running(fraction: 0.42), subject: recording)
 
             let renamed = recording.url.deletingLastPathComponent()
                 .appendingPathComponent("Interview.caf")
@@ -206,7 +206,7 @@ struct ExportCoordinatorTests {
         @Test func aFreshReadingOfTheSameFileStillFindsItsTelling() {
             let coordinator = ExportCoordinator()
             let opened = Recording.stub("growing")
-            coordinator.park(in: .running(fraction: 0.4), subject: opened)
+            coordinator.enter(phase: .running(fraction: 0.4), subject: opened)
 
             let reRead = Recording.stub("growing")
             #expect(reRead !== opened)
@@ -217,7 +217,7 @@ struct ExportCoordinatorTests {
         /// behind it.
         @Test func aCancelLetsTheSubjectGo() {
             let coordinator = ExportCoordinator()
-            coordinator.park(in: .running(fraction: 0.4), subject: .stub())
+            coordinator.enter(phase: .running(fraction: 0.4), subject: .stub())
 
             coordinator.cancel()
             #expect(coordinator.subjectURL == nil)

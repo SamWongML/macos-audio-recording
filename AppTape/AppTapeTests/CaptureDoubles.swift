@@ -111,7 +111,7 @@ final class StubRunway: RunwayProbing {
 /// Everything the run said, in order. Assertions read this array instead of watching a notification
 /// centre and an editor window the suite cannot drive.
 @MainActor
-final class TellingLog: RunTelling {
+final class CaptureReportLog: CaptureReporting {
     enum Told: Equatable {
         case authorizationRequested
         case end(RecordingEndReason, URL)
@@ -119,15 +119,15 @@ final class TellingLog: RunTelling {
         case editorOpened(URL)
     }
 
-    private(set) var told: [Told] = []
+    private(set) var reported: [Told] = []
 
-    func requestNotificationAuthorizationOnce() { told.append(.authorizationRequested) }
+    func requestNotificationAuthorizationOnce() { reported.append(.authorizationRequested) }
 
-    func tell(end reason: RecordingEndReason, recordingURL: URL) {
-        told.append(.end(reason, recordingURL))
+    func report(end reason: RecordingEndReason, recordingURL: URL) {
+        reported.append(.end(reason, recordingURL))
     }
 
-    func tellRunwayLow() { told.append(.runwayLow) }
+    func reportRunwayLow() { reported.append(.runwayLow) }
 
-    func openEditor(selecting url: URL) { told.append(.editorOpened(url)) }
+    func openEditor(selecting url: URL) { reported.append(.editorOpened(url)) }
 }

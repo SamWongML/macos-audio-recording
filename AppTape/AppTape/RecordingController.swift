@@ -30,7 +30,7 @@ final class RecordingController {
     init() {
         self.run = CaptureRun(builder: CoreAudioCaptureBuilder(),
                               runway: LibraryVolumeProbe(),
-                              telling: ShellTelling(),
+                              reporter: SystemCaptureReporter(),
                               reader: RecordingReader())
     }
 
@@ -59,7 +59,7 @@ final class RecordingController {
     var hasFirstSound: Bool { run.hasFirstSound }
     var permissionRecovery: Bool { run.permissionRecovery }
     var runwayTier: RunwayGuard.Tier { run.runwayTier }
-    var startRefusal: DiskGuardRefusal? { run.startRefusal }
+    var startBlocker: DiskGuardBlocker? { run.startBlocker }
 
     /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
     /// The subtraction happens here because the run reads no clock; it publishes the press time and

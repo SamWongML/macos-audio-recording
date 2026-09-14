@@ -12,7 +12,7 @@ import Synchronization
 ///
 /// **Overrun is a drop, never an overwrite.** No ring is large enough to be a guarantee,
 /// and a realtime thread may not block, so when a write would not fit the whole block is
-/// dropped and a counter advances (a counted seam is diagnosable; a silently mangled file
+/// dropped and a counter advances (a counted dropout is diagnosable; a silently mangled file
 /// is not). Dropping whole writes keeps the stream frame-aligned. Sized at ~10 s so a disk
 /// stall or an indexing storm cannot reach that path in practice.
 ///

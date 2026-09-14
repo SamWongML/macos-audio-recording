@@ -136,7 +136,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             _ = recorder.elapsed
             _ = recorder.permissionRecovery
             _ = recorder.runwayTier
-            _ = recorder.startRefusal
+            _ = recorder.startBlocker
         } onChange: { [weak self] in
             guard let self else { return }
             Task { @MainActor in
@@ -153,7 +153,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// record. Only on the transition into a blocked state, and only if the panel is not already up,
     /// so it is not re-shown on every tick while the message stands.
     private func raisePanelOnBlockingMessage() {
-        let blocked = recorder.permissionRecovery || recorder.startRefusal != nil
+        let blocked = recorder.permissionRecovery || recorder.startBlocker != nil
         defer { lastBlocked = blocked }
         guard blocked, !lastBlocked else { return }
         if popover?.isShown != true { showPanel() }
