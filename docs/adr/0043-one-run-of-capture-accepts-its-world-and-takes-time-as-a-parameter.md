@@ -97,7 +97,8 @@ line, with no `await` and no yielding.
 **The views were left alone.** All five still read `RecordingController.shared`; observation tracks
 through the shell's computed forwards onto the run's own stored properties, so nothing re-renders
 more often than it did. Moving them onto an injected interface is a separate change with a separate
-argument.
+argument — made, and closed by ADR-0045, which puts the editor's four of those forwards behind
+`CaptureState` and deletes them from here.
 
 **31 tests where there were none**, covering the five bring-up races, the wedge's two halves, the six
 ends and what each tells the user, the Runway guard composed against a settable `statfs`, and the

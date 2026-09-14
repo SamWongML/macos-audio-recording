@@ -1,6 +1,7 @@
 ---
-status: planned
+status: delivered
 source: architecture review, 12 Sep 2026 — candidate 3, "Stop the views reaching through to singletons"
+record: docs/adr/0045-the-views-accept-their-state-they-do-not-reach-for-it.md
 ---
 
 # Stop the views reaching through to singletons
@@ -48,6 +49,70 @@ tests. It buys three things: **previews for capture states the real app can only
 Audio**, **one place per root where a global is named**, and **an interface that states what the
 editor may know about capture** — the boundary ADR-0021 and ADR-0031 are about. The tests it does buy
 are `EditorModel`'s, which has none and holds `reconcileSelection` (Phase 5).
+
+---
+
+## As built
+
+Seven commits on `refactor/the-views-accept-their-state`. The suite went from 288 cases to **297**,
+green, with no warning of its own in either target, and both targets build clean.
+
+| file | change |
+|---|---|
+| `CaptureState.swift` | +66: the protocol, the derived rule, `extension CaptureRun: CaptureState {}` |
+| `PreviewFixtures.swift` | +178: `PreviewCapture`, the moved `Recording.stub`, `Envelope.preview`, `PreviewLibraryReader`, `EditorModel.preview` |
+| `EditorView.swift` | +93/−29: three views accept `capture`, the window accepts `model`, four previews |
+| `ExportInspector.swift` | +117/−15: four accepted collaborators, six dock previews |
+| `TrimTimeline.swift` | +60/−12: the fifth property is accepted like the other four, three lane previews |
+| `EditorModel.swift` | +51/−14: five collaborators, two initializers, two global reads gone |
+| `EditorModelTests.swift` | +180: nine cases over a type that had none |
+| `RecordingController.swift` | +16/−16: five forwards deleted, and what is left says who it is for |
+| `CaptureRun.swift`, `ExportCoordinator.swift`, `EditorWindowLifecycle.swift`, `MenuBarController.swift`, `PanelView.swift`, `AppTapeApp.swift`, `AppDelegate.swift` | ±90 between them |
+
+Five things differ from the plan below, each because writing the code showed the plan was wrong.
+
+- **The model came before the inspector.** §4 ordered them the other way, which would have needed
+  `EditorView` to name `ExportPreference.shared` and `ExportCoordinator.shared` for one commit and
+  then delete them in the next. Doing Phase 3 first meant the inspector's four collaborators came off
+  an already-injected model with no stopgap at all.
+- **`ExportCoordinator.park(in:subject:)` had to exist, and is a method rather than an initializer.**
+  The plan did not anticipate it. A coordinator constructed in `.running` is *idle again* before any
+  case begins, because opening the editor on a Recording is itself a selection change and ADR-0012
+  cancels on one. Both the previews and the tests therefore need to set the phase after the surface
+  exists. Debug-only, and the app's own path is still `export`.
+- **`EditorWindowLifecycle` took the Export coordinator and kept `ActivationPolicyController.shared`.**
+  The coordinator earns its injection: `EditorModel` now owns the instance every other surface
+  renders, so a bridge cancelling whichever one `.shared` returned would be a cancel nobody could see.
+  The activation controller is the app's own `.regular`/`.accessory` state, nothing renders it, and
+  there is no second one to want — so §6's grep has exactly that one exemption, stated at the
+  declaration.
+- **The editor-level preview renders only its empty state.** §5's Phase 5 promised the whole window
+  over a 44-Recording fake Library. With any rows in the sidebar the preview host dies inside
+  SwiftUI's own outline diffing (`TableViewListCore_Mac2.swift:5538`, through
+  `OutlineListCoordinator.recursivelyDiffRows` → `NSOutlineView.expandItem`) — measured with three
+  rows in one day and twelve across three, listing before the view mounts and from its own `.task`.
+  The running app renders that `List` fine and nothing here touches it. So the populated editor is
+  previewed a component at a time: the lane ×3, the brief ×2 and the dock ×6, each verified in the
+  canvas rather than by the compiler.
+- **`Recording.stub` moved with no fallback needed.** The suite's 288 call sites are unchanged and the
+  app's Release build carries none of it.
+
+### What bit us, so it does not bite you again
+
+- **Implicit member syntax does not work through an existential**: `capture: .capturing(recording)` is
+  `type 'any CaptureState' has no member 'capturing'`. Spell the conformance out.
+- **A default argument is evaluated in a nonisolated context** — the trap `LibraryStore` and
+  `EditorModel` each have two initializers for. It bit twice more here, in a preview helper
+  (`coordinator: ExportCoordinator = ExportCoordinator()`) and in `EditorModel.preview(recordings:)`,
+  the second time only as a warning, which this repo treats as an error anyway. Two overloads, not a
+  default.
+- **A `#Preview` body compiles in Release**, so anything it touches that lives under `#if DEBUG` has to
+  be guarded where it is *used* as well as where it is defined.
+- **Adding any initializer to a class removes the implicit one**, which is how `static let shared =
+  ExportCoordinator()` briefly stopped compiling. The `park` method avoids the question entirely.
+- **A memberwise initializer survives `private` wrapped properties**: `EditorView(model:capture:)`
+  compiles from another file even though every other stored property is `@State private`. The
+  `TrimTimeline` call site had already proved this; it was worth not believing until the build said so.
 
 ---
 
