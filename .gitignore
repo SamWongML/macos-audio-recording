@@ -44,6 +44,10 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
+# Coverage artefacts a stray `swift test`/profiling run drops in the project folder
+*.profraw
+*.profdata
+
 # Swift Package Manager
 .build/
 .swiftpm/
