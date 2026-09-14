@@ -2,12 +2,12 @@
 status: accepted
 ---
 
-# Motion is feedback
+# 0028. Motion is feedback
 
 Issue [#88](https://github.com/SamWongML/macos-audio-recording/issues/88) asked what moves in the
-editor and how. AppTape had a colour language ([ADR-0019](0019-content-is-the-colour.md)), a layout
-language ([ADR-0023](0023-the-detail-pane-is-ruler-lane-brief-dock.md),
-[ADR-0025](0025-the-row-is-one-line-the-inspector-states-the-export.md)) and a type scale, but no
+editor and how. AppTape had a colour language ([ADR-0019](0019-content-colour-palette.md)), a layout
+language ([ADR-0023](0023-detail-pane-layout.md),
+[ADR-0025](0025-library-row-and-inspector.md)) and a type scale, but no
 stated position on motion — two written animations and a pile of framework defaults nobody chose.
 
 **Motion is feedback: something moves only to confirm an action the user just took, or to mark a
@@ -70,7 +70,7 @@ animation is legal without touching this ADR; a new forbidden case is not.
 - **The window's open.** An entrance is never feedback: the user has done nothing yet.
 - **The ruler's labels.**
 - **A Recording arriving in, leaving, or re-sorting within the Library.** The Library is a view of a
-  folder ([ADR-0006](0006-the-library-is-a-folder.md)); a row animating its own arrival claims the
+  folder ([ADR-0006](0006-library-is-a-folder.md)); a row animating its own arrival claims the
   app did something when the folder merely changed.
 
 **The playhead is exempt** — a data readout, not an animation. It is a 30 Hz `Timer` publishing a
