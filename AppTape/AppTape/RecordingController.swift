@@ -24,13 +24,14 @@ final class RecordingController {
     let run: CaptureRun
 
     /// The production wiring: a real Core Audio capture, a real `statfs`, a real notification
-    /// centre and the real editor window. Written as its own initializer rather than a default
-    /// argument because a default argument is evaluated in a nonisolated context, and every one of
-    /// these adapters is main-actor isolated.
+    /// centre, the real editor window and the real file system. Written as its own initializer
+    /// rather than a default argument because a default argument is evaluated in a nonisolated
+    /// context, and every one of these adapters is main-actor isolated.
     init() {
         self.run = CaptureRun(builder: CoreAudioCaptureBuilder(),
                               runway: LibraryVolumeProbe(),
-                              telling: ShellTelling())
+                              telling: ShellTelling(),
+                              reader: RecordingReader())
     }
 
     /// For a test or a preview: a controller over a run with doubles in it.
@@ -48,6 +49,7 @@ final class RecordingController {
     var recordingSourceID: String? { run.recordingSourceID }
     var elapsed: TimeInterval { run.elapsed }
     var elapsedText: String { run.elapsedText }
+    var masterByteCount: Int64? { run.masterByteCount }
     var currentLevel: Double { run.currentLevel }
     var meterColumns: [Double] { run.meterColumns }
     var hasFirstSound: Bool { run.hasFirstSound }

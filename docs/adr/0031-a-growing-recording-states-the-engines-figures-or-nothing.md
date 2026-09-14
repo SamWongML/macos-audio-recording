@@ -111,6 +111,12 @@ around the lane, not by filling the lane.
   refuses; withholding is the smaller claim.
 - A file merely arriving in the Library — a large copy in progress — keeps the em dash rather than
   the live figure. Nothing is watching it, so there is no current number to state.
+- The `Master` row's `stat` is still performed, but not by the view: `CaptureRun` publishes
+  `masterByteCount` on the same 4 Hz gate as `elapsed`, and the brief reads it
+  ([ADR-0044](0044-a-recording-is-read-once-at-one-seam.md)). The row used to do the syscall in its
+  own body with a discarded `elapsed` read above it as an invalidation trick.
+  The same ADR makes `recordedAt` the one notion of a Recording's date there is, so the sort/group
+  agreement this decision asked for is structural rather than two functions kept in step by hand.
 - **[ADR-0027](0027-the-transport-reserves-its-widest-readout.md) can be undone one control to the
   right of where it was applied, and it was.** Written as two sibling branches — one for capturing,
   one for the Trim — the bar looked correct in both states and *jumped by the width of `Reset`* at

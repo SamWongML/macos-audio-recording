@@ -34,13 +34,27 @@ final class LibraryStore {
     /// test can point it at a scratch folder.
     let directory: URL
 
+    /// The one thing that reads a file. Accepted rather than created, so the reconcile below is a
+    /// pure function of what the reader says the folder holds — which is what lets the suite drive
+    /// a rename, a re-adoption and a vanish with no disk at all.
+    @ObservationIgnored private let reader: any RecordingReading
+
     @ObservationIgnored private var source: DispatchSourceFileSystemObject?
     @ObservationIgnored private var watchedFD: Int32 = -1
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var started = false
 
-    init(directory: URL? = nil) {
-        self.directory = directory ?? LibraryLocation.directory
+    /// The production wiring: the real folder and the real reader. Its own initializer rather than
+    /// a default argument, because a default argument is evaluated in a nonisolated context and the
+    /// reader is main-actor isolated — the same reason `RecordingController` has two.
+    convenience init() {
+        self.init(directory: LibraryLocation.directory, reader: RecordingReader())
+    }
+
+    /// For a test: a scratch folder, or a reader with no disk behind it at all.
+    init(directory: URL, reader: any RecordingReading) {
+        self.directory = directory
+        self.reader = reader
     }
 
     /// Idempotent. Reads the folder once, begins watching it, and re-reads whenever the app is
@@ -61,8 +75,13 @@ final class LibraryStore {
     /// the watch if the folder has since come into existence — it is created lazily at the first
     /// captured frame (ADR-0016), so it may not have existed when `start()` first ran.
     func refresh() {
-        let urls = Self.audioFiles(in: directory)
-        recordings = Self.reconcile(existing: recordings, urls: urls)
+        let urls = reader.audioFiles(in: directory)
+        // Newest first, by the **one** notion of a Recording's date there is (ADR-0031). The folder
+        // used to be sorted before any Recording existed, which meant re-deriving `recordedAt`'s
+        // rule from the url — twice per comparison — and hoping the two spellings agreed. Sorting
+        // the Recordings instead makes that agreement structural, and costs no syscall at all.
+        recordings = Self.reconcile(existing: recordings, urls: urls, reader: reader)
+            .sorted { ($0.recordedAt ?? .distantPast) > ($1.recordedAt ?? .distantPast) }
         for recording in recordings { EnvelopeLoader.load(recording) }
         if source == nil { beginWatching() }
     }
@@ -104,31 +123,8 @@ final class LibraryStore {
 
     // MARK: - Pure core (tested)
 
-    /// Every playable-looking file directly in `directory`, newest first. Hidden files and
-    /// subdirectories are skipped (ADR-0006 lists the folder, not a tree). Whether a file is
-    /// actually a Recording is decided by `Recording.init?`, not here.
-    static func audioFiles(in directory: URL) -> [URL] {
-        let keys: [URLResourceKey] = [.creationDateKey, .contentModificationDateKey,
-                                      .fileSizeKey, .isDirectoryKey]
-        let urls = (try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: keys,
-            options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])) ?? []
-        return urls
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true }
-            .sorted { modified($0) > modified($1) }
-    }
-
-    /// The sort key, and deliberately the **same** notion `Recording.recordedAt` publishes
-    /// (ADR-0031): creation, falling back to modification. The store sorts the folder newest-first
-    /// and `RecordingDay` groups the result by `recordedAt` — if the two disagreed about what a
-    /// Recording's date is, a row could sort into a day it does not belong to.
-    private static func modified(_ url: URL) -> Date {
-        let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-        return values?.creationDate ?? values?.contentModificationDate ?? .distantPast
-    }
-
     /// Reconcile a fresh set of `urls` against the `Recording` objects already held. Order follows
-    /// `urls`, which the caller has already sorted newest-first, and each surviving Recording keeps
+    /// `urls` — `refresh` sorts the result — and each surviving Recording keeps
     /// its **same object** (so its envelope and any live Trim are not discarded):
     ///
     /// - an unchanged path keeps its object;
@@ -145,7 +141,8 @@ final class LibraryStore {
     /// grown since it was listed, which is every master adopted mid-capture, is re-read instead
     /// (ADR-0021). Extended attributes sit outside the data length, so persisting a Trim, a Gain
     /// or the Seams never trips this.
-    static func reconcile(existing: [Recording], urls: [URL]) -> [Recording] {
+    static func reconcile(existing: [Recording], urls: [URL],
+                          reader: any RecordingReading) -> [Recording] {
         let byURL = Dictionary(existing.map { ($0.url, $0) }, uniquingKeysWith: { first, _ in first })
         var byIdentity: [FileIdentity: Recording] = [:]
         for recording in existing {
@@ -154,18 +151,20 @@ final class LibraryStore {
         var claimed = Set<ObjectIdentifier>()
 
         return urls.compactMap { url -> Recording? in
-            if let recording = byURL[url], recording.stillDescribes(url) {
+            if let recording = byURL[url],
+               recording.stillDescribes(byteCount: reader.byteCount(of: url)) {
                 claimed.insert(ObjectIdentifier(recording))
                 return recording
             }
             // Same file at a new path: follow the rename rather than drop-and-re-add.
-            if let identity = FileIdentity(url: url), let recording = byIdentity[identity],
-               !claimed.contains(ObjectIdentifier(recording)), recording.stillDescribes(url) {
+            if let identity = reader.identity(of: url), let recording = byIdentity[identity],
+               !claimed.contains(ObjectIdentifier(recording)),
+               recording.stillDescribes(byteCount: reader.byteCount(of: url)) {
                 claimed.insert(ObjectIdentifier(recording))
                 recording.relocate(to: url)
                 return recording
             }
-            return Recording(url: url)
+            return reader.adopt(url)
         }
     }
 

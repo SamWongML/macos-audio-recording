@@ -10,6 +10,7 @@ import Foundation
 /// Trim and Gain ride in extended attributes on the file (ADR-0006), so they persist across an
 /// editor reopen and travel with a Finder rename. Losing them degrades gracefully — a missing
 /// attribute reads as the full-length Trim and zero Gain.
+@MainActor
 struct RecordingMetadataTests {
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory
@@ -66,7 +67,7 @@ struct RecordingMetadataTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         // First open: set a Trim and a Gain, persist them the way the editor does.
-        let first = try #require(Recording(url: url))
+        let first = try #require(AudioFixtures.adopt(url))
         first.trim.setStart(1)
         first.trim.setEnd(9)
         first.persistTrim()
@@ -74,7 +75,7 @@ struct RecordingMetadataTests {
         first.persistGain()
 
         // Reopen: a fresh Recording over the same file sees them.
-        let reopened = try #require(Recording(url: url))
+        let reopened = try #require(AudioFixtures.adopt(url))
         #expect(abs(reopened.trim.start - 1) < 1e-6)
         #expect(abs(reopened.trim.end - 9) < 1e-6)
         #expect(abs(reopened.gain - 4.5) < 1e-6)
@@ -100,7 +101,7 @@ struct RecordingMetadataTests {
         // Write junk directly under the Seams key — an unreadable value reads as a clean Recording,
         // the safe direction (ADR-0010), never a trap.
         let junk = "not json at all"
-        try junk.withCString { _ in
+        junk.withCString { _ in
             _ = url.withUnsafeFileSystemRepresentation { path in
                 junk.utf8CString.withUnsafeBytes { bytes in
                     setxattr(path, RecordingMetadata.seamsKey, bytes.baseAddress, junk.utf8.count, 0, 0)
@@ -128,7 +129,7 @@ struct RecordingMetadataTests {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 6, source: "Google Chrome")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let original = try #require(Recording(url: url))
+        let original = try #require(AudioFixtures.adopt(url))
         original.trim.setStart(1.5)
         original.persistTrim()
 
@@ -138,7 +139,7 @@ struct RecordingMetadataTests {
         try FileManager.default.moveItem(at: url, to: renamed)
         defer { try? FileManager.default.removeItem(at: renamed) }
 
-        let after = try #require(Recording(url: renamed))
+        let after = try #require(AudioFixtures.adopt(renamed))
         #expect(abs(after.trim.start - 1.5) < 1e-6)   // Trim survived
         #expect(after.source == "Google Chrome")       // Source xattr survived, not parsed from name
         #expect(after.name == "Kettle noises")         // the filename is the name (ADR-0006)

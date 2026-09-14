@@ -6,26 +6,31 @@
 import AVFoundation
 import Foundation
 import Observation
-import UniformTypeIdentifiers
 
 /// One Recording, as ADR-0006 defines it: a file in `~/Music/AppTape/` whose **name is its
 /// name**. Nothing here indexes the folder; the file is the truth, and Trim and Gain ride in
 /// its extended attributes so a Finder rename or move is followed silently.
+///
+/// **This type reads no files.** Every fact below arrives through the memberwise initializer, and
+/// `RecordingReader` is what gathers them — which is what lets a test, a preview or any module
+/// that merely *consumes* a Recording have one without a CAF on disk. The only disk access left
+/// here is `persistTrim`/`persistGain`, which write an xattr at gesture-end.
 @Observable
 final class Recording: Identifiable {
     /// The file's current path. Not `let`: a Finder rename or move within the Library changes
     /// the path but not the file, and ADR-0006 says that is **followed silently** — the store
     /// relocates the same object rather than treating it as one Recording vanishing and another
-    /// appearing (which would drop a live editor's window). `name`, `source` and the rest are
-    /// computed from it, so they simply read the new location.
+    /// appearing (which would drop a live editor's window). `name` is derived from it, so a rename
+    /// moves the name and — through `source`'s filename fallback — the Source of a file that never
+    /// had the xattr.
     private(set) var url: URL
     let frameCount: AVAudioFramePosition
     let sampleRate: Double
 
-    /// The file's data length at the moment this Recording was opened. Everything below —
-    /// `frameCount` above all, but also `sampleRate`, the channel count and the Seams — is read
-    /// once in `init`, which is exactly right for a finalized master, because ADR-0003 makes it
-    /// immutable. It is wrong for a file that is **still being written**: a master mid-capture, or
+    /// The file's data length at the moment this Recording was read. Everything below —
+    /// `frameCount` above all, but also `sampleRate`, the channel count and the Seams — was read
+    /// in one pass by `RecordingReader.adopt`, which is exactly right for a finalized master,
+    /// because ADR-0003 makes it immutable. It is wrong for a file that is **still being written**: a master mid-capture, or
     /// a large file still being copied into the Library. This is how the store tells the two apart
     /// (ADR-0021): a Recording whose file no longer has the length it read is re-adopted, not
     /// followed. Nil when the file could not be stat'd.
@@ -49,8 +54,8 @@ final class Recording: Identifiable {
         SourceFormat(sampleRate: sampleRate, channelCount: channelCount, bitsPerChannel: sourceBitsPerChannel)
     }
 
-    /// The file's `dev`+`inode`, captured at open (while the file certainly exists) and stable
-    /// across a rename or move — so the store can recognise a renamed file as the *same*
+    /// The file's `dev`+`inode`, captured when it was read (while the file certainly exists) and
+    /// stable across a rename or move — so the store can recognise a renamed file as the *same*
     /// Recording. Captured once rather than re-stat'd, because after a rename this object still
     /// holds the old path, which no longer stats.
     let fileIdentity: FileIdentity?
@@ -127,11 +132,22 @@ final class Recording: Identifiable {
 
     var duration: Double { sampleRate > 0 ? Double(frameCount) / sampleRate : 0 }
 
+    /// The Source xattr, read once at open (ADR-0006), or nil for a file that has none — a
+    /// hand-adopted file the app never captured, which is what the filename fallback below is for.
+    let storedSource: String?
+
     /// The Source rides in an xattr written at capture (ADR-0006); the filename is the fallback.
     /// A Finder rename that drops the date pattern drops the parsed Source with it — which is why
     /// capture writes the xattr, so a renamed Recording still knows where it came from.
-    var source: String {
-        if let stored = RecordingMetadata.readSource(from: url) { return stored }
+    ///
+    /// Only the xattr is a *read*, and it is already done. The fallback is a parse of the current
+    /// `name`, so it still follows a rename exactly as it did when the whole property was computed —
+    /// caching that half would have a renamed, xattr-less file reporting the name it used to have.
+    var source: String { storedSource ?? Self.parsedSource(from: name) }
+
+    /// The Source capture's own generated filename carries, which is everything before the date
+    /// pattern. A name without that pattern is the user's, and is its own Source.
+    static func parsedSource(from name: String) -> String {
         guard let range = name.range(of: #" \d{4}-\d{2}-\d{2} at "#, options: .regularExpression)
         else { return name }
         return String(name[name.startIndex..<range.lowerBound])
@@ -146,10 +162,13 @@ final class Recording: Identifiable {
     /// Creation is what the word means and what capture's own generated filename records.
     ///
     /// Modification remains the fallback, for the one case creation cannot be read.
-    var recordedAt: Date? {
-        let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-        return values?.creationDate ?? values?.contentModificationDate
-    }
+    ///
+    /// Read once at open, like everything else here: a creation date does not change under a
+    /// rename, and a file that *grew* is re-adopted rather than followed (ADR-0021), so a fresh
+    /// reading is a fresh object. It also settles an inconsistency this file used to carry against
+    /// itself — `resourceValues` is cached on the bridged `NSURL`, which `byteCount` avoided
+    /// deliberately while this property relied on it.
+    let recordedAt: Date?
 
     /// What the editor window's title bar says beneath the name. The title is `displayName`, which
     /// is the **Source** until the user renames the Recording themselves — so printing the Source
@@ -165,47 +184,44 @@ final class Recording: Identifiable {
         return [origin, when].compactMap { $0 }.joined(separator: " · ")
     }
 
-    /// The adoption gate (ADR-0015). A file is a Recording iff its UTType conforms to `public.audio`
-    /// — the necessary listing test; anything else (a stray `.txt`, an image) is simply not adopted,
-    /// so this fails. A typed file is then **opened to confirm**: it decodes into a normal Recording,
-    /// or, if AVAudioFile refuses it, is still adopted in a "can't open" state (`isOpenable == false`)
-    /// rather than vanishing, so the user sees why their file didn't play and can delete it.
-    init?(url: URL) {
-        guard Self.conformsToAudio(url) else { return nil }
+    /// A Recording, already read. **Nothing here touches the disk** — `RecordingReader.adopt` does
+    /// the reading and hands the facts over, and a test hands them over directly, which is why the
+    /// modules that consume a Recording can be tested at all. The two derivations below are the
+    /// ones the old `init?` did after its decode, and both are arithmetic.
+    ///
+    /// The adoption gate that used to live here is ADR-0015's, and it moved with the reads: a file
+    /// whose UTType does not conform to `public.audio` never becomes a Recording, and one that is
+    /// typed but undecodable arrives here with `isOpenable: false` rather than not arriving.
+    init(url: URL,
+         frameCount: AVAudioFramePosition,
+         sampleRate: Double,
+         channelCount: Int = 2,
+         sourceBitsPerChannel: Int = 32,
+         isOpenable: Bool = true,
+         openedByteCount: Int64? = nil,
+         fileIdentity: FileIdentity? = nil,
+         storedSource: String? = nil,
+         recordedAt: Date? = nil,
+         storedTrim: Trim? = nil,
+         gain: Double = 0,
+         seams: [Seam] = []) {
         self.url = url
-        self.fileIdentity = FileIdentity(url: url)
-        // Read **before** the decode, not after. A file growing under us then records a length no
-        // greater than the one `frameCount` was derived from, so the next reconcile sees a mismatch
-        // and re-reads. Reading it after the decode could record the *later*, larger length and
-        // freeze the stale reading in place — the failure this whole mechanism exists to prevent.
-        self.openedByteCount = Self.byteCount(of: url)
-
-        if let file = try? AVAudioFile(forReading: url) {
-            self.isOpenable = true
-            self.frameCount = file.length
-            self.sampleRate = file.fileFormat.sampleRate
-            self.channelCount = max(1, Int(file.fileFormat.channelCount))
-            // A compressed adopted file may report 0 bits/channel; fall back to the master's 32 so the
-            // ALAC estimate stays sane (which presets an adopted file even offers is ADR-0015's call).
-            let bits = Int(file.fileFormat.streamDescription.pointee.mBitsPerChannel)
-            self.sourceBitsPerChannel = bits > 0 ? bits : 32
-            let duration = self.sampleRate > 0 ? Double(file.length) / self.sampleRate : 0
-            self.trim = RecordingMetadata.readTrim(from: url, duration: duration) ?? Trim(duration: duration)
-            self.gain = RecordingMetadata.readGain(from: url)
-            self.seams = RecordingMetadata.readSeams(from: url)
-            self.envelope = Envelope(sampleRate: file.fileFormat.sampleRate)
-        } else {
-            // Typed as audio but undecodable: an empty, zero-length can't-open Recording.
-            self.isOpenable = false
-            self.frameCount = 0
-            self.sampleRate = 0
-            self.channelCount = 1
-            self.sourceBitsPerChannel = 32
-            self.trim = Trim(duration: 0)
-            self.gain = 0
-            self.seams = []
-            self.envelope = Envelope(sampleRate: 0)
-        }
+        self.frameCount = frameCount
+        self.sampleRate = sampleRate
+        self.channelCount = channelCount
+        self.sourceBitsPerChannel = sourceBitsPerChannel
+        self.isOpenable = isOpenable
+        self.openedByteCount = openedByteCount
+        self.fileIdentity = fileIdentity
+        self.storedSource = storedSource
+        self.recordedAt = recordedAt
+        self.gain = gain
+        self.seams = seams
+        // A missing or malformed Trim attribute reads as the full range (ADR-0006), and the stored
+        // one has already been clamped against this duration by `Trim` itself.
+        let duration = sampleRate > 0 ? Double(frameCount) / sampleRate : 0
+        self.trim = storedTrim ?? Trim(duration: duration)
+        self.envelope = Envelope(sampleRate: sampleRate)
     }
 
     /// Whether this Recording's reading still describes the file at `url` — that is, whether the
@@ -214,39 +230,18 @@ final class Recording: Identifiable {
     /// following it (ADR-0021). Two unreadable lengths compare equal, so a file that cannot be
     /// stat'd is left alone rather than churned.
     ///
-    /// Takes the url rather than reading `self.url`, because the rename path asks the question
-    /// about the *new* path while this object still holds the old one.
-    func stillDescribes(_ url: URL) -> Bool {
-        Self.byteCount(of: url) == openedByteCount
-    }
-
-    /// The file's data length, or nil if it cannot be stat'd. Extended attributes live outside it,
-    /// so writing the Trim, Gain or Seams xattr never changes this — which is what keeps ADR-0006's
-    /// same-object guarantee intact for everything the app itself writes.
-    ///
-    /// A bare `stat`, like `FileIdentity`, and **not** `URL.resourceValues(forKeys: [.fileSizeKey])`:
-    /// resource values are cached on the bridged `NSURL`, so asking the same URL a second time can
-    /// hand back the length from before the file grew — precisely the staleness this exists to catch.
-    static func byteCount(of url: URL) -> Int64? {
-        var info = stat()
-        guard url.withUnsafeFileSystemRepresentation({ path in
-            path != nil && stat(path, &info) == 0
-        }) else { return nil }
-        return Int64(info.st_size)
+    /// Takes the length rather than reading it — a Recording opens no files, and the rename path
+    /// asks the question about the *new* path while this object still holds the old one. The caller
+    /// gets the number from `RecordingReader.byteCount(of:)`, which is a bare `stat` for the
+    /// reasons recorded there.
+    func stillDescribes(byteCount: Int64?) -> Bool {
+        byteCount == openedByteCount
     }
 
     /// Whether the Recording has any audio at all. Zero frames means either a file still being
     /// written that has not yet been re-read, or one that could not be opened — in both cases
     /// there is no waveform to draw and nothing to play (ADR-0021).
     var isEmpty: Bool { frameCount == 0 }
-
-    /// Whether the file's UTType conforms to `public.audio` — the cheap listing half of the
-    /// adoption gate (ADR-0015). Read from the file's own content type, so it follows the real type
-    /// rather than trusting the extension alone; a file with no resolvable audio type is not adopted.
-    private static func conformsToAudio(_ url: URL) -> Bool {
-        guard let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType else { return false }
-        return type.conforms(to: .audio)
-    }
 
     /// Follow a rename/move: the same file at a new path (ADR-0006). Only the path changes — the
     /// audio, the envelope and the in-memory Trim are the same file's, so they are kept as-is.
@@ -296,18 +291,10 @@ final class Recording: Identifiable {
 
 /// A file's identity on disk — device and inode — which survives a rename or a move within the
 /// volume, unlike its path. The store uses it to follow a rename silently (ADR-0006).
+/// Read by `RecordingReader.identity(of:)`; constructible directly, so a test can mint one.
 struct FileIdentity: Hashable {
     let device: dev_t
     let inode: ino_t
-
-    init?(url: URL) {
-        var info = stat()
-        guard url.withUnsafeFileSystemRepresentation({ path in
-            path != nil && stat(path, &info) == 0
-        }) else { return nil }
-        self.device = info.st_dev
-        self.inode = info.st_ino
-    }
 }
 
 /// A day's worth of Recordings, so the sidebar can group a Library that spans more than one day:

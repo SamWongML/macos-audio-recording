@@ -13,6 +13,7 @@ import Foundation
 /// checked. These are the tests that prove the seam actually produces files — the four presets pick
 /// the codec, the trim range is honoured to the frame, nothing is resampled or downmixed, and
 /// cancellation throws before touching the destination.
+@MainActor
 struct ExportEncoderTests {
     /// 3 s of broadband noise at 48 kHz stereo — incompressible, so the codec choice shows up as a
     /// real size difference (a pure tone would let ALAC predict it away and defeat the ordering).
@@ -148,7 +149,7 @@ struct ExportEncoderTests {
         try AudioFixtures.writeCAF(at: source, seconds: 0.1)   // 4800 frames at 48 kHz
         let dest = dir.appendingPathComponent("out.m4a")
 
-        let recording = try #require(Recording(url: source))
+        let recording = try #require(AudioFixtures.adopt(source))
         let (start, count) = recording.trimmedFrameRange
         try ExportEncoder().run(ExportRequest(source: source, destination: dest,
                                               startFrame: start, frameCount: count, preset: .high)) { _ in }

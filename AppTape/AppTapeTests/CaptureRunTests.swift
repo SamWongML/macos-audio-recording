@@ -28,6 +28,8 @@ struct CaptureRunTests {
         let builder: FakeCaptureBuilder
         let runway: StubRunway
         let telling: TellingLog
+        /// The growing master's length, and nothing else: the run's one file read (ADR-0044).
+        let reader: StubRecordingReader
         let run: CaptureRun
 
         /// ~500 GB free: far past the 3-hour amber tier at any sample rate.
@@ -35,10 +37,12 @@ struct CaptureRunTests {
             let builder = FakeCaptureBuilder()
             let runway = StubRunway(freeBytes: freeBytes)
             let telling = TellingLog()
+            let reader = StubRecordingReader()
             self.builder = builder
             self.runway = runway
             self.telling = telling
-            self.run = CaptureRun(builder: builder, runway: runway, telling: telling)
+            self.reader = reader
+            self.run = CaptureRun(builder: builder, runway: runway, telling: telling, reader: reader)
         }
 
         /// Press record and let the bring-up succeed — where every test that is not about bring-up
@@ -431,17 +435,15 @@ struct CaptureRunTests {
 
     // MARK: - The growing master
 
-    @Test func theGrowingMasterIsCapturingAndStillArriving() throws {
-        let directory = try AudioFixtures.makeScratchDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let growing = try AudioFixtures.writeCAF(at: directory.appendingPathComponent("growing.caf"))
-        let settled = try AudioFixtures.writeCAF(at: directory.appendingPathComponent("settled.caf"))
-        let growingRecording = try #require(Recording(url: growing))
-        let settledRecording = try #require(Recording(url: settled))
+    @Test func theGrowingMasterIsCapturingAndStillArriving() {
+        // Two Recordings and no files: this case is about which url the run says it is writing,
+        // which is why it stopped needing a CAF the moment `Recording` gained a memberwise init.
+        let growingRecording = Recording.stub("growing")
+        let settledRecording = Recording.stub("settled")
 
         let rig = Rig()
         rig.startCapturing()
-        rig.builder.hooks(forBuild: 0).onMasterCreated(growing)
+        rig.builder.hooks(forBuild: 0).onMasterCreated(growingRecording.url)
 
         // The one being written is not exportable: its Trim end is undefined until Stop (ADR-0012).
         #expect(rig.run.isCapturing(growingRecording))
@@ -452,5 +454,93 @@ struct CaptureRunTests {
         rig.run.stop()
         #expect(rig.run.isCapturing(growingRecording) == false)
         #expect(rig.run.isStillArriving(growingRecording) == false)
+    }
+
+    @Test func theMastersSizePublishesAtFourHertzEvenWhenTickedAtTwenty() {
+        let rig = Rig()
+        let master = URL(filePath: "/Library/Google Chrome 2026-09-13 at 21.51.03.caf")
+        rig.startCapturing()
+        rig.builder.hooks(forBuild: 0).onMasterCreated(master)
+
+        rig.reader.byteCounts[master] = 1_024
+        rig.run.tick(now: 0.05)
+        #expect(rig.run.masterByteCount == 1_024)
+
+        // The same gate `elapsed` sits behind, for a reason of its own: a byte count arriving
+        // twenty times a second is ambient motion (ADR-0028), not a fact changing.
+        rig.reader.byteCounts[master] = 2_048
+        rig.run.tick(now: 0.10)
+        rig.run.tick(now: 0.15)
+        rig.run.tick(now: 0.25)
+        #expect(rig.run.masterByteCount == 1_024)
+
+        rig.run.tick(now: 0.30)
+        #expect(rig.run.masterByteCount == 2_048)
+    }
+
+    @Test func theMastersSizeCostsOneStatPerClockTickRatherThanOnePerTick() {
+        // The point of moving the read out of the view body (ADR-0044): it happens on the clock's
+        // cadence, not on the meter's, and not once per evaluation of a `Master` row.
+        let rig = Rig()
+        let master = URL(filePath: "/Library/Google Chrome 2026-09-13 at 21.51.03.caf")
+        rig.startCapturing()
+        rig.builder.hooks(forBuild: 0).onMasterCreated(master)
+        rig.reader.byteCounts[master] = 1_024
+
+        for i in 1...20 { rig.run.tick(now: Self.tick(i)) }   // one second at 20 Hz
+        #expect(rig.reader.probeCount == 4)
+    }
+
+    @Test func theMasterHasNoSizeBeforeTheFirstSoundOrAfterTheEnd() {
+        let rig = Rig()
+        let master = URL(filePath: "/Library/Google Chrome 2026-09-13 at 21.51.03.caf")
+        rig.reader.byteCounts[master] = 4_096
+        rig.startCapturing()
+
+        // Armed, and the Source has made no sound: there is no file yet to weigh (ADR-0016), so
+        // the row reads an em dash rather than a zero.
+        for i in 1...20 { rig.run.tick(now: Self.tick(i)) }
+        #expect(rig.run.masterByteCount == nil)
+        #expect(rig.reader.probeCount == 0)
+
+        rig.builder.hooks(forBuild: 0).onMasterCreated(master)
+        rig.run.tick(now: Self.tick(25))
+        #expect(rig.run.masterByteCount == 4_096)
+
+        // The figure belongs to the file being written, so it goes back with it.
+        rig.run.stop()
+        #expect(rig.run.masterByteCount == nil)
+    }
+
+    @Test func aMasterThatCannotBeStattedPublishesNoFigureRatherThanZero() {
+        let rig = Rig()
+        let master = URL(filePath: "/Library/Google Chrome 2026-09-13 at 21.51.03.caf")
+        rig.startCapturing()
+        rig.builder.hooks(forBuild: 0).onMasterCreated(master)
+
+        // The reader has no length for it — the same nil a real `stat` returns when it fails. An
+        // em dash is the honest answer; `0 bytes and growing` would not be.
+        rig.run.tick(now: 0.05)
+        #expect(rig.run.masterByteCount == nil)
+    }
+
+    @Test func onlyTheFileBeingCapturedHasACurrentFigure() {
+        // A large file being copied into the Library is growing too, and the reader can weigh it —
+        // but nothing is watching that one, so there is no figure to be current about (ADR-0031).
+        // The run publishes one length, about the url it is writing, and says nothing at all about
+        // the other Recording — which is what leaves the brief's em dash in place.
+        let arriving = Recording.stub("Interview")
+        let master = Recording.stub()
+        let rig = Rig()
+        rig.reader.byteCounts[arriving.url] = 900_000
+        rig.reader.byteCounts[master.url] = 1_024
+
+        rig.startCapturing()
+        rig.builder.hooks(forBuild: 0).onMasterCreated(master.url)
+        rig.run.tick(now: 0.05)
+
+        #expect(rig.run.masterByteCount == 1_024)
+        #expect(rig.run.isCapturing(arriving) == false)
+        #expect(rig.run.isStillArriving(arriving) == false)
     }
 }
