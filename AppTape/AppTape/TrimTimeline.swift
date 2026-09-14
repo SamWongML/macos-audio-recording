@@ -572,8 +572,6 @@ struct TrimTimeline: View {
         .padding(Metrics.xl)
 }
 
-/// A Recording with no frames at all — adopted moments after the first sound created it, or one that
-/// could not be opened. The other half of `isStillArriving`, and the half zero-frames alone was.
 /// A lane narrower than the loupe's own box — the width class that was never rendered, and where
 /// the loupe's clamp inverted: below 212 pt it stopped tracking the drag, and below 106 it sat off
 /// the leading edge entirely (ADR-0047).
@@ -593,6 +591,8 @@ struct TrimTimeline: View {
         .padding(Metrics.xl)
 }
 
+/// A Recording with no frames at all — adopted moments after the first sound created it, or one that
+/// could not be opened. The other half of `isStillArriving`, and the half zero-frames alone was.
 #Preview("Lane · no audio yet") {
     TrimTimeline(recording: .stub(seconds: 0),
                  envelope: Envelope(),
