@@ -103,18 +103,21 @@ struct EditorView: View {
             .padding(.horizontal, 12).padding(.vertical, 7)
             // Reduce Transparency: the vibrant `.bar` becomes an opaque window background.
             // `PanelView` has always done.
-            .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
-                                           : AnyShapeStyle(.bar))
+            .background(
+                reduceTransparency
+                    ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+                    : AnyShapeStyle(.bar))
         }
     }
 
     /// Picking a row moves keyboard focus into the list, which `List` does not do for you: without
     private var selectionBinding: Binding<URL?> {
-        Binding(get: { model.selection?.url },
-                set: { url in
-                    model.select(url.flatMap(model.recording(for:)))
-                    isSidebarFocused = true
-                })
+        Binding(
+            get: { model.selection?.url },
+            set: { url in
+                model.select(url.flatMap(model.recording(for:)))
+                isSidebarFocused = true
+            })
     }
 
     // MARK: - Detail (waveform, Trim, transport) + permanent inspector
@@ -155,12 +158,14 @@ struct EditorView: View {
             .navigationSubtitle(recording.windowSubtitle)
         } else {
             ContentUnavailableView {
-                Label(hasRecordings ? "No Recording selected" : "No Recordings",
-                      systemImage: "waveform")
+                Label(
+                    hasRecordings ? "No Recording selected" : "No Recordings",
+                    systemImage: "waveform")
             } description: {
-                Text(hasRecordings
-                     ? "Choose one in the Library to play it, set its Trim, and Export it."
-                     : "Record from the AppTape icon in the menu bar.")
+                Text(
+                    hasRecordings
+                        ? "Choose one in the Library to play it, set its Trim, and Export it."
+                        : "Record from the AppTape icon in the menu bar.")
             }
         }
     }
@@ -169,12 +174,13 @@ struct EditorView: View {
     @ViewBuilder
     private var inspectorColumn: some View {
         if let recording = model.selection, recording.isOpenable {
-            ExportInspector(recording: recording,
-                            capture: capture,
-                            preference: model.preference,
-                            coordinator: model.coordinator,
-                            correction: model.correction,
-                            player: model.player)
+            ExportInspector(
+                recording: recording,
+                capture: capture,
+                preference: model.preference,
+                coordinator: model.coordinator,
+                correction: model.correction,
+                player: model.player)
         } else {
             Color.clear
         }
@@ -198,14 +204,16 @@ struct EditorView: View {
     @ViewBuilder
     private func editorDetail(_ recording: Recording) -> some View {
         VStack(spacing: 0) {
-            TrimTimeline(recording: recording,
-                         envelope: recording.envelope,
-                         player: model.player,
-                         capture: capture,
-                         onTrimCommitted: { recording.persistTrim() })
-                .frame(minHeight: Self.laneMinimumHeight, maxHeight: Self.laneMaximumHeight)
-                .padding(.horizontal, Metrics.xl)
-                .padding(.top, Metrics.lg)
+            TrimTimeline(
+                recording: recording,
+                envelope: recording.envelope,
+                player: model.player,
+                capture: capture,
+                onTrimCommitted: { recording.persistTrim() }
+            )
+            .frame(minHeight: Self.laneMinimumHeight, maxHeight: Self.laneMaximumHeight)
+            .padding(.horizontal, Metrics.xl)
+            .padding(.top, Metrics.lg)
 
             RecordingSummary(recording: recording, capture: capture)
                 .padding(.horizontal, Metrics.xl)
@@ -276,8 +284,10 @@ struct EditorView: View {
                     Text(Format.time(model.player.position, precise: true))
                         .font(Self.clockFont).monospacedDigit()
                         .lineLimit(1)
-                        .foregroundStyle(isStillArriving ? AnyShapeStyle(.tertiary)
-                                                         : AnyShapeStyle(.primary))
+                        .foregroundStyle(
+                            isStillArriving
+                                ? AnyShapeStyle(.tertiary)
+                                : AnyShapeStyle(.primary))
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Playhead")
@@ -297,24 +307,37 @@ struct EditorView: View {
                 .overlay(alignment: .trailing) {
                     VStack(alignment: .trailing, spacing: 1) {
                         // `Format.time`, not `RecordingController.elapsedText`.
-                        Text(capturing ? Format.time(capture.elapsed)
-                                       : recording.isTrimmed ? recording.trimRangeText
-                                                             : Format.time(recording.duration))
-                            .font(Metrics.readout)
-                            .lineLimit(1)
-                        Text(capturing ? "Capturing"
-                                       : recording.isTrimmed ? "Trim" : "Whole Recording")
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            capturing
+                                ? Format.time(capture.elapsed)
+                                : recording.isTrimmed
+                                    ? recording.trimRangeText
+                                    : Format.time(recording.duration)
+                        )
+                        .font(Metrics.readout)
+                        .lineLimit(1)
+                        Text(
+                            capturing
+                                ? "Capturing"
+                                : recording.isTrimmed ? "Trim" : "Whole Recording"
+                        )
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .foregroundStyle(.secondary)
                     }
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(capturing ? "Captured so far"
-                                              : recording.isTrimmed ? "Trim" : "Length")
-                .accessibilityValue(capturing ? Format.time(capture.elapsed)
-                                              : recording.isTrimmed ? recording.trimRangeText
-                                                                    : Format.time(recording.duration))
+                .accessibilityLabel(
+                    capturing
+                        ? "Captured so far"
+                        : recording.isTrimmed ? "Trim" : "Length"
+                )
+                .accessibilityValue(
+                    capturing
+                        ? Format.time(capture.elapsed)
+                        : recording.isTrimmed
+                            ? recording.trimRangeText
+                            : Format.time(recording.duration))
 
                 // Reset keeps its place beside the figure it undoes.
                 Button {
@@ -347,9 +370,11 @@ private struct RecordingSummary: View {
     private var isStillArriving: Bool { capture.isStillArriving(recording) }
 
     var body: some View {
-        Grid(alignment: .leadingFirstTextBaseline,
-             horizontalSpacing: Metrics.lg,
-             verticalSpacing: Metrics.sm) {
+        Grid(
+            alignment: .leadingFirstTextBaseline,
+            horizontalSpacing: Metrics.lg,
+            verticalSpacing: Metrics.sm
+        ) {
             row("Source", recording.source)
             row("Captured", recording.recordedAt?.formatted(date: .long, time: .shortened) ?? "—")
             row("Format", formatText)
@@ -412,11 +437,12 @@ private struct RecordingSummary: View {
     private var formatText: String {
         let format = recording.sourceFormat
         let rate = (format.sampleRate / 1000).formatted(.number.precision(.fractionLength(0...1)))
-        let channels = switch format.channelCount {
-        case 1: "Mono"
-        case 2: "Stereo"
-        default: "\(format.channelCount) channels"
-        }
+        let channels =
+            switch format.channelCount {
+            case 1: "Mono"
+            case 2: "Stereo"
+            default: "\(format.channelCount) channels"
+            }
         let depth = format.bitsPerChannel == 32 ? "32-bit float" : "\(format.bitsPerChannel)-bit"
         return "\(rate) kHz · \(channels) · \(depth)"
     }
@@ -471,8 +497,11 @@ private struct LibraryRow: View {
             Text(recording.displayName)
                 .font(Metrics.name)
                 .lineLimit(1)
-                .foregroundStyle(recording.isOpenable ? AnyShapeStyle(.primary)
-                                                      : AnyShapeStyle(.secondary))
+                .foregroundStyle(
+                    recording.isOpenable
+                        ? AnyShapeStyle(.primary)
+                        : AnyShapeStyle(.secondary)
+                )
                 .fixedSize()
 
             Spacer(minLength: 12)
@@ -484,8 +513,11 @@ private struct LibraryRow: View {
                     // `Signal` is indigo, and a focused selection fill is the accent blue: indigo
                     // on blue, so the glyph vanished on exactly the row being looked at.
                     Image(systemName: "scissors")
-                        .foregroundStyle(isSelected ? AnyShapeStyle(.primary)
-                                                    : AnyShapeStyle(Palette.signal))
+                        .foregroundStyle(
+                            isSelected
+                                ? AnyShapeStyle(.primary)
+                                : AnyShapeStyle(Palette.signal)
+                        )
                         .opacity(recording.isTrimmed ? 1 : 0)
                         .accessibilityHidden(!recording.isTrimmed)
                         .help(recording.isTrimmed ? "Trimmed" : "")
@@ -493,12 +525,16 @@ private struct LibraryRow: View {
                     // A subtle trailing glyph on Recordings with surfaced Dropouts — the Library
                     // is where a user arrives weeks later, long after the moment.
                     Image(systemName: "rectangle.dashed")
-                        .foregroundStyle(isSelected ? AnyShapeStyle(.secondary)
-                                                    : AnyShapeStyle(.tertiary))
+                        .foregroundStyle(
+                            isSelected
+                                ? AnyShapeStyle(.secondary)
+                                : AnyShapeStyle(.tertiary)
+                        )
                         .opacity(recording.isSurfacedForDropouts ? 1 : 0)
                         .accessibilityHidden(!recording.isSurfacedForDropouts)
-                        .help(recording.isSurfacedForDropouts
-                              ? "Contains Dropouts — silence padded in where audio was interrupted" : "")
+                        .help(
+                            recording.isSurfacedForDropouts
+                                ? "Contains Dropouts — silence padded in where audio was interrupted" : "")
                 }
                 .font(.caption2)
                 .frame(width: 26, alignment: .trailing)
@@ -527,7 +563,7 @@ private struct LibraryRow: View {
             .onSubmit { commit(keepingFocus: true) }
             .onExitCommand { model.endRename() }
             .onAppear {
-                draft = recording.name   // the base name: the extension is never the user's to edit
+                draft = recording.name  // the base name: the extension is never the user's to edit
                 isEditing = true
             }
             .onChange(of: draft) { blocker = nil }
@@ -564,21 +600,27 @@ private struct LibraryRow: View {
 
     /// Behind the row, in the window the name and the trailing rail leave between them.
     private var rowWaveform: some View {
-        WaveformPath(columns: recording.envelope.columns(
-            over: TimelineGeometry.wholeRange(duration: recording.duration), count: 120))
-            .fill(isSelected ? AnyShapeStyle(.primary.opacity(0.30))
-                             : AnyShapeStyle(.secondary.opacity(0.5)))
-            .frame(height: 15)
-            .mask {
-                LinearGradient(stops: [
+        WaveformPath(
+            columns: recording.envelope.columns(
+                over: TimelineGeometry.wholeRange(duration: recording.duration), count: 120)
+        )
+        .fill(
+            isSelected
+                ? AnyShapeStyle(.primary.opacity(0.30))
+                : AnyShapeStyle(.secondary.opacity(0.5))
+        )
+        .frame(height: 15)
+        .mask {
+            LinearGradient(
+                stops: [
                     .init(color: .clear, location: 0.00),
                     .init(color: .clear, location: 0.40),
                     .init(color: .black, location: 0.52),
                     .init(color: .black, location: 0.78),
                     .init(color: .clear, location: 0.88),
                 ], startPoint: .leading, endPoint: .trailing)
-            }
-            .allowsHitTesting(false)
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -593,23 +635,23 @@ extension FocusedValues {
 // fixture that does not ship has to be guarded where it is used as well as where it is defined.
 #if DEBUG
 
-/// The whole editor, over a Library that does not exist.
-#Preview("Editor · empty") {
-    EditorView(model: .preview(recordings: []), capture: PreviewCapture.settled)
-}
+    /// The whole editor, over a Library that does not exist.
+    #Preview("Editor · empty") {
+        EditorView(model: .preview(recordings: []), capture: PreviewCapture.settled)
+    }
 
-/// The two states of the brief's `Master` row: a settled Recording states the length it was read
-#Preview("Brief · settled") {
-    RecordingSummary(recording: .stub(), capture: PreviewCapture.settled)
-        .frame(width: 420)
-        .padding(Metrics.xl)
-}
+    /// The two states of the brief's `Master` row: a settled Recording states the length it was read
+    #Preview("Brief · settled") {
+        RecordingSummary(recording: .stub(), capture: PreviewCapture.settled)
+            .frame(width: 420)
+            .padding(Metrics.xl)
+    }
 
-#Preview("Brief · capturing") {
-    let recording = Recording.stub(seconds: 93)
-    return RecordingSummary(recording: recording, capture: PreviewCapture.capturing(recording))
-        .frame(width: 420)
-        .padding(Metrics.xl)
-}
+    #Preview("Brief · capturing") {
+        let recording = Recording.stub(seconds: 93)
+        return RecordingSummary(recording: recording, capture: PreviewCapture.capturing(recording))
+            .frame(width: 420)
+            .padding(Metrics.xl)
+    }
 
 #endif

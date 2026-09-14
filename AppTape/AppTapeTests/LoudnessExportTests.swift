@@ -1,7 +1,8 @@
 import AVFoundation
 import AudioToolbox
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The normalized Export path end to end: the encode measures the trimmed range, applies one
@@ -9,8 +10,10 @@ import Foundation
 /// normalization pass.
 struct LoudnessExportTests {
     /// A stereo tone whose integrated loudness clears the gates and leaves the ceiling slack.
-    private func writeTone(at url: URL, seconds: Double = 2, amplitude: Double = 0.5,
-                           frequency: Double = 1000) throws {
+    private func writeTone(
+        at url: URL, seconds: Double = 2, amplitude: Double = 0.5,
+        frequency: Double = 1000
+    ) throws {
         let asbd = AudioStreamBasicDescription(
             mSampleRate: 48_000, mFormatID: kAudioFormatLinearPCM,
             mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
@@ -36,9 +39,10 @@ struct LoudnessExportTests {
 
     private func exportMaster(_ source: URL, to dest: URL, normalize: Bool, gainDB: Double = 0) throws {
         let file = try AVAudioFile(forReading: source)
-        let request = ExportRequest(source: source, destination: dest,
-                                    startFrame: 0, frameCount: file.length, preset: .master,
-                                    normalize: normalize, gainDB: gainDB)
+        let request = ExportRequest(
+            source: source, destination: dest,
+            startFrame: 0, frameCount: file.length, preset: .master,
+            normalize: normalize, gainDB: gainDB)
         try ExportEncoder().run(request) { _ in }
     }
 
@@ -82,12 +86,12 @@ struct LoudnessExportTests {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = dir.appendingPathComponent("silent.caf")
-        try writeTone(at: source, seconds: 1, amplitude: 0)   // pure silence
+        try writeTone(at: source, seconds: 1, amplitude: 0)  // pure silence
         let dest = dir.appendingPathComponent("silent.m4a")
 
         try exportMaster(source, to: dest, normalize: true)
         let out = try AVAudioFile(forReading: dest)
-        #expect(out.length > 0)                                        // a real, decodable file
-        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 1.0) < 0.1)   // ~1 s
+        #expect(out.length > 0)  // a real, decodable file
+        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 1.0) < 0.1)  // ~1 s
     }
 }

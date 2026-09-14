@@ -37,10 +37,12 @@ nonisolated struct DropoutReconciler {
 
     /// Reconcile one chunk against the wall clock, before it is written.
     /// - Parameters:
-    mutating func account(hostTimeSeconds: Double,
-                          hostTimeValid: Bool,
-                          newFrames: Int,
-                          rebuildInFlight: Bool) -> Decision {
+    mutating func account(
+        hostTimeSeconds: Double,
+        hostTimeValid: Bool,
+        newFrames: Int,
+        rebuildInFlight: Bool
+    ) -> Decision {
         precondition(newFrames >= 0, "a chunk cannot contribute negative frames")
 
         guard let anchor = anchorSeconds else {
@@ -64,8 +66,8 @@ nonisolated struct DropoutReconciler {
         if gap >= minDropoutFrames {
             let cause: Dropout.Cause = rebuildInFlight ? .rebuild : .overrun
             dropouts.append(Dropout(start: masterFrames, frames: gap, cause: cause))
-            masterFrames += gap          // the pad
-            masterFrames += newFrames    // the chunk after it
+            masterFrames += gap  // the pad
+            masterFrames += newFrames  // the chunk after it
             return .pad(frames: gap, cause: cause)
         }
         // Gap within tolerance (or the chunk arrived a touch early): just append.

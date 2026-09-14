@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The soft/hard fault split: a 10 s soft one-shot that never ends a Recording and re-arms on the
@@ -77,7 +78,7 @@ struct FaultReducerTests {
         #expect(c.hardFault(now: 0) == .none)
         // Audio returns before the rebuild fires: cancel it and restore the budget.
         c.recovered()
-        #expect(c.poll(now: 5) == .none)   // never fires — restore beat rebuild
+        #expect(c.poll(now: 5) == .none)  // never fires — restore beat rebuild
         // A later, separate fault starts fresh with the full three attempts.
         #expect(c.hardFault(now: 10) == .none)
         #expect(c.poll(now: 11) == .rebuild)
@@ -85,8 +86,8 @@ struct FaultReducerTests {
 
     @Test func aRepeatedHardFaultWhileWaitingDoesNotRestartTheClock() {
         var c = HardFaultCoordinator()
-        #expect(c.hardFault(now: 0) == .none)     // fire at 1.0
-        #expect(c.hardFault(now: 0.5) == .none)   // still fire at 1.0, not 1.5
+        #expect(c.hardFault(now: 0) == .none)  // fire at 1.0
+        #expect(c.hardFault(now: 0.5) == .none)  // still fire at 1.0, not 1.5
         #expect(c.poll(now: 1.0) == .rebuild)
     }
 
@@ -119,6 +120,6 @@ struct FaultReducerTests {
         #expect(r.hardFault(now: 0) == .none)
         // A non-zero sample (audio flowing again) recovers it before it fires.
         #expect(r.observe(allZero: false, isRunningOutput: true, now: 0.2) == .none)
-        #expect(r.poll(now: 1.0) == .none)   // the pending rebuild was cancelled
+        #expect(r.poll(now: 1.0) == .none)  // the pending rebuild was cancelled
     }
 }

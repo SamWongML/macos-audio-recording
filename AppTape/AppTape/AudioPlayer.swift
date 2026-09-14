@@ -116,7 +116,8 @@ final class AudioPlayer {
 
     private func tick() {
         guard let nodeTime = node.lastRenderTime,
-              let playerTime = node.playerTime(forNodeTime: nodeTime) else { return }
+            let playerTime = node.playerTime(forNodeTime: nodeTime)
+        else { return }
         position = segmentStart + Double(playerTime.sampleTime) / playerTime.sampleRate
 
         guard position >= scheduledEnd - 0.02 else { return }

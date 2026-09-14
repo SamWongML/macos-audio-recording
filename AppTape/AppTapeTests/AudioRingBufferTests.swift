@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The ring is the boundary between the realtime IOProc and the writer thread: it must round- trip
@@ -35,7 +36,7 @@ struct AudioRingBufferTests {
     @Test func wrapsAroundTheEndOfStorage() {
         let ring = AudioRingBuffer(capacitySamples: 8)
         #expect(write(ring, [1, 2, 3, 4, 5, 6]))
-        #expect(read(ring, max: 6) == [1, 2, 3, 4, 5, 6])   // read pointer now at 6
+        #expect(read(ring, max: 6) == [1, 2, 3, 4, 5, 6])  // read pointer now at 6
         // This write straddles the physical end (slots 6,7 then wraps to 0,1).
         #expect(write(ring, [7, 8, 9, 10]))
         #expect(read(ring, max: 10) == [7, 8, 9, 10])
@@ -43,7 +44,7 @@ struct AudioRingBufferTests {
 
     @Test func overrunDropsTheWholeBlockAndCountsIt() {
         let ring = AudioRingBuffer(capacitySamples: 8)
-        #expect(write(ring, [1, 2, 3, 4, 5, 6]))   // 6 of 8 used, 2 free
+        #expect(write(ring, [1, 2, 3, 4, 5, 6]))  // 6 of 8 used, 2 free
         // A 4-sample block does not fit in 2 free slots: dropped whole, nothing overwritten.
         #expect(write(ring, [7, 8, 9, 10]) == false)
         #expect(ring.droppedSamples == 4)
@@ -55,9 +56,9 @@ struct AudioRingBufferTests {
     @Test func recoversAfterAConsumerDrainsSpace() {
         let ring = AudioRingBuffer(capacitySamples: 8)
         #expect(write(ring, [1, 2, 3, 4, 5, 6]))
-        #expect(write(ring, [7, 8, 9]) == false)   // dropped
-        _ = read(ring, max: 6)                       // drain, freeing space
-        #expect(write(ring, [7, 8, 9]))              // now fits
+        #expect(write(ring, [7, 8, 9]) == false)  // dropped
+        _ = read(ring, max: 6)  // drain, freeing space
+        #expect(write(ring, [7, 8, 9]))  // now fits
         #expect(read(ring, max: 10) == [7, 8, 9])
     }
 
@@ -65,7 +66,9 @@ struct AudioRingBufferTests {
         let ring = AudioRingBuffer(capacitySamples: 64)
         var expected: Float = 0
         for _ in 0..<1000 {
-            let block = (0..<16).map { _ -> Float in expected += 1; return expected }
+            let block = (0..<16).map { _ -> Float in
+                expected += 1; return expected
+            }
             #expect(write(ring, block))
             #expect(read(ring, max: 16) == block)
         }

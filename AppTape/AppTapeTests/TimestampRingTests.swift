@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The host-time mark ring is a single-producer / single-consumer FIFO: marks come out in the order
@@ -18,7 +19,7 @@ struct TimestampRingTests {
         let ring = TimestampRing(capacity: 8)
         ring.push(ringFrame: 100, hostSeconds: 2.0, valid: false)
         #expect(ring.peekFrame() == 100)
-        #expect(ring.peekFrame() == 100)   // still there
+        #expect(ring.peekFrame() == 100)  // still there
         #expect(ring.pop()?.ringFrame == 100)
         #expect(ring.peekFrame() == nil)
     }
@@ -27,7 +28,7 @@ struct TimestampRingTests {
         let ring = TimestampRing(capacity: 2)
         #expect(ring.push(ringFrame: 0, hostSeconds: 0, valid: true))
         #expect(ring.push(ringFrame: 1, hostSeconds: 0, valid: true))
-        #expect(ring.push(ringFrame: 2, hostSeconds: 0, valid: true) == false)   // full → dropped
+        #expect(ring.push(ringFrame: 2, hostSeconds: 0, valid: true) == false)  // full → dropped
         // Draining one makes room again.
         _ = ring.pop()
         #expect(ring.push(ringFrame: 3, hostSeconds: 0, valid: true))

@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The Library filename is the Recording's name, formed from the Source and the start time,
@@ -10,7 +11,8 @@ struct LibraryLocationTests {
     private let utc = TimeZone(identifier: "UTC")!
 
     @Test func nameCarriesSourceDateAndTime() {
-        #expect(LibraryLocation.baseName(source: "Google Chrome", date: date, timeZone: utc)
+        #expect(
+            LibraryLocation.baseName(source: "Google Chrome", date: date, timeZone: utc)
                 == "Google Chrome 2026-08-27 at 20.05.03")
     }
 
@@ -27,12 +29,15 @@ struct LibraryLocationTests {
 
     @Test func secondCollisionAppendsThree() {
         let taken: Set = ["Safari 2026-08-27 at 20.05.03.caf", "Safari 2026-08-27 at 20.05.03 2.caf"]
-        let name = LibraryLocation.uniqueFileName(source: "Safari", date: date, timeZone: utc) { taken.contains($0) }
+        let name = LibraryLocation.uniqueFileName(source: "Safari", date: date, timeZone: utc) {
+            taken.contains($0)
+        }
         #expect(name == "Safari 2026-08-27 at 20.05.03 3.caf")
     }
 
     @Test func pathSeparatorsInSourceAreMadeLegal() {
-        #expect(LibraryLocation.baseName(source: "Read/Write: Demo", date: date, timeZone: utc)
+        #expect(
+            LibraryLocation.baseName(source: "Read/Write: Demo", date: date, timeZone: utc)
                 == "Read-Write- Demo 2026-08-27 at 20.05.03")
     }
 
@@ -44,15 +49,19 @@ struct LibraryLocationTests {
 
 /// Renaming a Recording from inside the app.
 struct LibraryRenameTests {
-    private func rename(_ current: String, to proposed: String, existing: [String] = [])
-        -> LibraryLocation.RenameOutcome {
+    private func rename(
+        _ current: String, to proposed: String, existing: [String] = []
+    )
+        -> LibraryLocation.RenameOutcome
+    {
         LibraryLocation.rename(current, to: proposed, existingFileNames: existing)
     }
 
     @Test func theExtensionIsCarriedOverNotEdited() {
         // An edited extension fails `RecordingReader.adopt`'s gate and vanishes the Recording, so
         // the user only ever types the base name.
-        #expect(rename("Google Chrome 2026-08-27 at 20.05.03.caf", to: "Interview")
+        #expect(
+            rename("Google Chrome 2026-08-27 at 20.05.03.caf", to: "Interview")
                 == .rename(to: "Interview.caf"))
     }
 
@@ -95,18 +104,21 @@ struct LibraryRenameTests {
     }
 
     @Test func aCollisionIsRefusedNotSuffixed() {
-        #expect(rename("A.caf", to: "B", existing: ["A.caf", "B.caf"])
+        #expect(
+            rename("A.caf", to: "B", existing: ["A.caf", "B.caf"])
                 == .refused(.alreadyTaken("B.caf")))
     }
 
     @Test func aCollisionIsCaseInsensitiveBecauseTheVolumeIs() {
-        #expect(rename("A.caf", to: "b", existing: ["A.caf", "B.caf"])
+        #expect(
+            rename("A.caf", to: "b", existing: ["A.caf", "B.caf"])
                 == .refused(.alreadyTaken("B.caf")))
     }
 
     @Test func aCaseOnlyRenameIsNotACollisionWithItself() {
         // "podcast.caf" → "Podcast.caf" is the same file, so it cannot collide with itself.
-        #expect(rename("podcast.caf", to: "Podcast", existing: ["podcast.caf"])
+        #expect(
+            rename("podcast.caf", to: "Podcast", existing: ["podcast.caf"])
                 == .rename(to: "Podcast.caf"))
     }
 

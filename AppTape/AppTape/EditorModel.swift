@@ -37,14 +37,17 @@ final class EditorModel {
     /// The production wiring: the real Library folder behind the store, and the app-wide Export
     /// objects.
     convenience init() {
-        self.init(store: LibraryStore(), player: AudioPlayer(), correction: LoudnessCorrectionModel(),
-                  coordinator: .shared, preference: .shared)
+        self.init(
+            store: LibraryStore(), player: AudioPlayer(), correction: LoudnessCorrectionModel(),
+            coordinator: .shared, preference: .shared)
     }
 
     /// For a test or a preview: a store with a reader that opens no files, and Export objects nothing
     /// else is watching.
-    init(store: LibraryStore, player: AudioPlayer, correction: LoudnessCorrectionModel,
-         coordinator: ExportCoordinator, preference: ExportPreference) {
+    init(
+        store: LibraryStore, player: AudioPlayer, correction: LoudnessCorrectionModel,
+        coordinator: ExportCoordinator, preference: ExportPreference
+    ) {
         self.store = store
         self.player = player
         self.correction = correction
@@ -114,7 +117,7 @@ final class EditorModel {
         }
         if let selection {
             guard let current = recording(for: selection.url) else {
-                coordinator.cancel()   // the open Recording vanished — navigate away
+                coordinator.cancel()  // the open Recording vanished — navigate away
                 self.selection = nil
                 player.stop()
                 vanishedTick += 1

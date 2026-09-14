@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import AppTape
 
 /// The second conformance of each of `CaptureRun`'s four interfaces — the reason they exist.
@@ -54,8 +55,10 @@ final class FakeCaptureBuilder: CaptureBuilding {
     /// Whether that bring-up is still outstanding: the blocked call, not yet returned.
     func isBuilding(_ index: Int = 0) -> Bool { pending.indices.contains(index) && pending[index] != nil }
 
-    func build(source: Source, hooks: CaptureHooks,
-               then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void) {
+    func build(
+        source: Source, hooks: CaptureHooks,
+        then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void
+    ) {
         builds.append((source, hooks))
         pending.append(then)
     }

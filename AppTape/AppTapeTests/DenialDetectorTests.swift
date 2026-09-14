@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The detector encodes the inference: all-zero-since-first-sample for 3 s while the Source runs

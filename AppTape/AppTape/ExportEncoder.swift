@@ -86,30 +86,39 @@ nonisolated final class ExportEncoder: @unchecked Sendable {
 
         var sourceFormat = AudioStreamBasicDescription()
         var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        try check(ExtAudioFileGetProperty(sourceRef, kExtAudioFileProperty_FileDataFormat,
-                                          &formatSize, &sourceFormat), "reading the Recording's format")
+        try check(
+            ExtAudioFileGetProperty(
+                sourceRef, kExtAudioFileProperty_FileDataFormat,
+                &formatSize, &sourceFormat), "reading the Recording's format")
 
         let channels = max(1, Int(sourceFormat.mChannelsPerFrame))
         let rate = sourceFormat.mSampleRate
         var client = AudioStreamBasicDescription.interleavedFloat(rate: rate, channels: channels)
         let clientSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        try check(ExtAudioFileSetProperty(sourceRef, kExtAudioFileProperty_ClientDataFormat,
-                                          clientSize, &client), "preparing to read")
+        try check(
+            ExtAudioFileSetProperty(
+                sourceRef, kExtAudioFileProperty_ClientDataFormat,
+                clientSize, &client), "preparing to read")
         try check(ExtAudioFileSeek(sourceRef, request.startFrame), "seeking to the Trim")
 
         // MARK: Destination — the compressed.m4a at the temp path.
-        let sourceMeta = SourceFormat(sampleRate: rate, channelCount: channels,
-                                      bitsPerChannel: Int(sourceFormat.mBitsPerChannel))
+        let sourceMeta = SourceFormat(
+            sampleRate: rate, channelCount: channels,
+            bitsPerChannel: Int(sourceFormat.mBitsPerChannel))
         var fileFormat = request.preset.fileFormat(for: sourceMeta)
         var destRef: ExtAudioFileRef?
-        try check(ExtAudioFileCreateWithURL(request.destination as CFURL, kAudioFileM4AType,
-                                            &fileFormat, nil, AudioFileFlags.eraseFile.rawValue,
-                                            &destRef), "creating the export file")
+        try check(
+            ExtAudioFileCreateWithURL(
+                request.destination as CFURL, kAudioFileM4AType,
+                &fileFormat, nil, AudioFileFlags.eraseFile.rawValue,
+                &destRef), "creating the export file")
         guard let destRef else { throw Failure.coreAudio(stage: "creating the export file", status: -1) }
         defer { ExtAudioFileDispose(destRef) }
 
-        try check(ExtAudioFileSetProperty(destRef, kExtAudioFileProperty_ClientDataFormat,
-                                          clientSize, &client), "preparing to write")
+        try check(
+            ExtAudioFileSetProperty(
+                destRef, kExtAudioFileProperty_ClientDataFormat,
+                clientSize, &client), "preparing to write")
         configureEncoder(destRef, preset: request.preset)
 
         // MARK: Loop — read a chunk, transform, write, report. Cancellable at each boundary.
@@ -130,7 +139,7 @@ nonisolated final class ExportEncoder: @unchecked Sendable {
                 list.mBuffers.mDataByteSize = want * UInt32(bytesPerFrame)
                 list.mBuffers.mData = base
                 try check(ExtAudioFileRead(sourceRef, &frames, &list), "reading the Recording")
-                guard frames > 0 else { break }   // master ran out early — write what we have
+                guard frames > 0 else { break }  // master ran out early — write what we have
 
                 applyGain(buffer, sampleCount: Int(frames) * channels)
 
@@ -144,7 +153,7 @@ nonisolated final class ExportEncoder: @unchecked Sendable {
 
     /// The Export/Loudness dropout.
     private func applyGain(_ buffer: UnsafeMutableBufferPointer<Float>, sampleCount: Int) {
-        guard scale != 1 else { return }   // faithful passthrough
+        guard scale != 1 else { return }  // faithful passthrough
         let s = scale
         for i in 0..<sampleCount { buffer[i] *= s }
     }
@@ -155,22 +164,28 @@ nonisolated final class ExportEncoder: @unchecked Sendable {
         guard let bitrate = preset.targetBitrate else { return }
         var converter: AudioConverterRef?
         var size = UInt32(MemoryLayout<AudioConverterRef?>.size)
-        guard ExtAudioFileGetProperty(destRef, kExtAudioFileProperty_AudioConverter, &size, &converter) == noErr,
-              let converter else { return }
+        guard
+            ExtAudioFileGetProperty(destRef, kExtAudioFileProperty_AudioConverter, &size, &converter)
+                == noErr,
+            let converter
+        else { return }
 
         var mode = UInt32(kAudioCodecBitRateControlMode_VariableConstrained)
-        _ = AudioConverterSetProperty(converter, kAudioCodecPropertyBitRateControlMode,
-                                      UInt32(MemoryLayout<UInt32>.size), &mode)
+        _ = AudioConverterSetProperty(
+            converter, kAudioCodecPropertyBitRateControlMode,
+            UInt32(MemoryLayout<UInt32>.size), &mode)
         var rate = UInt32(bitrate)
-        _ = AudioConverterSetProperty(converter, kAudioConverterEncodeBitRate,
-                                      UInt32(MemoryLayout<UInt32>.size), &rate)
+        _ = AudioConverterSetProperty(
+            converter, kAudioConverterEncodeBitRate,
+            UInt32(MemoryLayout<UInt32>.size), &rate)
 
         // A NULL config resynchronises the file's data format with the reconfigured converter
         // (ExtAudioFile contract).
         var nullConfig: UnsafeRawPointer? = nil
         withUnsafePointer(to: &nullConfig) { pointer in
-            _ = ExtAudioFileSetProperty(destRef, kExtAudioFileProperty_ConverterConfig,
-                                        UInt32(MemoryLayout<UnsafeRawPointer?>.size), pointer)
+            _ = ExtAudioFileSetProperty(
+                destRef, kExtAudioFileProperty_ConverterConfig,
+                UInt32(MemoryLayout<UnsafeRawPointer?>.size), pointer)
         }
     }
 

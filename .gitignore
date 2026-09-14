@@ -1,6 +1,9 @@
 # Claude Code
 .claude/
 
+# Local throwaway prototypes (not part of the app target)
+prototypes/
+
 # macOS
 .DS_Store
 .AppleDouble

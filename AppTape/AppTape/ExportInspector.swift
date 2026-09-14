@@ -37,17 +37,20 @@ struct ExportInspector: View {
 
     /// Whether an Export may start, and if not, what the dock says.
     private var readiness: ExportReadiness {
-        .evaluate(isOpenable: recording.isOpenable,
-                  isCapturing: capture.isCapturing(recording),
-                  trimmedFrameCount: recording.trimmedFrameRange.count,
-                  preset: effectivePreset, format: format,
-                  isExporting: coordinator.isExporting)
+        .evaluate(
+            isOpenable: recording.isOpenable,
+            isCapturing: capture.isCapturing(recording),
+            trimmedFrameCount: recording.trimmedFrameRange.count,
+            preset: effectivePreset, format: format,
+            isExporting: coordinator.isExporting)
     }
 
     /// Choosing a preset row.
     private func pick(_ newValue: QualityPreset) {
-        switch QualityPreset.PresetPick.resolve(picking: newValue, sticky: preference.preset,
-                                                format: format) {
+        switch QualityPreset.PresetPick.resolve(
+            picking: newValue, sticky: preference.preset,
+            format: format)
+        {
         case .setSticky(let preset): preference.preset = preset; perFilePreset = nil
         case .displayOver(let preset): perFilePreset = preset
         case .ignore: break
@@ -68,8 +71,9 @@ struct ExportInspector: View {
     /// Soft detent at 0: a Gain within ±0.5 dB of centre snaps to exactly 0, so the
     /// slider has a home the user can feel and land on.
     private var gainBinding: Binding<Double> {
-        Binding(get: { recording.gain },
-                set: { recording.gain = abs($0) < 0.5 ? 0 : $0 })
+        Binding(
+            get: { recording.gain },
+            set: { recording.gain = abs($0) < 0.5 ? 0 : $0 })
     }
 
     var body: some View {
@@ -126,59 +130,69 @@ struct ExportInspector: View {
         let encodability = preset.encodability(for: format)
         let isSelected = preset == effectivePreset
         return VStack(alignment: .leading, spacing: 1) {
-        Button {
-            pick(preset)
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
-                // Always drawn, never conditional: the accessible path and the default path are the
-                // same path, which is the only version that stays correct.
-                Image(systemName: "checkmark")
-                    .font(.caption.weight(.semibold))
-                    .opacity(isSelected ? 1 : 0)
-                    .frame(width: Self.checkmarkSlotWidth)
+            Button {
+                pick(preset)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
+                    // Always drawn, never conditional: the accessible path and the default path are the
+                    // same path, which is the only version that stays correct.
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.semibold))
+                        .opacity(isSelected ? 1 : 0)
+                        .frame(width: Self.checkmarkSlotWidth)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(preset.displayName)
-                        .foregroundStyle(.primary)
-                    // The codec and bitrate only, not the whole `subtitle(for:)`.
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(preset.displayName)
+                            .foregroundStyle(.primary)
+                        // The codec and bitrate only, not the whole `subtitle(for:)`.
+                        if encodability.isAvailable {
+                            Text(preset.codecLabel)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+
+                    Spacer(minLength: Metrics.xs)
+
+                    // No estimate while the audio is still arriving.
                     if encodability.isAvailable {
-                        Text(preset.codecLabel)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                        Text(
+                            isStillArriving
+                                ? "—"
+                                : ExportSizeEstimate.text(
+                                    preset: preset, format: format,
+                                    duration: recording.trimmedDuration)
+                        )
+                        .font(.caption).monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        // The estimate re-reckons as the Trim moves: a figure that ticks, which is what
+                        // `.numericText` is for.
+                        .textTransition(.numericText())
+                        .motion(Metrics.motionState, value: recording.trimmedDuration)
                     }
                 }
-
-                Spacer(minLength: Metrics.xs)
-
-                // No estimate while the audio is still arriving.
-                if encodability.isAvailable {
-                Text(isStillArriving ? "—"
-                                     : ExportSizeEstimate.text(preset: preset, format: format,
-                                                               duration: recording.trimmedDuration))
-                    .font(.caption).monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    // The estimate re-reckons as the Trim moves: a figure that ticks, which is what
-                    // `.numericText` is for.
-                    .textTransition(.numericText())
-                    .motion(Metrics.motionState, value: recording.trimmedDuration)
-                }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!encodability.isAvailable)
-        .opacity(encodability.isAvailable ? 1 : 0.5)
-        .help(encodability.reason ?? "")
-        // Not `readAloud`: this is a button, and collapsing it to a label/value pair the way an
-        // inspector *row* wants would cost the button trait.
-        .accessibilityLabel(preset.displayName)
-        .accessibilityValue([encodability.reason ?? preset.codecLabel,
-                             isStillArriving ? "size not yet known"
-                                             : ExportSizeEstimate.text(preset: preset, format: format,
-                                                                       duration: recording.trimmedDuration)]
-                                .joined(separator: ", "))
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            .buttonStyle(.plain)
+            .disabled(!encodability.isAvailable)
+            .opacity(encodability.isAvailable ? 1 : 0.5)
+            .help(encodability.reason ?? "")
+            // Not `readAloud`: this is a button, and collapsing it to a label/value pair the way an
+            // inspector *row* wants would cost the button trait.
+            .accessibilityLabel(preset.displayName)
+            .accessibilityValue(
+                [
+                    encodability.reason ?? preset.codecLabel,
+                    isStillArriving
+                        ? "size not yet known"
+                        : ExportSizeEstimate.text(
+                            preset: preset, format: format,
+                            duration: recording.trimmedDuration),
+                ]
+                .joined(separator: ", ")
+            )
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
 
             // The blocker, at full strength, outside everything that dims.
             if let reason = encodability.reason {
@@ -199,11 +213,13 @@ struct ExportInspector: View {
     /// The rate and channel count Export carries through untouched, said once: they are the
     /// source's, identical on every preset row, and asks for them to be visible, not repeated.
     private var sourceFormatLine: some View {
-        Text(effectivePreset.subtitle(for: format)
-            .replacingOccurrences(of: "\(effectivePreset.codecLabel) · ", with: "")
-            + " · carried through unchanged")
-            .font(.caption2)
-            .foregroundStyle(Color.primary.opacity(0.7))
+        Text(
+            effectivePreset.subtitle(for: format)
+                .replacingOccurrences(of: "\(effectivePreset.codecLabel) · ", with: "")
+                + " · carried through unchanged"
+        )
+        .font(.caption2)
+        .foregroundStyle(Color.primary.opacity(0.7))
     }
 
     // MARK: - Loudness & Gain (normalize toggle, correction read-out, Gain slider)
@@ -281,8 +297,10 @@ struct ExportInspector: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(correction.figureText)
                         .monospacedDigit()
-                        .foregroundStyle(correction.gainResult == .undefined ? AnyShapeStyle(.secondary)
-                                                                          : AnyShapeStyle(.primary))
+                        .foregroundStyle(
+                            correction.gainResult == .undefined
+                                ? AnyShapeStyle(.secondary)
+                                : AnyShapeStyle(.primary))
                     if let caption = correction.caption {
                         Text(caption)
                             .font(.caption2)
@@ -316,8 +334,7 @@ struct ExportInspector: View {
     /// The dock states a blocker; it does not wear one.
     @ViewBuilder
     private var exportControlOrBlocker: some View {
-        if let reason = readiness.blocker { dockSentence(reason) }
-        else { exportButton }
+        if let reason = readiness.blocker { dockSentence(reason) } else { exportButton }
     }
 
     /// The dock's one sentence shape, for every blocker there is. Holds the button's own box, so the
@@ -369,8 +386,8 @@ struct ExportInspector: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
             }
-                .font(.callout)
-                .labelStyle(.titleAndIcon)
+            .font(.callout)
+            .labelStyle(.titleAndIcon)
             Spacer(minLength: Metrics.xs)
             Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                 .buttonStyle(.link).font(.caption)
@@ -391,11 +408,11 @@ struct ExportInspector: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
-                .font(.caption)
-                .lineLimit(2)
+            .font(.caption)
+            .lineLimit(2)
             Spacer(minLength: Metrics.xs)
             Button("Retry…") {
-                coordinator.cancel()   // clear the failure, then re-present the save panel
+                coordinator.cancel()  // clear the failure, then re-present the save panel
                 coordinator.export(recording: recording, preset: effectivePreset, capture: capture)
             }
             .font(.caption)
@@ -418,81 +435,89 @@ private extension View {
 // `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too.
 #if DEBUG
 
-/// The dock's states, and the reason the pane accepts its four collaborators rather than reaching
-/// for them.
+    /// The dock's states, and the reason the pane accepts its four collaborators rather than reaching
+    /// for them.
 
-/// A pane over a Recording that does not exist, with its own defaults suite so a preview can never
-/// write the user's sticky Quality Preset.
-@MainActor
-private func previewDock(_ recording: Recording,
-                         capture: any CaptureState,
-                         coordinator: ExportCoordinator) -> some View {
-    ExportInspector(recording: recording,
-                    capture: capture,
-                    preference: ExportPreference(defaults: UserDefaults(suiteName: "com.apptape.previews")
-                        ?? .standard),
-                    coordinator: coordinator,
-                    correction: LoudnessCorrectionModel(),
-                    player: AudioPlayer())
+    /// A pane over a Recording that does not exist, with its own defaults suite so a preview can never
+    /// write the user's sticky Quality Preset.
+    @MainActor
+    private func previewDock(
+        _ recording: Recording,
+        capture: any CaptureState,
+        coordinator: ExportCoordinator
+    ) -> some View {
+        ExportInspector(
+            recording: recording,
+            capture: capture,
+            preference: ExportPreference(
+                defaults: UserDefaults(suiteName: "com.apptape.previews")
+                    ?? .standard),
+            coordinator: coordinator,
+            correction: LoudnessCorrectionModel(),
+            player: AudioPlayer()
+        )
         .frame(width: 276)
         .background(Color(nsColor: .controlBackgroundColor))
-}
+    }
 
-#Preview("Dock · ready") {
-    previewDock(.stub(), capture: PreviewCapture.settled, coordinator: ExportCoordinator())
-}
+    #Preview("Dock · ready") {
+        previewDock(.stub(), capture: PreviewCapture.settled, coordinator: ExportCoordinator())
+    }
 
-/// The Recording being written right now: its `.caf` is still growing and its Trim end is undefined
-/// until Stop, so the dock states that instead of offering Export.
-#Preview("Dock · still capturing") {
-    let recording = Recording.stub(seconds: 93)
-    return previewDock(recording, capture: PreviewCapture.capturing(recording),
-                       coordinator: ExportCoordinator())
-}
+    /// The Recording being written right now: its `.caf` is still growing and its Trim end is undefined
+    /// until Stop, so the dock states that instead of offering Export.
+    #Preview("Dock · still capturing") {
+        let recording = Recording.stub(seconds: 93)
+        return previewDock(
+            recording, capture: PreviewCapture.capturing(recording),
+            coordinator: ExportCoordinator())
+    }
 
-#Preview("Dock · running") {
-    let recording = Recording.stub()
-    let coordinator = ExportCoordinator()
-    coordinator.enter(phase: .running(fraction: 0.42), subject: recording)
-    return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
-}
+    #Preview("Dock · running") {
+        let recording = Recording.stub()
+        let coordinator = ExportCoordinator()
+        coordinator.enter(phase: .running(fraction: 0.42), subject: recording)
+        return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
+    }
 
-#Preview("Dock · succeeded") {
-    let recording = Recording.stub()
-    let coordinator = ExportCoordinator()
-    coordinator.enter(phase: .succeeded(url: recording.url), subject: recording)
-    return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
-}
+    #Preview("Dock · succeeded") {
+        let recording = Recording.stub()
+        let coordinator = ExportCoordinator()
+        coordinator.enter(phase: .succeeded(url: recording.url), subject: recording)
+        return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
+    }
 
-/// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to.
-#Preview("Dock · failed") {
-    let recording = Recording.stub()
-    let coordinator = ExportCoordinator()
-    coordinator.enter(phase: .failed(message: "Not enough space: needs 5.41 MB, 2.96 MB free."),
-                     subject: recording)
-    return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
-}
+    /// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to.
+    #Preview("Dock · failed") {
+        let recording = Recording.stub()
+        let coordinator = ExportCoordinator()
+        coordinator.enter(
+            phase: .failed(message: "Not enough space: needs 5.41 MB, 2.96 MB free."),
+            subject: recording)
+        return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
+    }
 
-/// An empty Recording — a hand-adopted file with no audio in it. Until it was refused only
-/// because `Trim(duration: 0).length` happens to be 0; it is `ExportReadiness`'s own rule now.
-#Preview("Dock · refused · nothing in the Trim") {
-    previewDock(.stub(seconds: 0), capture: PreviewCapture.settled,
-                coordinator: ExportCoordinator())
-}
+    /// An empty Recording — a hand-adopted file with no audio in it. Until it was refused only
+    /// because `Trim(duration: 0).length` happens to be 0; it is `ExportReadiness`'s own rule now.
+    #Preview("Dock · refused · nothing in the Trim") {
+        previewDock(
+            .stub(seconds: 0), capture: PreviewCapture.settled,
+            coordinator: ExportCoordinator())
+    }
 
-/// A 96 kHz adopted file against the default `high` sticky — the three AAC preset rows refuse it, so
-/// the dock names the situation while each preset row states its own specific reason above.
-#Preview("Dock · refused · unencodable") {
-    previewDock(.stub("ZZ Probe 96k", sampleRate: 96_000), capture: PreviewCapture.settled,
-                coordinator: ExportCoordinator())
-}
+    /// A 96 kHz adopted file against the default `high` sticky — the three AAC preset rows refuse it, so
+    /// the dock names the situation while each preset row states its own specific reason above.
+    #Preview("Dock · refused · unencodable") {
+        previewDock(
+            .stub("ZZ Probe 96k", sampleRate: 96_000), capture: PreviewCapture.settled,
+            coordinator: ExportCoordinator())
+    }
 
-/// An Export running on a *different* subject.
-#Preview("Dock · refused · already running") {
-    let coordinator = ExportCoordinator()
-    coordinator.enter(phase: .running(fraction: 0.42), subject: .stub("Some Other Recording"))
-    return previewDock(.stub(), capture: PreviewCapture.settled, coordinator: coordinator)
-}
+    /// An Export running on a *different* subject.
+    #Preview("Dock · refused · already running") {
+        let coordinator = ExportCoordinator()
+        coordinator.enter(phase: .running(fraction: 0.42), subject: .stub("Some Other Recording"))
+        return previewDock(.stub(), capture: PreviewCapture.settled, coordinator: coordinator)
+    }
 
 #endif
-

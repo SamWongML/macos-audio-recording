@@ -1,19 +1,20 @@
 import Foundation
 import Testing
+
 @testable import AppTape
 
 /// The per-row level meter's mapping. The property the acceptance criterion turns
 /// on is the boundary: a dead tap reads *exactly* zero.
 struct LevelMeterTests {
     @Test func aDeadTapReadsExactlyZero() {
-        #expect(LevelMeter.fill(forLinearPeak: nil) == 0)   // no tap
-        #expect(LevelMeter.fill(forLinearPeak: 0) == 0)     // all-zero chunk (soft fault)
+        #expect(LevelMeter.fill(forLinearPeak: nil) == 0)  // no tap
+        #expect(LevelMeter.fill(forLinearPeak: 0) == 0)  // all-zero chunk (soft fault)
     }
 
     @Test func aPeakBelowTheFloorReadsZero() {
-        #expect(LevelMeter.fill(forLinearPeak: -0.5) == 0)          // guarded non-positive
-        #expect(LevelMeter.fill(forLinearPeak: 0.0005) == 0)        // ~-66 dBFS, under the floor
-        #expect(LevelMeter.fill(forLinearPeak: 0.0001) == 0)        // ~-80 dBFS, well under
+        #expect(LevelMeter.fill(forLinearPeak: -0.5) == 0)  // guarded non-positive
+        #expect(LevelMeter.fill(forLinearPeak: 0.0005) == 0)  // ~-66 dBFS, under the floor
+        #expect(LevelMeter.fill(forLinearPeak: 0.0001) == 0)  // ~-80 dBFS, well under
     }
 
     @Test func fullScaleReadsOne() {
@@ -40,29 +41,33 @@ struct LevelMeterTests {
     // The engine drains far faster than audio arrives — a 5 ms nap on an empty ring against
 
     @Test func aRealChunkPublishesItsPeak() {
-        let decision = LevelMeter.publication(producedSamples: 1024, peak: 0.7,
-                                              now: 100, lastPublishedAt: 99.9)
+        let decision = LevelMeter.publication(
+            producedSamples: 1024, peak: 0.7,
+            now: 100, lastPublishedAt: 99.9)
         #expect(decision == .publish(0.7))
     }
 
     @Test func anEmptyDrainHoldsTheLastPeakRatherThanZeroingIt() {
         // The defect in one assertion: this used to publish 0, ~30 times per real chunk.
-        let decision = LevelMeter.publication(producedSamples: 0, peak: 0,
-                                              now: 100, lastPublishedAt: 99.99)
+        let decision = LevelMeter.publication(
+            producedSamples: 0, peak: 0,
+            now: 100, lastPublishedAt: 99.99)
         #expect(decision == .hold)
     }
 
     @Test func aFamineReadsZeroOnceTheHoldExpires() {
-        let decision = LevelMeter.publication(producedSamples: 0, peak: 0,
-                                              now: 100, lastPublishedAt: 100 - LevelMeter.holdSeconds)
+        let decision = LevelMeter.publication(
+            producedSamples: 0, peak: 0,
+            now: 100, lastPublishedAt: 100 - LevelMeter.holdSeconds)
         #expect(decision == .publish(0))
     }
 
     @Test func aSoftFaultedTapReadsZeroImmediately() {
         // An all-zero chunk is still a chunk: `producedSamples > 0` with a zero peak, so it
         // publishes at once rather than waiting out the hold.
-        let decision = LevelMeter.publication(producedSamples: 1024, peak: 0,
-                                              now: 100, lastPublishedAt: 99.99)
+        let decision = LevelMeter.publication(
+            producedSamples: 1024, peak: 0,
+            now: 100, lastPublishedAt: 99.99)
         #expect(decision == .publish(0))
     }
 

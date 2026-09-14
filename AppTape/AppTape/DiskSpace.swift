@@ -38,7 +38,7 @@ enum DiskSpace {
         var isDirectory: ObjCBool = false
         while !(fm.fileExists(atPath: directory.path, isDirectory: &isDirectory) && isDirectory.boolValue) {
             let parent = directory.deletingLastPathComponent()
-            if parent == directory { break }   // reached the root without finding one
+            if parent == directory { break }  // reached the root without finding one
             directory = parent
         }
         return freeBytes(forVolumeContaining: directory)

@@ -47,8 +47,10 @@ final class LoudnessCorrectionModel {
         state = .measuring
         task = Task.detached(priority: .utility) { [weak self] in
             // The measure polls this detached task's own cancellation, so a supersede stops it early.
-            let measurement = (try? LoudnessMeter.measure(url: url, startFrame: start, frameCount: count,
-                                                          isCancelled: { Task.isCancelled }))
+            let measurement =
+                (try? LoudnessMeter.measure(
+                    url: url, startFrame: start, frameCount: count,
+                    isCancelled: { Task.isCancelled }))
                 ?? LoudnessMeasurement(integratedLUFS: nil, truePeakDBTP: -.infinity)
             if Task.isCancelled { return }
             // Bound before the hop: reading the weak capture inside the `MainActor.run` closure

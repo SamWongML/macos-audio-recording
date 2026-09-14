@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// Trim and Gain ride in extended attributes on the file, so they persist across an editor reopen
@@ -50,7 +51,7 @@ struct RecordingMetadataTests {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 2)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        #expect(RecordingMetadata.readGain(from: url) == 0)          // missing → 0
+        #expect(RecordingMetadata.readGain(from: url) == 0)  // missing → 0
         try RecordingMetadata.writeGain(-3.5, to: url)
         #expect(abs(RecordingMetadata.readGain(from: url) - (-3.5)) < 1e-6)
     }
@@ -79,10 +80,12 @@ struct RecordingMetadataTests {
         let url = try AudioFixtures.writeCAF(at: tempURL(), seconds: 5)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        #expect(RecordingMetadata.readDropouts(from: url).isEmpty)   // missing → clean
+        #expect(RecordingMetadata.readDropouts(from: url).isEmpty)  // missing → clean
 
-        let dropouts = [Dropout(start: 1000, frames: 512, cause: .overrun),
-                     Dropout(start: 96_000, frames: 48_000, cause: .rebuild)]
+        let dropouts = [
+            Dropout(start: 1000, frames: 512, cause: .overrun),
+            Dropout(start: 96_000, frames: 48_000, cause: .rebuild),
+        ]
         try RecordingMetadata.writeDropouts(dropouts, to: url)
         #expect(RecordingMetadata.readDropouts(from: url) == dropouts)
     }
@@ -115,7 +118,8 @@ struct RecordingMetadataTests {
                 setxattr(path, RecordingMetadata.dropoutsKey, bytes.baseAddress, json.utf8.count, 0, 0)
             }
         }
-        #expect(RecordingMetadata.readDropouts(from: url) == [Dropout(start: 0, frames: 512, cause: .overrun)])
+        #expect(
+            RecordingMetadata.readDropouts(from: url) == [Dropout(start: 0, frames: 512, cause: .overrun)])
     }
 
     @Test func metadataTravelsWithARename() throws {
@@ -133,8 +137,8 @@ struct RecordingMetadataTests {
         defer { try? FileManager.default.removeItem(at: renamed) }
 
         let after = try #require(AudioFixtures.adopt(renamed))
-        #expect(abs(after.trim.start - 1.5) < 1e-6)   // Trim survived
-        #expect(after.source == "Google Chrome")       // Source xattr survived, not parsed from name
-        #expect(after.name == "Kettle noises")         // the filename is the name
+        #expect(abs(after.trim.start - 1.5) < 1e-6)  // Trim survived
+        #expect(after.source == "Google Chrome")  // Source xattr survived, not parsed from name
+        #expect(after.name == "Kettle noises")  // the filename is the name
     }
 }

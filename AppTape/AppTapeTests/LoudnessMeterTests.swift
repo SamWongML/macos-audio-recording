@@ -1,6 +1,7 @@
-import Testing
 import AVFoundation
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The hand-rolled BS.1770-5 pass, driven through the streaming `LoudnessAnalyzer` dropout with
@@ -21,10 +22,11 @@ struct LoudnessMeterTests {
 
         let touchedMainThread = await Task.detached {
             var onMain = false
-            _ = try? LoudnessMeter.measure(url: url, startFrame: 0, frameCount: frames,
-                                           onProgress: { _ in
-                                               if pthread_main_np() != 0 { onMain = true }
-                                           })
+            _ = try? LoudnessMeter.measure(
+                url: url, startFrame: 0, frameCount: frames,
+                onProgress: { _ in
+                    if pthread_main_np() != 0 { onMain = true }
+                })
             return onMain
         }.value
 
@@ -32,8 +34,10 @@ struct LoudnessMeterTests {
     }
 
     /// `seconds` of a sine at `frequency`, `amplitude`, `channels` identical channels, plus a phase.
-    private func sine(seconds: Double, frequency: Double = 1000, amplitude: Double = 1.0,
-                      channels: Int = 1, phase: Double = 0) -> [Float] {
+    private func sine(
+        seconds: Double, frequency: Double = 1000, amplitude: Double = 1.0,
+        channels: Int = 1, phase: Double = 0
+    ) -> [Float] {
         let frames = Int(seconds * sampleRate)
         var out = [Float](repeating: 0, count: frames * channels)
         for f in 0..<frames {
@@ -56,19 +60,21 @@ struct LoudnessMeterTests {
     @Test func aFullScaleMonoSineReadsAboutMinusThreeLUFS() {
         let m = measure(sine(seconds: 2, amplitude: 1.0, channels: 1), channels: 1)
         let lufs = try! #require(m.integratedLUFS)
-        #expect(abs(lufs - (-3.0)) < 0.5)   // BS.1770 calibration: 0 dBFS 1 kHz sine ≈ −3.0 LUFS
+        #expect(abs(lufs - (-3.0)) < 0.5)  // BS.1770 calibration: 0 dBFS 1 kHz sine ≈ −3.0 LUFS
     }
 
     @Test func halvingAmplitudeDropsLoudnessBySixDecibels() {
         let loud = try! #require(measure(sine(seconds: 2, amplitude: 0.5), channels: 1).integratedLUFS)
         let quiet = try! #require(measure(sine(seconds: 2, amplitude: 0.25), channels: 1).integratedLUFS)
-        #expect(abs((loud - quiet) - 6.02) < 0.1)   // a −6 dB amplitude change is −6.02 LU, filter-independent
+        #expect(abs((loud - quiet) - 6.02) < 0.1)  // a −6 dB amplitude change is −6.02 LU, filter-independent
     }
 
     @Test func matchedStereoIsThreeDecibelsLouderThanTheSameMono() {
-        let mono = try! #require(measure(sine(seconds: 2, amplitude: 0.5, channels: 1), channels: 1).integratedLUFS)
-        let stereo = try! #require(measure(sine(seconds: 2, amplitude: 0.5, channels: 2), channels: 2).integratedLUFS)
-        #expect(abs((stereo - mono) - 3.01) < 0.1)   // two matched channels sum to +3.01 LU
+        let mono = try! #require(
+            measure(sine(seconds: 2, amplitude: 0.5, channels: 1), channels: 1).integratedLUFS)
+        let stereo = try! #require(
+            measure(sine(seconds: 2, amplitude: 0.5, channels: 2), channels: 2).integratedLUFS)
+        #expect(abs((stereo - mono) - 3.01) < 0.1)  // two matched channels sum to +3.01 LU
     }
 
     // MARK: - The relative gate
@@ -77,13 +83,13 @@ struct LoudnessMeterTests {
         // 1 s of a loud sine then 1 s of silence: the gate must report the loud part's loudness,
         // not the −3 dB average of loud-plus-silence.
         let loud = sine(seconds: 1, amplitude: 0.5, channels: 1)
-        let silence = [Float](repeating: 0, count: Int(sampleRate) )
+        let silence = [Float](repeating: 0, count: Int(sampleRate))
         let mixed = loud + silence
 
         let gated = try! #require(measure(mixed, channels: 1).integratedLUFS)
         let loudOnly = try! #require(measure(loud, channels: 1).integratedLUFS)
-        #expect(abs(gated - loudOnly) < 1.0)          // gating recovers the loud portion
-        #expect(gated > loudOnly - 1.0)               // and is far above the naive ~−3 dB average
+        #expect(abs(gated - loudOnly) < 1.0)  // gating recovers the loud portion
+        #expect(gated > loudOnly - 1.0)  // and is far above the naive ~−3 dB average
     }
 
     // MARK: - Unmeasurable ranges (0 dB, Export still completes)
@@ -111,7 +117,7 @@ struct LoudnessMeterTests {
         // A 12 kHz (fs/4) full-scale sine at 45°: every sample lands at ±0.707 (a −3.01 dBFS
         // sample peak), but the continuous waveform crests at 1.0.
         let m = measure(sine(seconds: 0.5, frequency: 12_000, amplitude: 1.0, phase: .pi / 4), channels: 1)
-        #expect(m.truePeakDBTP > -1.5)                // recovers close to 0 dBTP
-        #expect(m.truePeakDBTP > -3.01 + 1.0)         // clearly above the sample peak
+        #expect(m.truePeakDBTP > -1.5)  // recovers close to 0 dBTP
+        #expect(m.truePeakDBTP > -3.01 + 1.0)  // clearly above the sample peak
     }
 }

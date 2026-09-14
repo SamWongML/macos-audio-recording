@@ -48,7 +48,6 @@ enum Metrics {
 
 // MARK: - The two motion helpers
 
-
 extension View {
     /// Swaps the animation, and honours Reduce Motion. Reads as `.animation(_:value:)` and behaves
     /// as it normally does.

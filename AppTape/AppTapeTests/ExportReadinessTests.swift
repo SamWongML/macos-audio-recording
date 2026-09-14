@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The one decision that refuses an Export.
@@ -9,14 +10,17 @@ struct ExportReadinessTests {
 
     /// An ordinary settled Recording with a Trim in it, at a preset row that can encode it. Every rule
     /// below flips exactly one of these.
-    private func evaluate(isOpenable: Bool = true,
-                          isCapturing: Bool = false,
-                          frames: Int64 = 48_000,
-                          preset: QualityPreset = .high,
-                          format: SourceFormat? = nil,
-                          isExporting: Bool = false) -> ExportReadiness {
-        .evaluate(isOpenable: isOpenable, isCapturing: isCapturing, trimmedFrameCount: frames,
-                  preset: preset, format: format ?? stereo48, isExporting: isExporting)
+    private func evaluate(
+        isOpenable: Bool = true,
+        isCapturing: Bool = false,
+        frames: Int64 = 48_000,
+        preset: QualityPreset = .high,
+        format: SourceFormat? = nil,
+        isExporting: Bool = false
+    ) -> ExportReadiness {
+        .evaluate(
+            isOpenable: isOpenable, isCapturing: isCapturing, trimmedFrameCount: frames,
+            preset: preset, format: format ?? stereo48, isExporting: isExporting)
     }
 
     @Test func anOpenableSettledIdleRecordingWithFramesIsReady() {
@@ -54,12 +58,16 @@ struct ExportReadinessTests {
         #expect(evaluate(isOpenable: false, isCapturing: true).blocker == .unopenable)
         #expect(evaluate(isCapturing: true, frames: 0).blocker == .stillCapturing)
         #expect(evaluate(frames: 0, format: hiRes96).blocker == .emptyTrim)
-        #expect(evaluate(format: hiRes96, isExporting: true).blocker?.sentence
+        #expect(
+            evaluate(format: hiRes96, isExporting: true).blocker?.sentence
                 == "This quality can't encode this file.")
 
         // Everything wrong at once still reads as the first rule.
-        #expect(evaluate(isOpenable: false, isCapturing: true, frames: 0,
-                         format: hiRes96, isExporting: true).blocker == .unopenable)
+        #expect(
+            evaluate(
+                isOpenable: false, isCapturing: true, frames: 0,
+                format: hiRes96, isExporting: true
+            ).blocker == .unopenable)
     }
 
     // MARK: - The two rules that used to be accidents
@@ -101,7 +109,8 @@ struct ExportReadinessTests {
     /// ready on the fourth. The blocker is about the *effective preset*, never about the file alone.
     @Test func theSameSourceIsReadyOnARungThatCanEncodeIt() {
         #expect(evaluate(preset: .master, format: hiRes96) == .ready)
-        #expect(evaluate(preset: .standard, format: hiRes96).blocker?.sentence
+        #expect(
+            evaluate(preset: .standard, format: hiRes96).blocker?.sentence
                 == "This quality can't encode this file.")
     }
 
@@ -109,8 +118,10 @@ struct ExportReadinessTests {
 
     @Test func onlyStillCapturingUsesTheRecordGlyph() {
         #expect(ExportReadiness.Reason.stillCapturing.symbolName == "record.circle")
-        for reason: ExportReadiness.Reason in [.unopenable, .emptyTrim,
-                                               .unencodable("any"), .alreadyRunning] {
+        for reason: ExportReadiness.Reason in [
+            .unopenable, .emptyTrim,
+            .unencodable("any"), .alreadyRunning,
+        ] {
             #expect(reason.symbolName == "square.and.arrow.up")
         }
     }

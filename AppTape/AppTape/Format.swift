@@ -6,10 +6,13 @@ enum Format {
     /// and the playhead clock, where a Trim point is placed to the fraction of a second.
     static func time(_ seconds: Double, precise: Bool = false) -> String {
         let s = max(0, seconds)
-        let h = Int(s) / 3600, m = (Int(s) % 3600) / 60, sec = Int(s) % 60
+        let h = Int(s) / 3600
+        let m = (Int(s) % 3600) / 60
+        let sec = Int(s) % 60
         let frac = Int((s - s.rounded(.down)) * 100)
         if h > 0 { return String(format: "%d:%02d:%02d", h, m, sec) }
-        return precise ? String(format: "%d:%02d.%02d", m, sec, frac)
-                       : String(format: "%d:%02d", m, sec)
+        return precise
+            ? String(format: "%d:%02d.%02d", m, sec, frac)
+            : String(format: "%d:%02d", m, sec)
     }
 }

@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// `Trim` makes invalid states unrepresentable.
@@ -8,9 +9,9 @@ struct TrimTests {
 
     @Test func startCannotBePushedPastTheEnd() {
         var trim = Trim(start: 29.9, end: 29.95, duration: 30)
-        trim.setStart(29.95)              // aim the start at (and past) the end
+        trim.setStart(29.95)  // aim the start at (and past) the end
         #expect(trim.start <= trim.end - Trim.minimumLength + 1e-9)
-        #expect(trim.end == 29.95)        // the end did not move to make room
+        #expect(trim.end == 29.95)  // the end did not move to make room
     }
 
     @Test func endCannotBePulledBeforeTheStart() {
@@ -30,12 +31,12 @@ struct TrimTests {
 
     @Test func theMinimumLengthIsPreservedFromBothSides() {
         var fromStart = Trim(duration: 30)
-        fromStart.setStart(200)           // shove the start far right
+        fromStart.setStart(200)  // shove the start far right
         #expect(abs(fromStart.length - Trim.minimumLength) < 1e-9)
         #expect(fromStart.end == 30)
 
         var fromEnd = Trim(duration: 30)
-        fromEnd.setEnd(-200)              // shove the end far left
+        fromEnd.setEnd(-200)  // shove the end far left
         #expect(abs(fromEnd.length - Trim.minimumLength) < 1e-9)
         #expect(fromEnd.start == 0)
     }
@@ -46,7 +47,7 @@ struct TrimTests {
         var trim = Trim(duration: 0.1)
         #expect(trim.isFixed)
         #expect(trim.start == 0 && trim.end == 0.1)
-        trim.setStart(0.05)               // no-op: nothing can move
+        trim.setStart(0.05)  // no-op: nothing can move
         trim.setEnd(0.02)
         #expect(trim.start == 0 && trim.end == 0.1)
     }
@@ -74,7 +75,7 @@ struct TrimTests {
         // pull end below start and trap on `a...b`.
         let trim = Trim(start: 100, end: -100, duration: 5)
         #expect(trim.start <= trim.end)
-        #expect(trim.range.lowerBound <= trim.range.upperBound)   // would trap if crossed
+        #expect(trim.range.lowerBound <= trim.range.upperBound)  // would trap if crossed
     }
 
     @Test func resetRestoresTheFullRange() {
@@ -89,8 +90,10 @@ struct TrimTests {
     /// Every reachable Trim satisfies the invariants.
     @Test func fuzzNeverViolatesTheInvariants() {
         let durations = [0.0, 0.05, 0.2, 0.5, 1.0, 30.0, 1200.0]
-        let inputs: [Double] = [.nan, .infinity, -.infinity, -1e18, 1e18, -5, -0.3, -0.05,
-                                0, 0.05, 0.1, 0.2, 0.5, 15, 29.9, 30, 1199.9, 1e9]
+        let inputs: [Double] = [
+            .nan, .infinity, -.infinity, -1e18, 1e18, -5, -0.3, -0.05,
+            0, 0.05, 0.1, 0.2, 0.5, 15, 29.9, 30, 1199.9, 1e9,
+        ]
         var rng = LCG(seed: 0x5EED_1234)
 
         for duration in durations {
@@ -119,8 +122,9 @@ struct TrimTests {
         if trim.isFixed {
             #expect(trim.start == 0 && trim.end == trim.duration, "a fixed Trim moved")
         } else {
-            #expect(trim.length >= Trim.minimumLength - 1e-9,
-                    "Trim shorter than the minimum: \(trim.length)")
+            #expect(
+                trim.length >= Trim.minimumLength - 1e-9,
+                "Trim shorter than the minimum: \(trim.length)")
         }
     }
 }

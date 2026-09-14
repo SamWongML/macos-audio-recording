@@ -41,7 +41,7 @@ nonisolated final class AudioRingBuffer: @unchecked Sendable {
     func write(_ samples: UnsafeBufferPointer<Float>) -> Bool {
         let count = samples.count
         guard count > 0 else { return true }
-        let writeCount = written.load(ordering: .relaxed)   // only this thread writes `written`
+        let writeCount = written.load(ordering: .relaxed)  // only this thread writes `written`
         let readCount = read.load(ordering: .acquiring)
         let free = capacity - (writeCount - readCount)
         guard count <= free else {
@@ -52,8 +52,9 @@ nonisolated final class AudioRingBuffer: @unchecked Sendable {
         let firstChunk = min(count, capacity - start)
         storage.baseAddress!.advanced(by: start).update(from: samples.baseAddress!, count: firstChunk)
         if firstChunk < count {
-            storage.baseAddress!.update(from: samples.baseAddress!.advanced(by: firstChunk),
-                                        count: count - firstChunk)
+            storage.baseAddress!.update(
+                from: samples.baseAddress!.advanced(by: firstChunk),
+                count: count - firstChunk)
         }
         written.store(writeCount + count, ordering: .releasing)
         return true
@@ -62,7 +63,7 @@ nonisolated final class AudioRingBuffer: @unchecked Sendable {
     /// Consumer side: copy up to `destination.count` available samples out, and report how
     /// many. Zero means the ring is currently empty.
     func read(into destination: UnsafeMutableBufferPointer<Float>) -> Int {
-        let readCount = read.load(ordering: .relaxed)       // only this thread writes `read`
+        let readCount = read.load(ordering: .relaxed)  // only this thread writes `read`
         let writeCount = written.load(ordering: .acquiring)
         let available = writeCount - readCount
         let count = min(available, destination.count)

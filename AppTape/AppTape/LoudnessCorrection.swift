@@ -44,10 +44,12 @@ nonisolated struct LoudnessCorrection: Equatable {
 
     /// Computes the clamped gain for a measurement against the fixed contract. Defaults
     /// are the shipped numbers; parameters exist so a test can drive the boundary directly.
-    static func compute(for measurement: LoudnessMeasurement,
-                        target: Double = LoudnessTarget.integratedLUFS,
-                        ceiling: Double = LoudnessTarget.truePeakDBTP,
-                        cap: Double = LoudnessTarget.amplificationCapDB) -> LoudnessCorrection {
+    static func compute(
+        for measurement: LoudnessMeasurement,
+        target: Double = LoudnessTarget.integratedLUFS,
+        ceiling: Double = LoudnessTarget.truePeakDBTP,
+        cap: Double = LoudnessTarget.amplificationCapDB
+    ) -> LoudnessCorrection {
         // An undefined measurement gets no correction — never one invented from a missing figure.
         guard let integrated = measurement.integratedLUFS else {
             return LoudnessCorrection(decibels: 0, gainResult: .undefined)
@@ -103,9 +105,13 @@ nonisolated struct LoudnessCorrection: Equatable {
         let magnitude = value.formatted(.number.precision(.fractionLength(1)))
         // Normalise the sign so 0 shows without a leading "+", negatives use a real minus glyph.
         let signed: String
-        if value > 0.05 { signed = "+\(magnitude)" }
-        else if value < -0.05 { signed = magnitude.replacingOccurrences(of: "-", with: "−") }
-        else { signed = "0.0" }
+        if value > 0.05 {
+            signed = "+\(magnitude)"
+        } else if value < -0.05 {
+            signed = magnitude.replacingOccurrences(of: "-", with: "−")
+        } else {
+            signed = "0.0"
+        }
         return "\(signed) dB"
     }
 

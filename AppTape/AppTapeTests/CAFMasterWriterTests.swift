@@ -1,6 +1,7 @@
-import Testing
 import AVFoundation
 import AudioToolbox
+import Testing
+
 @testable import AppTape
 
 /// The write path is where the crash guarantee lives, so it is exercised end to end against real
@@ -38,7 +39,7 @@ struct CAFMasterWriterTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         let writer = try CAFMasterWriter(url: url, asbd: stereoFloat32(), sourceName: "Google Chrome")
-        let block = tone(frames: 4_800)   // 0.1 s
+        let block = tone(frames: 4_800)  // 0.1 s
         for _ in 0..<5 { try block.withUnsafeBufferPointer { try writer.write($0) } }
         #expect(writer.framesWritten == 24_000)
         writer.close()

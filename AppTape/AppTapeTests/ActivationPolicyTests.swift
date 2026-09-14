@@ -1,5 +1,6 @@
-import Testing
 import AppKit
+import Testing
+
 @testable import AppTape
 
 /// The flip is existence-based, not focus-based: any open editor

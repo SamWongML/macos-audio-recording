@@ -60,9 +60,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func statusItemClicked() {
-        let isRightClick = NSApp.currentEvent.map {
-            $0.type == .rightMouseUp || $0.modifierFlags.contains(.control)
-        } ?? false
+        let isRightClick =
+            NSApp.currentEvent.map {
+                $0.type == .rightMouseUp || $0.modifierFlags.contains(.control)
+            } ?? false
         // The one-click stop: a left-click while recording finalizes and opens the editor.
         if recorder.run.isRecording && !isRightClick {
             recorder.stop()
@@ -142,15 +143,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     /// amber Runway variant differ only by this colour.
     private static func makeDot(color: NSColor) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
-        guard let base = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Recording")?
-            .withSymbolConfiguration(config) else { return NSImage(size: NSSize(width: 10, height: 10)) }
+        guard
+            let base = NSImage(systemSymbolName: "circle.fill", accessibilityDescription: "Recording")?
+                .withSymbolConfiguration(config)
+        else { return NSImage(size: NSSize(width: 10, height: 10)) }
         let dot = NSImage(size: base.size, flipped: false) { rect in
             base.draw(in: rect)
             color.set()
             rect.fill(using: .sourceAtop)
             return true
         }
-        dot.isTemplate = false   // template would repaint it in the bar's colour, losing the tint
+        dot.isTemplate = false  // template would repaint it in the bar's colour, losing the tint
         return dot
     }
 

@@ -84,7 +84,8 @@ nonisolated final class ProcessTap {
                 [kAudioSubTapDriftCompensationKey: true, kAudioSubTapUIDKey: tapUID]
             ],
         ]
-        let madeAggregate = AudioHardwareCreateAggregateDevice(aggregateDescription as CFDictionary, &aggregate)
+        let madeAggregate = AudioHardwareCreateAggregateDevice(
+            aggregateDescription as CFDictionary, &aggregate)
         guard madeAggregate == noErr, aggregate != 0 else {
             throw TapError.createAggregate(madeAggregate)
         }
@@ -96,7 +97,8 @@ nonisolated final class ProcessTap {
         let hostClockScale = Double(timebase.numer) / Double(timebase.denom) / 1_000_000_000.0
         let marks = timestampRing
 
-        let madeProc = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, inputData, inInputTime, _, _ in
+        let madeProc = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) {
+            _, inputData, inInputTime, _, _ in
             // Realtime context: copy in and return.
             let firstFrame = ringBuffer.writtenSamples / channels
             var wroteAny = false
@@ -104,7 +106,9 @@ nonisolated final class ProcessTap {
             for buffer in buffers {
                 guard let data = buffer.mData else { continue }
                 let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
-                if ringBuffer.write(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count)) {
+                if ringBuffer.write(
+                    UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
+                {
                     wroteAny = true
                 }
             }
@@ -114,14 +118,16 @@ nonisolated final class ProcessTap {
             if wroteAny {
                 let ts = inInputTime.pointee
                 let valid = ts.mFlags.contains(.hostTimeValid)
-                marks.push(ringFrame: firstFrame, hostSeconds: Double(ts.mHostTime) * hostClockScale, valid: valid)
+                marks.push(
+                    ringFrame: firstFrame, hostSeconds: Double(ts.mHostTime) * hostClockScale, valid: valid)
             }
         }
         guard madeProc == noErr, let proc else { throw TapError.createIOProc(madeProc) }
 
         let started = AudioDeviceStart(aggregate, proc)
         guard started == noErr else {
-            throw started == kAudioDevicePermissionsError ? TapError.permissionDenied : TapError.start(started)
+            throw started == kAudioDevicePermissionsError
+                ? TapError.permissionDenied : TapError.start(started)
         }
 
         // Running — commit, so the defer leaves everything standing.
@@ -150,17 +156,20 @@ nonisolated final class ProcessTap {
     /// The bundle IDs the given HAL client object IDs belong to, read at capture start. A rebuild
     /// holds these rather than the object IDs, which are dead if the Source relaunched.
     static func bundleIDs(of objectIDs: [AudioObjectID]) -> Set<String> {
-        Set(objectIDs.compactMap { CAProperty.string(of: $0, kAudioProcessPropertyBundleID) }
-            .filter { !$0.isEmpty })
+        Set(
+            objectIDs.compactMap { CAProperty.string(of: $0, kAudioProcessPropertyBundleID) }
+                .filter { !$0.isEmpty })
     }
 
     /// Re-resolve the Source's live HAL clients by bundle ID — the re-resolution a rebuild
     /// performs, so a Source that quit and relaunched is picked up again at its new object IDs.
     static func resolveObjectIDs(matchingBundleIDs bundleIDs: Set<String>) -> [AudioObjectID] {
         guard !bundleIDs.isEmpty else { return [] }
-        return CAProperty.objectIDs(of: AudioObjectID(kAudioObjectSystemObject),
-                                    kAudioHardwarePropertyProcessObjectList)
-            .filter { bundleIDs.contains(CAProperty.string(of: $0, kAudioProcessPropertyBundleID) ?? "") }
+        return CAProperty.objectIDs(
+            of: AudioObjectID(kAudioObjectSystemObject),
+            kAudioHardwarePropertyProcessObjectList
+        )
+        .filter { bundleIDs.contains(CAProperty.string(of: $0, kAudioProcessPropertyBundleID) ?? "") }
     }
 
     deinit { stop() }

@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The lane's one mapping between points and seconds.
@@ -31,7 +32,7 @@ struct TimelineGeometryTests {
         let empty = TimelineGeometry(width: 760, duration: 0)
         #expect(empty.x(atTime: 0).isFinite)
         #expect(empty.time(atX: 380).isFinite)
-        #expect(empty.time(atX: 380) == 0)          // clamped to a zero-length Recording
+        #expect(empty.time(atX: 380) == 0)  // clamped to a zero-length Recording
         #expect(empty.visibleRange.upperBound == TimelineGeometry.minimumSpan)
     }
 
@@ -67,7 +68,7 @@ struct TimelineGeometryTests {
     @Test func xIsDeliberatelyUnclamped() {
         #expect(lane.x(atTime: 180) > lane.width)
         #expect(lane.x(atTime: -10) < 0)
-        #expect(lane.x(atTime: .nan) == 0)          // non-finite still refuses to propagate
+        #expect(lane.x(atTime: .nan) == 0)  // non-finite still refuses to propagate
     }
 
     /// Round-tripping a point through both directions returns it. This is the property the two
@@ -79,8 +80,9 @@ struct TimelineGeometryTests {
                 for fraction in stride(from: 0.0, through: 1.0, by: 0.05) {
                     let px = width * fraction
                     let back = g.x(atTime: g.time(atX: px))
-                    #expect(abs(back - px) <= 1e-9 * Swift.max(1, px),
-                            "round trip lost \(px) at \(width)×\(duration): got \(back)")
+                    #expect(
+                        abs(back - px) <= 1e-9 * Swift.max(1, px),
+                        "round trip lost \(px) at \(width)×\(duration): got \(back)")
                 }
             }
         }
@@ -90,7 +92,9 @@ struct TimelineGeometryTests {
     @Test func fuzzNeverLeavesTheRecordingAndNeverGoesNonFinite() {
         let widths: [Double] = [0, 1, 13, 106, 212, 760, 1e6, -4, .nan]
         let durations: [Double] = [0, 0.001, 0.2, 7.5, 90, 86_400, -3, .nan]
-        let points: [Double] = [.nan, .infinity, -.infinity, -1e18, 1e18, -70, 0, 0.5, 105, 380, 759, 760, 1e9]
+        let points: [Double] = [
+            .nan, .infinity, -.infinity, -1e18, 1e18, -70, 0, 0.5, 105, 380, 759, 760, 1e9,
+        ]
         var rng = LCG(seed: 0x7111_E11E)
 
         for width in widths {
@@ -106,12 +110,14 @@ struct TimelineGeometryTests {
                     #expect(g.x(atTime: t).isFinite, "x went non-finite at \(t)")
 
                     let box = g.centredBoxX(at: t, boxWidth: 212)
-                    #expect(box.isFinite && box >= 0 && box <= g.width,
-                            "the loupe left the lane: \(box) at width \(g.width)")
+                    #expect(
+                        box.isFinite && box >= 0 && box <= g.width,
+                        "the loupe left the lane: \(box) at width \(g.width)")
 
                     let label = g.labelX(at: t, reserving: 30)
-                    #expect(label.isFinite && label >= 0 && label <= g.width,
-                            "a label left the lane: \(label) at width \(g.width)")
+                    #expect(
+                        label.isFinite && label >= 0 && label <= g.width,
+                        "a label left the lane: \(label) at width \(g.width)")
                 }
             }
         }
@@ -170,8 +176,9 @@ struct TimelineGeometryTests {
         for duration in [0.5, 30.0, 90.0, 3600.0] {
             let g = TimelineGeometry(width: 760, duration: duration)
             #expect(abs(g.grabTolerance - duration * 0.02) < 1e-12)
-            #expect(abs(g.x(atTime: g.grabTolerance) - 760 * 0.02) < 1e-9,
-                    "the grab radius is not 2% of the lane at \(duration)s")
+            #expect(
+                abs(g.x(atTime: g.grabTolerance) - 760 * 0.02) < 1e-9,
+                "the grab radius is not 2% of the lane at \(duration)s")
         }
     }
 
@@ -193,8 +200,9 @@ struct TimelineGeometryTests {
                 guard g.tickInterval != TimelineGeometry.tickCandidates.last! else { continue }
                 let xs = g.ticks.map { g.x(atTime: $0) }
                 for (a, b) in zip(xs, xs.dropFirst()) {
-                    #expect(b - a >= TimelineGeometry.minimumTickSpacing - 1e-9,
-                            "labels \(a) and \(b) collide at \(width)×\(duration)")
+                    #expect(
+                        b - a >= TimelineGeometry.minimumTickSpacing - 1e-9,
+                        "labels \(a) and \(b) collide at \(width)×\(duration)")
                 }
             }
         }
@@ -209,19 +217,22 @@ struct TimelineGeometryTests {
         #expect(crowded.tickInterval == 3600)
         let xs = crowded.ticks.map { crowded.x(atTime: $0) }
         let gap = xs[1] - xs[0]
-        #expect(gap < TimelineGeometry.minimumTickSpacing,
-                "the limit this test documents has gone away — tighten the assertion above")
+        #expect(
+            gap < TimelineGeometry.minimumTickSpacing,
+            "the limit this test documents has gone away — tighten the assertion above")
     }
 
     /// The interval always comes off the ladder, and never climbs past its top.
     @Test func theIntervalIsAlwaysARungOfTheLadder() {
         for duration in [0.5, 30, 90, 3600, 86_400, 1e7] {
             let g = TimelineGeometry(width: 760, duration: duration)
-            #expect(TimelineGeometry.tickCandidates.contains(g.tickInterval),
-                    "\(g.tickInterval) is not on the ladder")
+            #expect(
+                TimelineGeometry.tickCandidates.contains(g.tickInterval),
+                "\(g.tickInterval) is not on the ladder")
         }
         // Past the top preset row there is nothing better to pick, so it saturates rather than trapping.
-        #expect(TimelineGeometry(width: 760, duration: 1e7).tickInterval
+        #expect(
+            TimelineGeometry(width: 760, duration: 1e7).tickInterval
                 == TimelineGeometry.tickCandidates.last!)
     }
 

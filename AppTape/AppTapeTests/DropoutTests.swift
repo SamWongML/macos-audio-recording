@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// Dropouts are recorded always; only ones a listener would notice are surfaced. The threshold is a
@@ -34,14 +35,18 @@ struct DropoutTests {
 
     @Test func justUnderTheTotalDoesNotSurface() {
         // Two 100 ms gaps total 200 ms — under 250 ms, and neither is individually over.
-        let dropouts = [Dropout(start: 0, frames: frames(100), cause: .overrun),
-                     Dropout(start: 5000, frames: frames(100), cause: .overrun)]
+        let dropouts = [
+            Dropout(start: 0, frames: frames(100), cause: .overrun),
+            Dropout(start: 5000, frames: frames(100), cause: .overrun),
+        ]
         #expect(DropoutSurfacing.isSurfaced(dropouts, sampleRate: rate) == false)
     }
 
     @Test func totalSecondsSumsEveryDropout() {
-        let dropouts = [Dropout(start: 0, frames: frames(100), cause: .overrun),
-                     Dropout(start: 5000, frames: frames(150), cause: .rebuild)]
+        let dropouts = [
+            Dropout(start: 0, frames: frames(100), cause: .overrun),
+            Dropout(start: 5000, frames: frames(150), cause: .rebuild),
+        ]
         #expect(abs(DropoutSurfacing.totalSeconds(dropouts, sampleRate: rate) - 0.250) < 1e-6)
     }
 }

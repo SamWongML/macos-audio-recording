@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import Testing
+
 @testable import AppTape
 
 /// The `Recording.stub(…)` every suite builds its Recordings with lives in the app target now, in
@@ -27,18 +28,21 @@ final class StubRecordingReader: RecordingReading {
     /// Every file in the folder is a settled Recording: it lists, it adopts, and its length and
     /// identity agree with what it read. The state every case starts from.
     @discardableResult
-    func place(_ name: String = "Google Chrome 2026-09-13 at 21.51.03",
-               seconds: Double = 90,
-               source: String? = "Google Chrome",
-               recordedAt: Date? = nil,
-               storedTrim: Trim? = nil,
-               dropouts: [Dropout] = [],
-               isOpenable: Bool = true) -> Recording {
+    func place(
+        _ name: String = "Google Chrome 2026-09-13 at 21.51.03",
+        seconds: Double = 90,
+        source: String? = "Google Chrome",
+        recordedAt: Date? = nil,
+        storedTrim: Trim? = nil,
+        dropouts: [Dropout] = [],
+        isOpenable: Bool = true
+    ) -> Recording {
         nextInode += 1
-        let recording = Recording.stub(name, seconds: seconds, storedSource: source,
-                                       recordedAt: recordedAt,
-                                       identity: FileIdentity(device: 1, inode: nextInode),
-                                       storedTrim: storedTrim, dropouts: dropouts, isOpenable: isOpenable)
+        let recording = Recording.stub(
+            name, seconds: seconds, storedSource: source,
+            recordedAt: recordedAt,
+            identity: FileIdentity(device: 1, inode: nextInode),
+            storedTrim: storedTrim, dropouts: dropouts, isOpenable: isOpenable)
         register(recording)
         return recording
     }
@@ -68,13 +72,14 @@ final class StubRecordingReader: RecordingReading {
         identities[newURL] = identity
         byteCounts[newURL] = length
         // A re-adopt of the new path reads the same file, so it reads the same facts.
-        adopted[newURL] = Recording.stub(newURL.deletingPathExtension().lastPathComponent,
-                                         seconds: recording.duration,
-                                         storedSource: recording.storedSource,
-                                         recordedAt: recording.recordedAt,
-                                         byteCount: recording.openedByteCount,
-                                         identity: identity,
-                                         in: newURL.deletingLastPathComponent())
+        adopted[newURL] = Recording.stub(
+            newURL.deletingPathExtension().lastPathComponent,
+            seconds: recording.duration,
+            storedSource: recording.storedSource,
+            recordedAt: recording.recordedAt,
+            byteCount: recording.openedByteCount,
+            identity: identity,
+            in: newURL.deletingLastPathComponent())
     }
 
     /// The file is gone.

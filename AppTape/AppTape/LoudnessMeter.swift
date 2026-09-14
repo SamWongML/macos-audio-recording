@@ -5,9 +5,11 @@ import Foundation
 nonisolated enum LoudnessMeter {
     /// Reads the master's trimmed range as interleaved Float32 (the encode's own client format) and
     /// measures it.
-    static func measure(url: URL, startFrame: Int64, frameCount: Int64,
-                        isCancelled: () -> Bool = { false },
-                        onProgress: (Double) -> Void = { _ in }) throws -> LoudnessMeasurement {
+    static func measure(
+        url: URL, startFrame: Int64, frameCount: Int64,
+        isCancelled: () -> Bool = { false },
+        onProgress: (Double) -> Void = { _ in }
+    ) throws -> LoudnessMeasurement {
         guard frameCount > 0 else {
             return LoudnessMeasurement(integratedLUFS: nil, truePeakDBTP: -.infinity)
         }
@@ -19,8 +21,10 @@ nonisolated enum LoudnessMeter {
 
         var format = AudioStreamBasicDescription()
         var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        try check(ExtAudioFileGetProperty(sourceRef, kExtAudioFileProperty_FileDataFormat,
-                                          &formatSize, &format), "reading the Recording's format")
+        try check(
+            ExtAudioFileGetProperty(
+                sourceRef, kExtAudioFileProperty_FileDataFormat,
+                &formatSize, &format), "reading the Recording's format")
         let channels = max(1, Int(format.mChannelsPerFrame))
         let rate = format.mSampleRate
         guard rate > 0 else {
@@ -29,8 +33,10 @@ nonisolated enum LoudnessMeter {
 
         var client = AudioStreamBasicDescription.interleavedFloat(rate: rate, channels: channels)
         let clientSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        try check(ExtAudioFileSetProperty(sourceRef, kExtAudioFileProperty_ClientDataFormat,
-                                          clientSize, &client), "preparing to read")
+        try check(
+            ExtAudioFileSetProperty(
+                sourceRef, kExtAudioFileProperty_ClientDataFormat,
+                clientSize, &client), "preparing to read")
         try check(ExtAudioFileSeek(sourceRef, startFrame), "seeking to the Trim")
 
         let analyzer = LoudnessAnalyzer(sampleRate: rate, channels: channels)
@@ -41,7 +47,7 @@ nonisolated enum LoudnessMeter {
         try scratch.withUnsafeMutableBufferPointer { buffer in
             let base = UnsafeMutableRawPointer(buffer.baseAddress!)
             while framesRead < frameCount {
-                if isCancelled() { break }   // superseded preview — stop early, result is discarded
+                if isCancelled() { break }  // superseded preview — stop early, result is discarded
                 let want = UInt32(min(Int64(chunkFrames), frameCount - framesRead))
                 var frames = want
                 var list = AudioBufferList()
@@ -50,7 +56,7 @@ nonisolated enum LoudnessMeter {
                 list.mBuffers.mDataByteSize = want * client.mBytesPerFrame
                 list.mBuffers.mData = base
                 try check(ExtAudioFileRead(sourceRef, &frames, &list), "reading the Recording")
-                guard frames > 0 else { break }   // master ran out early
+                guard frames > 0 else { break }  // master ran out early
                 analyzer.process(buffer.baseAddress!, frameCount: Int(frames))
                 framesRead += Int64(frames)
                 onProgress(Double(framesRead) / Double(frameCount))
@@ -63,7 +69,8 @@ nonisolated enum LoudnessMeter {
         case coreAudio(stage: String, status: OSStatus)
         var description: String {
             switch self {
-            case .coreAudio(let stage, let status): return "Loudness measurement failed while \(stage) (error \(status))."
+            case .coreAudio(let stage, let status):
+                return "Loudness measurement failed while \(stage) (error \(status))."
             }
         }
     }
@@ -85,15 +92,15 @@ nonisolated final class LoudnessAnalyzer {
     private var rlbState: [BiquadState]
 
     // Gating blocks.
-    private let subBlockFrames: Int          // 100 ms
-    private let blockFrames: Double          // 400 ms, for the mean-square denominator
-    private var subSumSquares: [Double]      // per-channel running sum over the current sub-block
+    private let subBlockFrames: Int  // 100 ms
+    private let blockFrames: Double  // 400 ms, for the mean-square denominator
+    private var subSumSquares: [Double]  // per-channel running sum over the current sub-block
     private var subFrameCount = 0
-    private var recentSubBlocks: [[Double]] = []   // last up to 4 completed sub-blocks (per channel)
-    private var blockPowers: [Double] = []         // channel-weighted mean square, one per 400 ms block
+    private var recentSubBlocks: [[Double]] = []  // last up to 4 completed sub-blocks (per channel)
+    private var blockPowers: [Double] = []  // channel-weighted mean square, one per 400 ms block
 
     // True peak: a 12-tap window per channel feeding the 4-phase interpolation FIR.
-    private var peakWindow: [Float]          // channels × 12, most-recent-last ring per channel
+    private var peakWindow: [Float]  // channels × 12, most-recent-last ring per channel
     private var peakPos = 0
     private var maxPeak: Float = 0
 
@@ -202,18 +209,26 @@ nonisolated final class LoudnessAnalyzer {
     /// BS.1770-4 Annex 2, Table 3: the 4× oversampling interpolation filter, 12 taps per phase.
     /// Phase 3 is phase 0 reversed and phase 2 is phase 1 reversed — the filter is linear phase.
     private static let peakCoefficients: [[Float]] = [
-        [0.0017089843750, 0.0109863281250, -0.0196533203125, 0.0332031250000,
-         -0.0594482421875, 0.1373291015625, 0.9721679687500, -0.1022949218750,
-         0.0476074218750, -0.0266113281250, 0.0148925781250, -0.0083007812500],
-        [-0.0291748046875, 0.0292968750000, -0.0517578125000, 0.0891113281250,
-         -0.1665039062500, 0.4650878906250, 0.7797851562500, -0.2003173828125,
-         0.1015625000000, -0.0582275390625, 0.0330810546875, -0.0189208984375],
-        [-0.0189208984375, 0.0330810546875, -0.0582275390625, 0.1015625000000,
-         -0.2003173828125, 0.7797851562500, 0.4650878906250, -0.1665039062500,
-         0.0891113281250, -0.0517578125000, 0.0292968750000, -0.0291748046875],
-        [-0.0083007812500, 0.0148925781250, -0.0266113281250, 0.0476074218750,
-         -0.1022949218750, 0.9721679687500, 0.1373291015625, -0.0594482421875,
-         0.0332031250000, -0.0196533203125, 0.0109863281250, 0.0017089843750],
+        [
+            0.0017089843750, 0.0109863281250, -0.0196533203125, 0.0332031250000,
+            -0.0594482421875, 0.1373291015625, 0.9721679687500, -0.1022949218750,
+            0.0476074218750, -0.0266113281250, 0.0148925781250, -0.0083007812500,
+        ],
+        [
+            -0.0291748046875, 0.0292968750000, -0.0517578125000, 0.0891113281250,
+            -0.1665039062500, 0.4650878906250, 0.7797851562500, -0.2003173828125,
+            0.1015625000000, -0.0582275390625, 0.0330810546875, -0.0189208984375,
+        ],
+        [
+            -0.0189208984375, 0.0330810546875, -0.0582275390625, 0.1015625000000,
+            -0.2003173828125, 0.7797851562500, 0.4650878906250, -0.1665039062500,
+            0.0891113281250, -0.0517578125000, 0.0292968750000, -0.0291748046875,
+        ],
+        [
+            -0.0083007812500, 0.0148925781250, -0.0266113281250, 0.0476074218750,
+            -0.1022949218750, 0.9721679687500, 0.1373291015625, -0.0594482421875,
+            0.0332031250000, -0.0196533203125, 0.0109863281250, 0.0017089843750,
+        ],
     ]
 
     // MARK: - Channel weights (Gc)
@@ -222,9 +237,9 @@ nonisolated final class LoudnessAnalyzer {
     /// and weights the two surrounds ~+1.5 dB. Captured audio is almost always mono or stereo.
     private static func channelWeights(_ channels: Int) -> [Double] {
         guard channels >= 6 else { return Array(repeating: 1.0, count: channels) }
-        var w = Array(repeating: 1.0, count: channels)   // L R C … in a standard 5.1 order
-        w[3] = 0.0                                        // LFE excluded
-        w[4] = 1.41; w[5] = 1.41                          // Ls, Rs
+        var w = Array(repeating: 1.0, count: channels)  // L R C … in a standard 5.1 order
+        w[3] = 0.0  // LFE excluded
+        w[4] = 1.41; w[5] = 1.41  // Ls, Rs
         return w
     }
 }
@@ -244,6 +259,8 @@ nonisolated struct Biquad {
     }
 
     /// The K-weighting pre-filter (Annex 1 stage 1): a high-frequency shelf.
+    // swift-format-ignore: AlwaysUseLowerCamelCase
+    // G, Q, K, Vh and Vb are BS.1770's own symbols; renaming them loses the spec.
     static func kWeightingShelf(sampleRate: Double) -> Biquad {
         let f0 = 1681.9744509555319
         let G = 3.99984385397
@@ -261,6 +278,8 @@ nonisolated struct Biquad {
     }
 
     /// The K-weighting RLB high-pass (Annex 1 stage 2), likewise derived at the real rate.
+    // swift-format-ignore: AlwaysUseLowerCamelCase
+    // G, Q, K, Vh and Vb are BS.1770's own symbols; renaming them loses the spec.
     static func kWeightingHighpass(sampleRate: Double) -> Biquad {
         let f0 = 38.13547087613982
         let Q = 0.5003270373253953

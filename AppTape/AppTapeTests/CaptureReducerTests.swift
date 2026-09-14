@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The reducer encodes a Recording begins at the first sound, the head

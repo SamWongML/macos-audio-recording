@@ -16,10 +16,11 @@ final class RecordingController {
     /// The production wiring: a real Core Audio capture, a real `statfs`, a real notification
     /// centre, the real editor window and the real file system.
     init() {
-        self.run = CaptureRun(builder: CoreAudioCaptureBuilder(),
-                              runway: LibraryVolumeProbe(),
-                              reporter: SystemCaptureReporter(),
-                              reader: RecordingReader())
+        self.run = CaptureRun(
+            builder: CoreAudioCaptureBuilder(),
+            runway: LibraryVolumeProbe(),
+            reporter: SystemCaptureReporter(),
+            reader: RecordingReader())
     }
 
     /// For a test or a preview: a controller over a run with doubles in it.
@@ -65,7 +66,8 @@ final class RecordingController {
             }
         }
         // Logout / power-off is the quit end arriving before `applicationWillTerminate`.
-        workspace.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
+        workspace.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) {
+            [weak self] _ in
             MainActor.assumeIsolated { self?.endForQuit() }
         }
     }

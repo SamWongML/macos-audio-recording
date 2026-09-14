@@ -34,14 +34,17 @@ final class SourceModel {
     /// The raw HAL client table. `running` is threaded in so the localized-name lookup
     /// shares the workspace snapshot `refresh` already took.
     private static func scanAudioProcesses(running: [NSRunningApplication]) -> [AudioProcess] {
-        CAProperty.objectIDs(of: AudioObjectID(kAudioObjectSystemObject),
-                             kAudioHardwarePropertyProcessObjectList).map { object in
+        CAProperty.objectIDs(
+            of: AudioObjectID(kAudioObjectSystemObject),
+            kAudioHardwarePropertyProcessObjectList
+        ).map { object in
             let pid = CAProperty.int32(of: object, kAudioProcessPropertyPID) ?? -1
             return AudioProcess(
                 id: object,
                 pid: pid,
                 bundleID: CAProperty.string(of: object, kAudioProcessPropertyBundleID) ?? "",
-                isRunningOutput: (CAProperty.uint32(of: object, kAudioProcessPropertyIsRunningOutput) ?? 0) != 0,
+                isRunningOutput: (CAProperty.uint32(of: object, kAudioProcessPropertyIsRunningOutput) ?? 0)
+                    != 0,
                 appName: running.first { $0.processIdentifier == pid }?.localizedName)
         }
     }

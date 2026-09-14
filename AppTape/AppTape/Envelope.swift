@@ -17,7 +17,6 @@ struct Envelope: Equatable, Sendable {
     /// long Recording appears progressively rather than after a stall.
     var complete = false
 
-
     /// One column per pixel over `range`, reduced from whatever buckets it spans. The lane asks
     /// for exactly its own width in columns, so the waveform always fits the width.
     func columns(over range: ClosedRange<Double>, count: Int) -> [Column] {
@@ -31,7 +30,9 @@ struct Envelope: Equatable, Sendable {
             let lo = max(0, Int(t0 / perBucket))
             let hi = min(mins.count, max(lo + 1, Int((t1 / perBucket).rounded(.up))))
             guard lo < hi else { out.append(Column(min: 0, max: 0, rms: 0)); continue }
-            var mn: Float = 0, mx: Float = 0, sum: Float = 0
+            var mn: Float = 0
+            var mx: Float = 0
+            var sum: Float = 0
             for b in lo..<hi {
                 mn = Swift.min(mn, mins[b]); mx = Swift.max(mx, maxs[b]); sum += rms[b]
             }
@@ -44,9 +45,13 @@ struct Envelope: Equatable, Sendable {
         var min: Float, max: Float, rms: Float
 
         /// Reduce one bucket of frames `[from, to)` to a mono min/max/rms over the channels.
-        nonisolated static func reduce(_ channels: UnsafePointer<UnsafeMutablePointer<Float>>,
-                                       from: Int, to: Int, channelCount: Int) -> Column {
-            var mn: Float = 0, mx: Float = 0, sq: Float = 0
+        nonisolated static func reduce(
+            _ channels: UnsafePointer<UnsafeMutablePointer<Float>>,
+            from: Int, to: Int, channelCount: Int
+        ) -> Column {
+            var mn: Float = 0
+            var mx: Float = 0
+            var sq: Float = 0
             for f in from..<to {
                 var v: Float = 0
                 for c in 0..<channelCount { v += channels[c][f] }
@@ -88,7 +93,7 @@ enum EnvelopeLoader {
         guard let file = try? AVAudioFile(forReading: url) else { return }
         let format = file.processingFormat
         let framesPerBucket = 256
-        let chunk = AVAudioFrameCount(framesPerBucket * 512)   // 131072 frames ~ 2.7 s
+        let chunk = AVAudioFrameCount(framesPerBucket * 512)  // 131072 frames ~ 2.7 s
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return }
 
         var env = Envelope(framesPerBucket: framesPerBucket, sampleRate: format.sampleRate)
@@ -141,9 +146,11 @@ enum EnvelopeLoader {
 
     /// Raw frames for the loupe, on a fixed time grid — the contract is the whole point.
     nonisolated static func loupeWindow(url: URL, centre: Double, span: Double, columns: Int) -> LoupeWindow {
-        var window = LoupeWindow(columns: Array(repeating: .init(min: 0, max: 0, rms: 0),
-                                                 count: max(0, columns)),
-                                 inside: 0..<0)
+        var window = LoupeWindow(
+            columns: Array(
+                repeating: .init(min: 0, max: 0, rms: 0),
+                count: max(0, columns)),
+            inside: 0..<0)
         guard columns > 0, let file = cachedFile(url) else { return window }
 
         let rate = file.processingFormat.sampleRate
@@ -159,20 +166,26 @@ enum EnvelopeLoader {
         let readStart = max(0, AVAudioFramePosition(((t0 + Double(first) * dt) * rate).rounded(.down)))
         let readEnd = min(file.length, AVAudioFramePosition(((t0 + Double(last) * dt) * rate).rounded(.up)))
         guard readEnd > readStart,
-              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
-                                            frameCapacity: AVAudioFrameCount(readEnd - readStart))
+            let buffer = AVAudioPCMBuffer(
+                pcmFormat: file.processingFormat,
+                frameCapacity: AVAudioFrameCount(readEnd - readStart))
         else { return window }
 
         file.framePosition = readStart
         guard (try? file.read(into: buffer, frameCount: AVAudioFrameCount(readEnd - readStart))) != nil,
-              let channels = buffer.floatChannelData else { return window }
+            let channels = buffer.floatChannelData
+        else { return window }
 
         let available = Int(buffer.frameLength)
         let channelCount = Int(file.processingFormat.channelCount)
 
         for i in first..<last {
-            let lo = Int(max(readStart, AVAudioFramePosition(((t0 + Double(i) * dt) * rate).rounded(.down))) - readStart)
-            let hi = Int(min(readEnd, AVAudioFramePosition(((t0 + Double(i + 1) * dt) * rate).rounded(.up))) - readStart)
+            let lo = Int(
+                max(readStart, AVAudioFramePosition(((t0 + Double(i) * dt) * rate).rounded(.down)))
+                    - readStart)
+            let hi = Int(
+                min(readEnd, AVAudioFramePosition(((t0 + Double(i + 1) * dt) * rate).rounded(.up)))
+                    - readStart)
             let a = Swift.min(Swift.max(0, lo), available)
             let b = Swift.min(Swift.max(a, hi), available)
             guard b > a else { continue }
@@ -195,7 +208,7 @@ struct LoupeWindow: Equatable {
     /// The fraction of the box, 0...1, where the file begins and ends.
     var insideFraction: ClosedRange<Double> {
         guard !columns.isEmpty else { return 0...0 }
-        return Double(inside.lowerBound) / Double(columns.count)
-            ... Double(inside.upperBound) / Double(columns.count)
+        return Double(inside.lowerBound) / Double(columns.count)...Double(inside.upperBound)
+            / Double(columns.count)
     }
 }

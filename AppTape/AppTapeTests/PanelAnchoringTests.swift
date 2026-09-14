@@ -1,5 +1,6 @@
-import Testing
 import CoreGraphics
+import Testing
+
 @testable import AppTape
 
 /// The status button's frame is a claim to be checked, not trusted: `[0,0 29x0]` before the item is
@@ -59,9 +60,11 @@ struct PanelAnchoringTests {
             mainScreen: mainScreen,
             statusBarThickness: 24
         )
-        #expect(anchor == .screenFallback(
-            PanelAnchoring.fallbackRect(mainScreen: mainScreen, statusBarThickness: 24)
-        ))
+        #expect(
+            anchor
+                == .screenFallback(
+                    PanelAnchoring.fallbackRect(mainScreen: mainScreen, statusBarThickness: 24)
+                ))
     }
 
     @Test func anchorFallsBackWhenThereIsNoFrameAtAll() {
@@ -72,7 +75,7 @@ struct PanelAnchoringTests {
             statusBarThickness: 24
         )
         if case .screenFallback = anchor {
-        // expected
+            // expected
         } else {
             Issue.record("expected a screen fallback when no button frame exists")
         }

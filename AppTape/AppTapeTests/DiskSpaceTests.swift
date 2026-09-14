@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The Export pre-flight refuses over-large exports before writing.

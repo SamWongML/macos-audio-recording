@@ -68,9 +68,10 @@ final class LibraryStore {
     /// rename something the store follows silently; this is that same file rename, initiated here.
     @discardableResult
     func rename(_ recording: Recording, to proposed: String) -> LibraryLocation.RenameOutcome {
-        let outcome = LibraryLocation.rename(recording.url.lastPathComponent,
-                                             to: proposed,
-                                             existingFileNames: recordings.map { $0.url.lastPathComponent })
+        let outcome = LibraryLocation.rename(
+            recording.url.lastPathComponent,
+            to: proposed,
+            existingFileNames: recordings.map { $0.url.lastPathComponent })
         guard case .rename(let fileName) = outcome else { return outcome }
         let destination = recording.url.deletingLastPathComponent().appendingPathComponent(fileName)
         do {
@@ -86,8 +87,10 @@ final class LibraryStore {
     // MARK: - Pure core (tested)
 
     /// Reconcile a fresh set of `urls` against the `Recording` objects already held.
-    static func reconcile(existing: [Recording], urls: [URL],
-                          reader: any RecordingReading) -> [Recording] {
+    static func reconcile(
+        existing: [Recording], urls: [URL],
+        reader: any RecordingReading
+    ) -> [Recording] {
         let byURL = Dictionary(existing.map { ($0.url, $0) }, uniquingKeysWith: { first, _ in first })
         var byIdentity: [FileIdentity: Recording] = [:]
         for recording in existing {
@@ -97,14 +100,16 @@ final class LibraryStore {
 
         return urls.compactMap { url -> Recording? in
             if let recording = byURL[url],
-               recording.stillDescribes(byteCount: reader.byteCount(of: url)) {
+                recording.stillDescribes(byteCount: reader.byteCount(of: url))
+            {
                 claimed.insert(ObjectIdentifier(recording))
                 return recording
             }
             // Same file at a new path: follow the rename rather than drop-and-re-add.
             if let identity = reader.identity(of: url), let recording = byIdentity[identity],
-               !claimed.contains(ObjectIdentifier(recording)),
-               recording.stillDescribes(byteCount: reader.byteCount(of: url)) {
+                !claimed.contains(ObjectIdentifier(recording)),
+                recording.stillDescribes(byteCount: reader.byteCount(of: url))
+            {
                 claimed.insert(ObjectIdentifier(recording))
                 recording.relocate(to: url)
                 return recording
@@ -118,7 +123,7 @@ final class LibraryStore {
     private func beginWatching() {
         guard source == nil else { return }
         let fd = open(directory.path, O_EVTONLY)
-        guard fd >= 0 else { return }   // folder not there yet; a later refresh retries
+        guard fd >= 0 else { return }  // folder not there yet; a later refresh retries
         watchedFD = fd
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd, eventMask: [.write, .delete, .rename, .revoke], queue: .main)

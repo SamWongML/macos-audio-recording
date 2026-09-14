@@ -5,7 +5,8 @@ nonisolated enum LibraryLocation {
     /// `~/Music/AppTape/`. Not created here — the directory is made lazily at the first
     /// frame, alongside the file, so an arm-then-never-play leaves no trace.
     static var directory: URL {
-        let music = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first
+        let music =
+            FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Music")
         return music.appendingPathComponent("AppTape", isDirectory: true)
     }
@@ -21,10 +22,12 @@ nonisolated enum LibraryLocation {
 
     /// A `.caf` filename that does not collide with anything `exists` reports, resolving a clash by
     /// appending ` 2`, ` 3`, … rather than overwriting — a master overwritten is unrecoverable.
-    static func uniqueFileName(source: String,
-                               date: Date,
-                               timeZone: TimeZone = .current,
-                               exists: (String) -> Bool) -> String {
+    static func uniqueFileName(
+        source: String,
+        date: Date,
+        timeZone: TimeZone = .current,
+        exists: (String) -> Bool
+    ) -> String {
         let base = baseName(source: source, date: date, timeZone: timeZone)
         let first = "\(base).caf"
         guard exists(first) else { return first }
@@ -87,9 +90,11 @@ extension LibraryLocation {
     }
 
     /// Resolve a rename.
-    static func rename(_ currentFileName: String,
-                       to proposed: String,
-                       existingFileNames: [String]) -> RenameOutcome {
+    static func rename(
+        _ currentFileName: String,
+        to proposed: String,
+        existingFileNames: [String]
+    ) -> RenameOutcome {
         let trimmed = proposed.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .refused(.empty) }
         if let illegal = trimmed.first(where: { $0 == "/" || $0 == ":" }) {
@@ -114,7 +119,8 @@ extension LibraryLocation {
     /// Whether `baseName` still looks like a name this app generated at capture — the
     /// `baseName(source:date:)` pattern above, optionally carrying `uniqueFileName`'s ` 2` suffix.
     static func isGeneratedName(_ baseName: String) -> Bool {
-        baseName.range(of: #"^.+ \d{4}-\d{2}-\d{2} at \d{2}\.\d{2}\.\d{2}( \d+)?$"#,
-                       options: .regularExpression) != nil
+        baseName.range(
+            of: #"^.+ \d{4}-\d{2}-\d{2} at \d{2}\.\d{2}\.\d{2}( \d+)?$"#,
+            options: .regularExpression) != nil
     }
 }

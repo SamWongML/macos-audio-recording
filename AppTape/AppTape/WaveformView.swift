@@ -20,17 +20,23 @@ struct WaveformShape: View {
             let scale = size.height / 2 * Envelope.drawnHeadroom
             let step = size.width / Double(columns.count)
 
-            context.fill(path(columns.map { ($0.min, $0.max) },
-                              size: size, mid: mid, scale: scale, step: step),
-                         with: .style(peakStyle))
-            context.fill(path(columns.map { (-$0.rms, $0.rms) },
-                              size: size, mid: mid, scale: scale, step: step),
-                         with: .style(bodyStyle))
+            context.fill(
+                path(
+                    columns.map { ($0.min, $0.max) },
+                    size: size, mid: mid, scale: scale, step: step),
+                with: .style(peakStyle))
+            context.fill(
+                path(
+                    columns.map { (-$0.rms, $0.rms) },
+                    size: size, mid: mid, scale: scale, step: step),
+                with: .style(bodyStyle))
         }
     }
 
     /// No minimum thickness: a column with no signal draws nothing.
-    private func path(_ pairs: [(Float, Float)], size: CGSize, mid: Double, scale: Double, step: Double) -> Path {
+    private func path(
+        _ pairs: [(Float, Float)], size: CGSize, mid: Double, scale: Double, step: Double
+    ) -> Path {
         var p = Path()
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, pair) in pairs.enumerated() {
@@ -53,7 +59,8 @@ nonisolated struct WaveformPath: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
         guard !columns.isEmpty else { return p }
-        let mid = rect.midY, scale = rect.height / 2 * Envelope.drawnHeadroom
+        let mid = rect.midY
+        let scale = rect.height / 2 * Envelope.drawnHeadroom
         let step = rect.width / Double(columns.count)
         p.move(to: CGPoint(x: 0, y: mid))
         for (i, column) in columns.enumerated() {

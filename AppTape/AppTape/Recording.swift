@@ -53,11 +53,13 @@ final class Recording: Identifiable {
         let subThreshold = DropoutSurfacing.subThreshold(dropouts, sampleRate: sampleRate)
         let total = DropoutSurfacing.totalSeconds(dropouts, sampleRate: sampleRate)
         if isSurfacedForDropouts {
-            return "^[\(dropouts.count) Dropout](inflect: true) · \(Self.paddedDurationText(total)) of silence padded in"
+            return
+                "^[\(dropouts.count) Dropout](inflect: true) · \(Self.paddedDurationText(total)) of silence padded in"
         }
         guard !subThreshold.isEmpty else { return nil }
         let subTotal = DropoutSurfacing.totalSeconds(subThreshold, sampleRate: sampleRate)
-        return "^[\(subThreshold.count) brief Dropout](inflect: true) · \(Self.paddedDurationText(subTotal)) padded, too short to hear"
+        return
+            "^[\(subThreshold.count) brief Dropout](inflect: true) · \(Self.paddedDurationText(subTotal)) padded, too short to hear"
     }
 
     /// Padded silence read as milliseconds under a second, seconds above — the scale the user can act on.
@@ -109,19 +111,21 @@ final class Recording: Identifiable {
     }
 
     /// A Recording, already read.
-    init(url: URL,
-         frameCount: AVAudioFramePosition,
-         sampleRate: Double,
-         channelCount: Int = 2,
-         sourceBitsPerChannel: Int = 32,
-         isOpenable: Bool = true,
-         openedByteCount: Int64? = nil,
-         fileIdentity: FileIdentity? = nil,
-         storedSource: String? = nil,
-         recordedAt: Date? = nil,
-         storedTrim: Trim? = nil,
-         gain: Double = 0,
-         dropouts: [Dropout] = []) {
+    init(
+        url: URL,
+        frameCount: AVAudioFramePosition,
+        sampleRate: Double,
+        channelCount: Int = 2,
+        sourceBitsPerChannel: Int = 32,
+        isOpenable: Bool = true,
+        openedByteCount: Int64? = nil,
+        fileIdentity: FileIdentity? = nil,
+        storedSource: String? = nil,
+        recordedAt: Date? = nil,
+        storedTrim: Trim? = nil,
+        gain: Double = 0,
+        dropouts: [Dropout] = []
+    ) {
         self.url = url
         self.frameCount = frameCount
         self.sampleRate = sampleRate

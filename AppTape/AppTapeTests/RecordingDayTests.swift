@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The sidebar's day grouping.
@@ -70,9 +71,10 @@ struct RecordingDayTests {
     /// the own consequence, and nothing checked it: `recordedAt` is when capture *started*, so a
     /// Recording that ran across midnight is filed under the day it began.
     @Test func aRecordingThatRanAcrossMidnightIsFiledUnderTheDayItBegan() {
-        let acrossMidnight = Recording.stub("acrossMidnight",
-                                           seconds: 40 * 60,
-                                           recordedAt: midnight(daysAgo: 0, plusMinutes: -10))
+        let acrossMidnight = Recording.stub(
+            "acrossMidnight",
+            seconds: 40 * 60,
+            recordedAt: midnight(daysAgo: 0, plusMinutes: -10))
         let days = RecordingDay.group([acrossMidnight])
         #expect(days.count == 1)
         #expect(days[0].title == "Yesterday")

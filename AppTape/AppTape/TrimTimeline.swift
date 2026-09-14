@@ -107,15 +107,18 @@ struct TrimTimeline: View {
     /// The lane's audio, drawn twice: colourless everywhere, in colour inside the Trim.
     private func waveform(_ geometry: TimelineGeometry) -> some View {
         let columns = envelope.columns(over: geometry.visibleRange, count: geometry.columnCount)
-        let shape = WaveformShape(columns: columns,
-                                  peakStyle: AnyShapeStyle(Palette.signal),
-                                  bodyStyle: AnyShapeStyle(Palette.signalMuted))
-        let quiet = WaveformShape(columns: columns,
-                                  peakStyle: AnyShapeStyle(Palette.signalQuiet),
-                                  bodyStyle: AnyShapeStyle(Palette.signalMutedQuiet))
+        let shape = WaveformShape(
+            columns: columns,
+            peakStyle: AnyShapeStyle(Palette.signal),
+            bodyStyle: AnyShapeStyle(Palette.signalMuted))
+        let quiet = WaveformShape(
+            columns: columns,
+            peakStyle: AnyShapeStyle(Palette.signalQuiet),
+            bodyStyle: AnyShapeStyle(Palette.signalMutedQuiet))
         let keptStart = geometry.x(atTime: recording.trim.lowerBound)
-        let keptWidth = geometry.points(from: recording.trim.lowerBound,
-                                        to: recording.trim.upperBound, minimum: 0)
+        let keptWidth = geometry.points(
+            from: recording.trim.lowerBound,
+            to: recording.trim.upperBound, minimum: 0)
         return ZStack(alignment: .topLeading) {
             quiet
             shape.mask(alignment: .topLeading) {
@@ -131,8 +134,9 @@ struct TrimTimeline: View {
             .onChanged { value in
                 if !gestureActive {
                     gestureActive = true
-                    draggingHandle = nearestHandle(to: geometry.time(atX: value.startLocation.x),
-                                                   within: geometry.grabTolerance)
+                    draggingHandle = nearestHandle(
+                        to: geometry.time(atX: value.startLocation.x),
+                        within: geometry.grabTolerance)
                 }
                 let t = geometry.time(atX: value.location.x)
                 if let handle = draggingHandle {
@@ -182,9 +186,12 @@ struct TrimTimeline: View {
             let start = dropout.startSeconds(sampleRate: rate)
             let end = dropout.endSeconds(sampleRate: rate)
             DropoutBand()
-                .frame(width: geometry.points(from: start, to: end,
-                                              minimum: Self.minimumDropoutWidth),
-                       height: height)
+                .frame(
+                    width: geometry.points(
+                        from: start, to: end,
+                        minimum: Self.minimumDropoutWidth),
+                    height: height
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .offset(x: geometry.x(atTime: start))
                 .allowsHitTesting(false)
@@ -193,7 +200,8 @@ struct TrimTimeline: View {
 
     /// Dropout bands inside the loupe, at true width (no minimum) — the loupe exists to show raw
     /// detail, so a Dropout is drawn exactly as wide as it is against the ±2 s window.
-    private func loupeDropouts(centre: Double, span: Double, boxWidth: Double, boxHeight: Double) -> some View {
+    private func loupeDropouts(centre: Double, span: Double, boxWidth: Double, boxHeight: Double) -> some View
+    {
         let rate = recording.sampleRate
         let lo = centre - span / 2
         return ForEach(Array(recording.dropouts.enumerated()), id: \.offset) { _, dropout in
@@ -275,8 +283,9 @@ struct TrimTimeline: View {
         let span = Self.loupeSpan
         let boxWidth = Self.loupeBoxWidth
         let centre = loupeCentre
-        let window = EnvelopeLoader.loupeWindow(url: recording.url, centre: centre,
-                                                span: span, columns: Self.loupeColumns)
+        let window = EnvelopeLoader.loupeWindow(
+            url: recording.url, centre: centre,
+            span: span, columns: Self.loupeColumns)
         // Normalised to its own window: unscaled it was a flat line exactly where it matters —
         // the quiet gap between two phrases, which is where an edit lands.
         let columns = Envelope.normalised(window.columns)
@@ -296,16 +305,18 @@ struct TrimTimeline: View {
                         .frame(width: boxWidth * (1 - bounds.upperBound))
                 }
 
-                WaveformShape(columns: columns,
-                              peakStyle: AnyShapeStyle(Palette.signal),
-                              bodyStyle: AnyShapeStyle(Palette.signalMuted))
-                    .mask {
-                        HStack(spacing: 0) {
-                            Color.clear.frame(width: boxWidth * bounds.lowerBound)
-                            Color.black.frame(width: boxWidth * (bounds.upperBound - bounds.lowerBound))
-                            Color.clear
-                        }
+                WaveformShape(
+                    columns: columns,
+                    peakStyle: AnyShapeStyle(Palette.signal),
+                    bodyStyle: AnyShapeStyle(Palette.signalMuted)
+                )
+                .mask {
+                    HStack(spacing: 0) {
+                        Color.clear.frame(width: boxWidth * bounds.lowerBound)
+                        Color.black.frame(width: boxWidth * (bounds.upperBound - bounds.lowerBound))
+                        Color.clear
                     }
+                }
 
                 HStack(spacing: 0) {
                     if bounds.lowerBound > 0 {
@@ -320,8 +331,9 @@ struct TrimTimeline: View {
                 }
 
                 // Dropouts at true width inside the loupe, drawn over the waveform silence they pad.
-                loupeDropouts(centre: centre, span: span, boxWidth: boxWidth,
-                           boxHeight: Self.loupeBoxHeight)
+                loupeDropouts(
+                    centre: centre, span: span, boxWidth: boxWidth,
+                    boxHeight: Self.loupeBoxHeight)
 
                 // The crosshair is the contract made visible: it sits at the box's centre, and the
                 // box's centre is `centre`.
@@ -345,9 +357,12 @@ struct TrimTimeline: View {
         // Reduce Transparency swaps the vibrant material for an opaque window background, as
         // `PanelView` already did — the editor honoured neither accessibility setting (finding
         // 15).
-        .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
-                                       : AnyShapeStyle(.regularMaterial),
-                    in: RoundedRectangle(cornerRadius: 9))
+        .background(
+            reduceTransparency
+                ? AnyShapeStyle(Color(nsColor: .windowBackgroundColor))
+                : AnyShapeStyle(.regularMaterial),
+            in: RoundedRectangle(cornerRadius: 9)
+        )
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(.separator))
         .shadow(radius: 10, y: 3)
         // Inside the lane, not above it: floated above, it was clipped by the window on a layout
@@ -413,55 +428,63 @@ struct TrimTimeline: View {
 // fixture that does not ship has to be guarded where it is used as well as where it is defined.
 #if DEBUG
 
-/// The lane's three states, which is the whole reason `capture` is accepted rather than reached for
-///.
+    /// The lane's three states, which is the whole reason `capture` is accepted rather than reached for
+    ///.
 
-#Preview("Lane · settled") {
-    TrimTimeline(recording: .stub(),
-                 envelope: .preview(),
-                 player: AudioPlayer(),
-                 capture: PreviewCapture.settled,
-                 onTrimCommitted: {})
+    #Preview("Lane · settled") {
+        TrimTimeline(
+            recording: .stub(),
+            envelope: .preview(),
+            player: AudioPlayer(),
+            capture: PreviewCapture.settled,
+            onTrimCommitted: {}
+        )
         .frame(width: 760, height: 300)
         .padding(Metrics.xl)
-}
+    }
 
-/// A Recording still being captured: the lane declines to draw a reading of a file that is still
-/// growing and says why, and the transport offers no Play.
-#Preview("Lane · capturing") {
-    let recording = Recording.stub(seconds: 93)
-    TrimTimeline(recording: recording,
-                 envelope: .preview(),
-                 player: AudioPlayer(),
-                 capture: PreviewCapture.capturing(recording),
-                 onTrimCommitted: {})
+    /// A Recording still being captured: the lane declines to draw a reading of a file that is still
+    /// growing and says why, and the transport offers no Play.
+    #Preview("Lane · capturing") {
+        let recording = Recording.stub(seconds: 93)
+        TrimTimeline(
+            recording: recording,
+            envelope: .preview(),
+            player: AudioPlayer(),
+            capture: PreviewCapture.capturing(recording),
+            onTrimCommitted: {}
+        )
         .frame(width: 760, height: 300)
         .padding(Metrics.xl)
-}
+    }
 
-/// A lane narrower than the loupe's own box — the width class that was never rendered, and where
-/// the loupe's clamp inverted: below 212 pt it stopped tracking the drag, and below 106 it sat off
-/// the leading edge entirely.
-#Preview("Lane · narrower than the loupe") {
-    TrimTimeline(recording: .stub(seconds: 93),
-                 envelope: .preview(),
-                 player: AudioPlayer(),
-                 capture: PreviewCapture.settled,
-                 onTrimCommitted: {})
+    /// A lane narrower than the loupe's own box — the width class that was never rendered, and where
+    /// the loupe's clamp inverted: below 212 pt it stopped tracking the drag, and below 106 it sat off
+    /// the leading edge entirely.
+    #Preview("Lane · narrower than the loupe") {
+        TrimTimeline(
+            recording: .stub(seconds: 93),
+            envelope: .preview(),
+            player: AudioPlayer(),
+            capture: PreviewCapture.settled,
+            onTrimCommitted: {}
+        )
         .frame(width: 180, height: 300)
         .padding(Metrics.xl)
-}
+    }
 
-/// A Recording with no frames at all — adopted moments after the first sound created it, or one that
-/// could not be opened. The other half of `isStillArriving`, and the half zero-frames alone was.
-#Preview("Lane · no audio yet") {
-    TrimTimeline(recording: .stub(seconds: 0),
-                 envelope: Envelope(),
-                 player: AudioPlayer(),
-                 capture: PreviewCapture.settled,
-                 onTrimCommitted: {})
+    /// A Recording with no frames at all — adopted moments after the first sound created it, or one that
+    /// could not be opened. The other half of `isStillArriving`, and the half zero-frames alone was.
+    #Preview("Lane · no audio yet") {
+        TrimTimeline(
+            recording: .stub(seconds: 0),
+            envelope: Envelope(),
+            player: AudioPlayer(),
+            capture: PreviewCapture.settled,
+            onTrimCommitted: {}
+        )
         .frame(width: 760, height: 300)
         .padding(Metrics.xl)
-}
+    }
 
 #endif

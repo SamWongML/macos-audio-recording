@@ -33,6 +33,6 @@ final class ExportPreference {
         self.defaults = defaults
         let stored = defaults.string(forKey: Self.key).flatMap(QualityPreset.init(rawValue:))
         self.preset = stored ?? .defaultPreset
-        self.normalizeLoudness = defaults.bool(forKey: Self.normalizeKey)   // absent → false (off)
+        self.normalizeLoudness = defaults.bool(forKey: Self.normalizeKey)  // absent → false (off)
     }
 }

@@ -18,9 +18,10 @@ struct RecordingReader: RecordingReading {
     /// Every playable-looking file directly in `directory`, in whatever order the folder hands them
     /// over.
     func audioFiles(in directory: URL) -> [URL] {
-        let urls = (try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])) ?? []
+        let urls =
+            (try? FileManager.default.contentsOfDirectory(
+                at: directory, includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants])) ?? []
         return urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true }
     }
 
@@ -46,19 +47,20 @@ struct RecordingReader: RecordingReading {
         // ALAC estimate stays sane (which presets an adopted file even offers is the call).
         let bits = file.map { Int($0.fileFormat.streamDescription.pointee.mBitsPerChannel) } ?? 0
 
-        return Recording(url: url,
-                         frameCount: frameCount,
-                         sampleRate: sampleRate,
-                         channelCount: max(1, Int(file?.fileFormat.channelCount ?? 1)),
-                         sourceBitsPerChannel: bits > 0 ? bits : 32,
-                         isOpenable: file != nil,
-                         openedByteCount: info.map { Int64($0.st_size) },
-                         fileIdentity: info.map { FileIdentity(device: $0.st_dev, inode: $0.st_ino) },
-                         storedSource: storedSource,
-                         recordedAt: dates?.creationDate ?? dates?.contentModificationDate,
-                         storedTrim: file == nil ? nil : RecordingMetadata.readTrim(from: url, duration: duration),
-                         gain: file == nil ? 0 : RecordingMetadata.readGain(from: url),
-                         dropouts: file == nil ? [] : RecordingMetadata.readDropouts(from: url))
+        return Recording(
+            url: url,
+            frameCount: frameCount,
+            sampleRate: sampleRate,
+            channelCount: max(1, Int(file?.fileFormat.channelCount ?? 1)),
+            sourceBitsPerChannel: bits > 0 ? bits : 32,
+            isOpenable: file != nil,
+            openedByteCount: info.map { Int64($0.st_size) },
+            fileIdentity: info.map { FileIdentity(device: $0.st_dev, inode: $0.st_ino) },
+            storedSource: storedSource,
+            recordedAt: dates?.creationDate ?? dates?.contentModificationDate,
+            storedTrim: file == nil ? nil : RecordingMetadata.readTrim(from: url, duration: duration),
+            gain: file == nil ? 0 : RecordingMetadata.readGain(from: url),
+            dropouts: file == nil ? [] : RecordingMetadata.readDropouts(from: url))
     }
 
     /// The file's data length, or nil if it cannot be stat'd.
@@ -76,9 +78,11 @@ struct RecordingReader: RecordingReading {
     /// used to stat the same path twice, once for each.
     private static func fileStat(_ url: URL) -> stat? {
         var info = stat()
-        guard url.withUnsafeFileSystemRepresentation({ path in
-            path != nil && stat(path, &info) == 0
-        }) else { return nil }
+        guard
+            url.withUnsafeFileSystemRepresentation({ path in
+                path != nil && stat(path, &info) == 0
+            })
+        else { return nil }
         return info
     }
 

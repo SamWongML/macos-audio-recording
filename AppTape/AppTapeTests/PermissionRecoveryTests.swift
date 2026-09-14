@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The recovery surface's two load-bearing facts: the deep link is exactly the one verified to open
@@ -6,8 +7,9 @@ import Testing
 /// own broader heading.
 struct PermissionRecoveryTests {
     @Test func deepLinkIsTheVerifiedAudioCapturePane() {
-        #expect(PermissionRecovery.settingsURLString
-            == "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture")
+        #expect(
+            PermissionRecovery.settingsURLString
+                == "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture")
         // It must parse as a URL, or `NSWorkspace.open` silently does nothing.
         #expect(PermissionRecovery.settingsURL != nil)
     }

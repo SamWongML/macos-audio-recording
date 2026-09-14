@@ -21,16 +21,18 @@ nonisolated final class CAFMasterWriter {
 
         var file: AudioFileID?
         // Empty flags: do not erase.
-        let create = AudioFileCreateWithURL(url as CFURL, kAudioFileCAFType, &self.asbd,
-                                            AudioFileFlags(), &file)
+        let create = AudioFileCreateWithURL(
+            url as CFURL, kAudioFileCAFType, &self.asbd,
+            AudioFileFlags(), &file)
         guard create == noErr, let file else { throw WriteError.create(create) }
         self.fileID = file
 
         // Defer size updates: the header is not rewritten per write, which is exactly what makes
         // the negative-mChunkSize crash story hold.
         var deferUpdates: UInt32 = 1
-        let setDefer = AudioFileSetProperty(file, kAudioFilePropertyDeferSizeUpdates,
-                                            UInt32(MemoryLayout<UInt32>.size), &deferUpdates)
+        let setDefer = AudioFileSetProperty(
+            file, kAudioFilePropertyDeferSizeUpdates,
+            UInt32(MemoryLayout<UInt32>.size), &deferUpdates)
         guard setDefer == noErr else {
             AudioFileClose(file)
             self.fileID = nil
@@ -40,7 +42,7 @@ nonisolated final class CAFMasterWriter {
         // Stamp metadata now, before any audio, so a crash leaves it in place.
         try? RecordingMetadata.writeSource(sourceName, to: url)
         var resourceValues = URLResourceValues()
-        resourceValues.isExcludedFromBackup = true   // a 1.4 GB/hour intermediate has no place in Time Machine
+        resourceValues.isExcludedFromBackup = true  // a 1.4 GB/hour intermediate has no place in Time Machine
         var mutableURL = url
         try? mutableURL.setResourceValues(resourceValues)
     }
@@ -53,8 +55,9 @@ nonisolated final class CAFMasterWriter {
         guard frameCount > 0 else { return }
         var numPackets = UInt32(frameCount)
         let byteCount = UInt32(samples.count * MemoryLayout<Float>.size)
-        let status = AudioFileWritePackets(fileID, false, byteCount, nil,
-                                           framesWritten, &numPackets, samples.baseAddress!)
+        let status = AudioFileWritePackets(
+            fileID, false, byteCount, nil,
+            framesWritten, &numPackets, samples.baseAddress!)
         guard status == noErr else { throw WriteError.write(status) }
         framesWritten += Int64(numPackets)
     }

@@ -58,8 +58,8 @@ nonisolated enum RecordingMetadata {
     /// same graceful degradation the other attributes give.
     static func readDropouts(from url: URL) -> [Dropout] {
         guard let raw = read(forKey: dropoutsKey, from: url),
-              let data = raw.data(using: .utf8),
-              let dto = try? JSONDecoder().decode([DropoutDTO].self, from: data)
+            let data = raw.data(using: .utf8),
+            let dto = try? JSONDecoder().decode([DropoutDTO].self, from: data)
         else { return [] }
         return dto.compactMap { entry in
             guard let cause = Dropout.Cause(rawValue: entry.cause), entry.frames > 0, entry.start >= 0

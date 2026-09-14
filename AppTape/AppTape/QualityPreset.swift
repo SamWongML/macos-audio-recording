@@ -119,10 +119,12 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         case .master:
             reason = Self.channelCeilingReason(format, codec: "ALAC")
         case .high, .standard:
-            reason = Self.aacRateReason(format, codec: "AAC")
+            reason =
+                Self.aacRateReason(format, codec: "AAC")
                 ?? Self.channelCeilingReason(format, codec: "AAC")
         case .compact:
-            reason = Self.aacRateReason(format, codec: "HE-AAC")
+            reason =
+                Self.aacRateReason(format, codec: "HE-AAC")
                 ?? Self.channelCeilingReason(format, codec: "HE-AAC")
                 ?? Self.evenChannelReason(format)
         }
@@ -169,11 +171,14 @@ nonisolated enum QualityPreset: String, CaseIterable, Identifiable, Sendable {
         /// The chosen preset row can't encode this file: do nothing.
         case ignore
 
-        static func resolve(picking preset: QualityPreset, sticky: QualityPreset,
-                            format: SourceFormat) -> PresetPick {
+        static func resolve(
+            picking preset: QualityPreset, sticky: QualityPreset,
+            format: SourceFormat
+        ) -> PresetPick {
             guard preset.encodability(for: format).isAvailable else { return .ignore }
-            return sticky.encodability(for: format).isAvailable ? .setSticky(preset)
-                                                                : .displayOver(preset)
+            return sticky.encodability(for: format).isAvailable
+                ? .setSticky(preset)
+                : .displayOver(preset)
         }
     }
 

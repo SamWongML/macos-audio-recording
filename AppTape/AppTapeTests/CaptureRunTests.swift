@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import AppTape
 
 /// One press's whole life, with Core Audio, a `statfs`, a notification centre and a window replaced
@@ -47,10 +48,12 @@ struct CaptureRunTests {
             run.stop()
         }
 
-        static let source = Source(bundleID: "com.example.podcast", name: "Podcast",
-                                   isPlaying: true, processObjectIDs: [42])
-        static let result = CaptureResult(url: URL(filePath: "/tmp/apptape-test.caf"),
-                                          frameCount: 48_000, sampleRate: 48_000)
+        static let source = Source(
+            bundleID: "com.example.podcast", name: "Podcast",
+            isPlaying: true, processObjectIDs: [42])
+        static let result = CaptureResult(
+            url: URL(filePath: "/tmp/apptape-test.caf"),
+            frameCount: 48_000, sampleRate: 48_000)
     }
 
     /// 48 kHz stereo Float32 → 8 bytes/frame, the worked rate.
@@ -84,9 +87,9 @@ struct CaptureRunTests {
 
     @Test func aLateCaptureDoesNotAttachToALaterPress() {
         let rig = Rig()
-        rig.run.start(Rig.source, now: 0)   // attempt 1, blocked
-        rig.run.stop()                      // cancelled
-        rig.run.start(Rig.source, now: 1)   // attempt 2, its own bring-up
+        rig.run.start(Rig.source, now: 0)  // attempt 1, blocked
+        rig.run.stop()  // cancelled
+        rig.run.start(Rig.source, now: 1)  // attempt 2, its own bring-up
         let live = rig.builder.finish(build: 1)
         #expect(rig.run.isRecording)
 
@@ -106,7 +109,7 @@ struct CaptureRunTests {
 
         #expect(rig.run.permissionRecovery)
         #expect(rig.run.isRecording == false)
-        #expect(rig.run.startBlocker == nil)   // the panel carries one blocking reason
+        #expect(rig.run.startBlocker == nil)  // the panel carries one blocking reason
 
         // And the capture that arrives afterwards is orphaned rather than left running.
         let orphan = rig.builder.finish()
@@ -148,7 +151,7 @@ struct CaptureRunTests {
 
         #expect(rig.run.isRecording)
         #expect(second.stopCount == 0)
-        #expect(first.stopCount == 1)   // not finalized twice
+        #expect(first.stopCount == 1)  // not finalized twice
     }
 
     // MARK: - The wedge (/0010)
@@ -181,7 +184,7 @@ struct CaptureRunTests {
 
         rig.run.start(Rig.source, now: 100)
         rig.run.tick(now: 109.9)
-        rig.builder.finish(build: 1)        // attached with 0.1 s to spare
+        rig.builder.finish(build: 1)  // attached with 0.1 s to spare
         for i in 0...(50 * 20) { rig.run.tick(now: 110 + Self.tick(i)) }
         #expect(rig.run.isRecording)
     }
@@ -246,7 +249,7 @@ struct CaptureRunTests {
 
     @Test func armThenNeverPlaySavesNothingAndTellsNothing() {
         let rig = Rig()
-        let capture = rig.startCapturing()   // the default outcome carries no file
+        let capture = rig.startCapturing()  // the default outcome carries no file
         rig.run.stop()
 
         #expect(capture.stopCount == 1)
@@ -274,7 +277,7 @@ struct CaptureRunTests {
         #expect(rig.run.isRecording == false)
         #expect(rig.run.startBlocker != nil)
         #expect(rig.run.permissionRecovery == false)
-        #expect(rig.builder.buildCount == 0)   // no tap is even asked for
+        #expect(rig.builder.buildCount == 0)  // no tap is even asked for
     }
 
     @Test func aPressInsideTheAmberTierBeginsAmber() {
@@ -287,7 +290,7 @@ struct CaptureRunTests {
     @Test func theGuardPollsEveryFiveSecondsAndNotEveryTick() {
         let rig = Rig()
         rig.startCapturing()
-        let atStart = rig.runway.pollCount   // the start decision's own read
+        let atStart = rig.runway.pollCount  // the start decision's own read
 
         // Five seconds of 20 Hz ticks: the first one polls, the other ninety-nine do not.
         for i in 1...100 { rig.run.tick(now: Self.tick(i)) }
@@ -301,7 +304,7 @@ struct CaptureRunTests {
         let rig = Rig()
         let capture = rig.startCapturing()
         capture.bytesPerSecond = Self.rate
-        rig.run.tick(now: 0.05)              // the first poll, well above the band
+        rig.run.tick(now: 0.05)  // the first poll, well above the band
 
         rig.runway.freeBytes = Self.freeBytes(runway: 20 * 60)
         var now = 5.05
@@ -313,7 +316,7 @@ struct CaptureRunTests {
         // A posted warning is never retracted and never doubled: the 15-minute hysteresis holds it
         // to one for as long as the Recording stays in the band.
         #expect(rig.reporter.reported.filter { $0 == .runwayLow }.count == 1)
-        #expect(rig.run.isRecording)         // a warning is not an end
+        #expect(rig.run.isRecording)  // a warning is not an end
     }
 
     @Test func reachingTheFloorEndsTheRecordingAsDiskGuard() {
@@ -334,7 +337,7 @@ struct CaptureRunTests {
         rig.run.start(Rig.source, now: 0)
         #expect(rig.run.isRecording)
         #expect(rig.run.startBlocker == nil)
-        #expect(rig.run.runwayTier == .nominal)   // not pre-ambered either
+        #expect(rig.run.runwayTier == .nominal)  // not pre-ambered either
 
         rig.builder.finish()
         for i in 1...(30 * 20) { rig.run.tick(now: Self.tick(i)) }
@@ -380,7 +383,7 @@ struct CaptureRunTests {
 
     @Test func elapsedSitsAtZeroThroughTheArmedWindow() {
         let rig = Rig()
-        rig.startCapturing()   // armed, but the Source has made no sound yet
+        rig.startCapturing()  // armed, but the Source has made no sound yet
 
         for i in 1...100 { rig.run.tick(now: Self.tick(i)) }
         #expect(rig.run.elapsed == 0)
@@ -473,7 +476,7 @@ struct CaptureRunTests {
         rig.builder.hooks(forBuild: 0).onMasterCreated(master)
         rig.reader.byteCounts[master] = 1_024
 
-        for i in 1...20 { rig.run.tick(now: Self.tick(i)) }   // one second at 20 Hz
+        for i in 1...20 { rig.run.tick(now: Self.tick(i)) }  // one second at 20 Hz
         #expect(rig.reader.probeCount == 4)
     }
 

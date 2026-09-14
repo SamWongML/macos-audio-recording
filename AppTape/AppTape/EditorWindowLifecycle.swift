@@ -55,7 +55,7 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
         private func trimViewMenu() {
             DispatchQueue.main.async {
                 guard let mainMenu = NSApp.mainMenu,
-                      let view = mainMenu.items.first(where: { $0.title == "View" })
+                    let view = mainMenu.items.first(where: { $0.title == "View" })
                 else { return }
                 mainMenu.removeItem(view)
             }

@@ -38,7 +38,7 @@ nonisolated final class TimestampRing: @unchecked Sendable {
     /// mark ring means the writer has stalled — already an overrun the sample ring is dropping too).
     @discardableResult
     func push(ringFrame: Int, hostSeconds seconds: Double, valid: Bool) -> Bool {
-        let writeCount = written.load(ordering: .relaxed)   // only this thread writes `written`
+        let writeCount = written.load(ordering: .relaxed)  // only this thread writes `written`
         let readCount = read.load(ordering: .acquiring)
         guard writeCount - readCount < capacity else { return false }
         let slot = writeCount % capacity
@@ -52,7 +52,7 @@ nonisolated final class TimestampRing: @unchecked Sendable {
     /// Consumer side: the next unread mark's `ringFrame`, without consuming it, or nil when empty.
     /// Lets the writer stop popping once a mark lies past the position it is correlating.
     func peekFrame() -> Int? {
-        let readCount = read.load(ordering: .relaxed)       // only this thread writes `read`
+        let readCount = read.load(ordering: .relaxed)  // only this thread writes `read`
         let writeCount = written.load(ordering: .acquiring)
         guard writeCount - readCount > 0 else { return nil }
         return ringFrames[readCount % capacity]

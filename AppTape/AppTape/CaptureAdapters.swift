@@ -50,8 +50,9 @@ protocol Capturing: AnyObject {
 /// TCC prompt, so production builds off the main thread and calls back on the main actor.
 @MainActor
 protocol CaptureBuilding {
-    func build(source: Source, hooks: CaptureHooks,
-               then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void)
+    func build(
+        source: Source, hooks: CaptureHooks,
+        then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void)
 }
 
 /// The Runway's one input. Nil means *cannot verify*, never *no space* — an unverifiable
@@ -117,8 +118,10 @@ final class CoreAudioCapture: Capturing {
 /// — and hands it back wrapped, on the main actor.
 @MainActor
 struct CoreAudioCaptureBuilder: CaptureBuilding {
-    func build(source: Source, hooks: CaptureHooks,
-               then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void) {
+    func build(
+        source: Source, hooks: CaptureHooks,
+        then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void
+    ) {
         let ids = source.processObjectIDs
         let name = source.name
         DispatchQueue.global(qos: .userInitiated).async {

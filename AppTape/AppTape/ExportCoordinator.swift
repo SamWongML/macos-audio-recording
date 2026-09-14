@@ -35,13 +35,13 @@ final class ExportCoordinator {
 
     var isExporting: Bool { if case .running = phase { return true } else { return false } }
 
-#if DEBUG
-    /// Park the coordinator in one phase, for a preview or a test.
-    func enter(phase: Phase, subject: Recording?) {
-        self.phase = phase
-        self.subject = subject
-    }
-#endif
+    #if DEBUG
+        /// Park the coordinator in one phase, for a preview or a test.
+        func enter(phase: Phase, subject: Recording?) {
+            self.phase = phase
+            self.subject = subject
+        }
+    #endif
 
     /// The parameters an Export is launched with — snapshotted from the Recording at click,
     /// before the save panel, so a later Trim or preset edit never reaches the running encode.
@@ -66,11 +66,13 @@ final class ExportCoordinator {
 
         let (startFrame, frameCount) = recording.trimmedFrameRange
         // The belt-and-suspenders gate this comment has always claimed to be.
-        if let reason = ExportReadiness.evaluate(isOpenable: recording.isOpenable,
-                                                 isCapturing: capture.isCapturing(recording),
-                                                 trimmedFrameCount: frameCount,
-                                                 preset: preset, format: recording.sourceFormat,
-                                                 isExporting: isExporting).blocker {
+        if let reason = ExportReadiness.evaluate(
+            isOpenable: recording.isOpenable,
+            isCapturing: capture.isCapturing(recording),
+            trimmedFrameCount: frameCount,
+            preset: preset, format: recording.sourceFormat,
+            isExporting: isExporting
+        ).blocker {
             present(.failed(message: reason.sentence), for: recording)
             return
         }
@@ -80,8 +82,9 @@ final class ExportCoordinator {
             startFrame: startFrame,
             frameCount: frameCount,
             preset: preset,
-            estimatedBytes: ExportSizeEstimate.bytes(preset: preset, format: recording.sourceFormat,
-                                                     duration: recording.trimmedDuration),
+            estimatedBytes: ExportSizeEstimate.bytes(
+                preset: preset, format: recording.sourceFormat,
+                duration: recording.trimmedDuration),
             normalize: ExportPreference.shared.normalizeLoudness,
             gainDB: recording.gain)
 
@@ -113,17 +116,19 @@ final class ExportCoordinator {
             let have = free.map { "\(ExportSizeEstimate.sizeText(bytes: Double($0))) free" } ?? "less free"
             // Two lines, and the two numbers are the payload. The failed phase renders inside
             // the Export dock's one declared height beside `Try Again…`, which leaves
-            fail(message: "Not enough space: needs \(need), \(have).",
-                 name: snapshot.name, for: subject)
+            fail(
+                message: "Not enough space: needs \(need), \(have).",
+                name: snapshot.name, for: subject)
             return
         }
 
         let temp = destination.deletingLastPathComponent()
             .appendingPathComponent(".apptape-export-\(UUID().uuidString).m4a")
-        let request = ExportRequest(source: snapshot.source, destination: temp,
-                                    startFrame: snapshot.startFrame, frameCount: snapshot.frameCount,
-                                    preset: snapshot.preset,
-                                    normalize: snapshot.normalize, gainDB: snapshot.gainDB)
+        let request = ExportRequest(
+            source: snapshot.source, destination: temp,
+            startFrame: snapshot.startFrame, frameCount: snapshot.frameCount,
+            preset: snapshot.preset,
+            normalize: snapshot.normalize, gainDB: snapshot.gainDB)
         let name = snapshot.name
 
         let encoder = ExportEncoder()
@@ -142,7 +147,7 @@ final class ExportCoordinator {
                 self?.hop { $0.finishSucceeded(destination, job: id) }
             } catch let failure as ExportEncoder.Failure {
                 try? FileManager.default.removeItem(at: temp)
-                if case .cancelled = failure { return }   // navigation/user cancel: no reporter
+                if case .cancelled = failure { return }  // navigation/user cancel: no reporter
                 self?.hop { $0.finishFailed(failure.description, name: name, job: id) }
             } catch {
                 try? FileManager.default.removeItem(at: temp)

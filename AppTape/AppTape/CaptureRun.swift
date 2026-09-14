@@ -151,8 +151,10 @@ final class CaptureRun {
     /// The one module that reads a Recording's facts off the disk.
     private let reader: any RecordingReading
 
-    init(builder: any CaptureBuilding, runway: any RunwayProbing, reporter: any CaptureReporting,
-         reader: any RecordingReading) {
+    init(
+        builder: any CaptureBuilding, runway: any RunwayProbing, reporter: any CaptureReporting,
+        reader: any RecordingReading
+    ) {
         self.builder = builder
         self.runway = runway
         self.reporter = reporter
@@ -179,7 +181,7 @@ final class CaptureRun {
         }
 
         startBlocker = nil
-        permissionRecovery = false   // retry clears the last denial's banner
+        permissionRecovery = false  // retry clears the last denial's banner
         recordingSourceID = source.bundleID
         elapsed = 0
         masterByteCount = nil
@@ -286,7 +288,7 @@ final class CaptureRun {
         // A Recording that captured audio — even one a fault ended — means the grant is known
         // good, so a later slow bring-up is a wedge to time out rather than a human at the prompt.
         if outcome.result != nil { hasCompletedACapture = true }
-        guard let result = outcome.result else { return }   // nothing saved, nothing to tell.
+        guard let result = outcome.result else { return }  // nothing saved, nothing to tell.
 
         // If the capture had already ended itself on a fault, its own reason wins over the caller's.
         switch outcome.selfEndReason ?? requested {
@@ -296,7 +298,7 @@ final class CaptureRun {
             reporter.requestNotificationAuthorizationOnce()
             reporter.openEditor(selecting: result.url)
         case .quit:
-            break   // you asked for it; the app is leaving. No window, no notification.
+            break  // you asked for it; the app is leaving. No window, no notification.
         case .diskGuard, .recoveryExhausted, .formatMismatch, .sleep:
             // Name the reason and open the editor on the click — or directly, if auth is absent.
             reporter.report(end: outcome.selfEndReason ?? requested, recordingURL: result.url)
@@ -310,7 +312,7 @@ final class CaptureRun {
         let capture = phase.capture
         returnToIdle()
         capture?.discard()
-        startBlocker = nil   // the panel carries at most one blocking reason
+        startBlocker = nil  // the panel carries at most one blocking reason
         permissionRecovery = true
     }
 

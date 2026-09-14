@@ -96,16 +96,20 @@ struct PanelView: View {
 
     /// Shown when a denied System Audio Recording grant was inferred.
     @ViewBuilder private var recoveryBanner: some View {
-        banner(title: PermissionRecovery.title, message: PermissionRecovery.message,
-               action: "Open System Settings") {
+        banner(
+            title: PermissionRecovery.title, message: PermissionRecovery.message,
+            action: "Open System Settings"
+        ) {
             if let url = PermissionRecovery.settingsURL { NSWorkspace.shared.open(url) }
         }
     }
 
     /// The shared banner chrome for both blocking reasons: a bold title, secondary body, and one link
     /// action, over the panel's control-background fill.
-    @ViewBuilder private func banner(title: String, message: String, action: String,
-                                     perform: @escaping () -> Void) -> some View {
+    @ViewBuilder private func banner(
+        title: String, message: String, action: String,
+        perform: @escaping () -> Void
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.callout.weight(.semibold))
@@ -139,21 +143,24 @@ struct PanelView: View {
                         // A Source with no HAL clients yet cannot be aimed at by object ID, so
                         // pressing it could do nothing.
                         let capturable = !source.processObjectIDs.isEmpty
-                        let isTarget = recorder.run.isRecording && recorder.run.recordingSourceID == source.bundleID
+                        let isTarget =
+                            recorder.run.isRecording && recorder.run.recordingSourceID == source.bundleID
                         let glyph = RowRecordGlyph.state(
                             isRecordingTarget: isTarget,
                             sincePress: isTarget ? recorder.sincePress : nil,
                             hasFirstSound: recorder.run.hasFirstSound)
-                        SourceRow(source: source,
-                                  icon: model.icon(for: source),
-                                  glyph: glyph,
-                                  // Only the recording row carries live meter data; every other
-                                  // row's meter is dead and reads zero.
-                                  meterColumns: isTarget ? recorder.run.meterColumns : [],
-                                  reduceMotion: reduceMotion)
-                            .opacity(capturable ? 1 : 0.4)
-                            .contentShape(Rectangle())
-                            .onTapGesture { if capturable { pick(source) } }
+                        SourceRow(
+                            source: source,
+                            icon: model.icon(for: source),
+                            glyph: glyph,
+                            // Only the recording row carries live meter data; every other
+                            // row's meter is dead and reads zero.
+                            meterColumns: isTarget ? recorder.run.meterColumns : [],
+                            reduceMotion: reduceMotion
+                        )
+                        .opacity(capturable ? 1 : 0.4)
+                        .contentShape(Rectangle())
+                        .onTapGesture { if capturable { pick(source) } }
                         Divider().padding(.leading, 44)
                     }
                 }
@@ -202,8 +209,11 @@ private struct SourceRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Group {
-                if let icon { Image(nsImage: icon).resizable() }
-                else { Image(systemName: "app.dashed").resizable() }
+                if let icon {
+                    Image(nsImage: icon).resizable()
+                } else {
+                    Image(systemName: "app.dashed").resizable()
+                }
             }
             .frame(width: 22, height: 22)
 
@@ -216,7 +226,7 @@ private struct SourceRow: View {
             ZStack(alignment: .trailing) {
                 meter
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.trailing, glyphLane)   // the waveform insets around the glyph lane
+                    .padding(.trailing, glyphLane)  // the waveform insets around the glyph lane
                 recordGlyph
                     .frame(width: glyphLane)
             }
@@ -242,7 +252,8 @@ private struct SourceRow: View {
             .font(.system(size: 15))
             .foregroundStyle(filled ? Color.red : Color.secondary)
             // The in-flight/recording pulse, stilled under Reduce Motion.
-            .symbolEffect(.pulse, options: .repeating, isActive: RowRecordGlyph.pulses(glyph) && !reduceMotion)
+            .symbolEffect(
+                .pulse, options: .repeating, isActive: RowRecordGlyph.pulses(glyph) && !reduceMotion)
     }
 }
 

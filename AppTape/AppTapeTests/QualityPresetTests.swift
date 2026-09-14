@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The four Quality Presets and the size-estimate math.
@@ -19,7 +20,8 @@ struct QualityPresetTests {
 
         // A lossy target does not move with the source rate — that is what a target bitrate means.
         let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 32)
-        #expect(QualityPreset.high.estimatedBitsPerSecond(for: hiRes)
+        #expect(
+            QualityPreset.high.estimatedBitsPerSecond(for: hiRes)
                 == QualityPreset.high.estimatedBitsPerSecond(for: stereo48))
     }
 
@@ -31,7 +33,8 @@ struct QualityPresetTests {
 
         // It scales with the source's real rate and channels, unlike the lossy targets.
         let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 32)
-        #expect(QualityPreset.master.estimatedBitsPerSecond(for: hiRes)
+        #expect(
+            QualityPreset.master.estimatedBitsPerSecond(for: hiRes)
                 == 2 * QualityPreset.master.estimatedBitsPerSecond(for: stereo48))
     }
 
@@ -88,12 +91,12 @@ struct QualityPresetTests {
 
     @Test func aHiResSourceRefusesTheThreeAACRungsButNotMaster() {
         let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 24)
-        #expect(QualityPreset.master.encodability(for: hiRes) == .available)   // ALAC takes any rate
+        #expect(QualityPreset.master.encodability(for: hiRes) == .available)  // ALAC takes any rate
         for preset in [QualityPreset.high, .standard, .compact] {
             let encodability = preset.encodability(for: hiRes)
             #expect(!encodability.isAvailable)
             #expect(encodability.reason?.contains("48 kHz") == true)
-            #expect(encodability.reason?.contains("96 kHz") == true)   // names the source's real rate
+            #expect(encodability.reason?.contains("96 kHz") == true)  // names the source's real rate
         }
     }
 
@@ -138,16 +141,19 @@ struct QualityPresetTests {
         let hiRes = SourceFormat(sampleRate: 96_000, channelCount: 2, bitsPerChannel: 24)
 
         // The sticky (High) fits a plain stereo-48 source: picking Standard updates the sticky.
-        #expect(QualityPreset.PresetPick.resolve(picking: .standard, sticky: .high, format: stereo48)
+        #expect(
+            QualityPreset.PresetPick.resolve(picking: .standard, sticky: .high, format: stereo48)
                 == .setSticky(.standard))
 
         // The sticky (High) can't encode a 96 kHz source: picking Master is a per-file display-over
         // that leaves the sticky untouched.
-        #expect(QualityPreset.PresetPick.resolve(picking: .master, sticky: .high, format: hiRes)
+        #expect(
+            QualityPreset.PresetPick.resolve(picking: .master, sticky: .high, format: hiRes)
                 == .displayOver(.master))
 
         // A preset row the source itself can't encode is ignored, whatever the sticky is.
-        #expect(QualityPreset.PresetPick.resolve(picking: .high, sticky: .high, format: hiRes)
+        #expect(
+            QualityPreset.PresetPick.resolve(picking: .high, sticky: .high, format: hiRes)
                 == .ignore)
     }
 

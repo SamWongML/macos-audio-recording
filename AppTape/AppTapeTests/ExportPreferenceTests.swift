@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The Quality Preset is sticky app-wide: a choice about how to export, not a

@@ -24,17 +24,20 @@ enum PanelAnchoring {
     /// top, so a popover shown from its `.maxY` edge auto-flips to sit just below the menu bar —
     /// the same placement the real status item gets.
     static func fallbackRect(mainScreen: CGRect, statusBarThickness: CGFloat) -> CGRect {
-        CGRect(x: mainScreen.maxX - 1,
-               y: mainScreen.maxY - statusBarThickness,
-               width: 1,
-               height: statusBarThickness)
+        CGRect(
+            x: mainScreen.maxX - 1,
+            y: mainScreen.maxY - statusBarThickness,
+            width: 1,
+            height: statusBarThickness)
     }
 
     /// Decide the anchor from a candidate button frame and the screen layout.
-    static func anchor(buttonWindowFrame frame: CGRect?,
-                       screens: [CGRect],
-                       mainScreen: CGRect?,
-                       statusBarThickness: CGFloat) -> PanelAnchor {
+    static func anchor(
+        buttonWindowFrame frame: CGRect?,
+        screens: [CGRect],
+        mainScreen: CGRect?,
+        statusBarThickness: CGFloat
+    ) -> PanelAnchor {
         if let frame, isButtonFrameUsable(frame, within: screens) {
             return .statusButton
         }

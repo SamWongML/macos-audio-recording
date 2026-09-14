@@ -25,7 +25,7 @@ struct AppTapeApp: App {
         .commands {
             // Trim the standard menu set to what applies: keep the app's About/Quit, the window's
             // Close ⌘W, the standard Edit items,
-            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .newItem) {}
             // Emptying the whole `.saveItem` group also removes the default "Close", collapsing the
             // File menu entirely, so it is put back
             CommandGroup(replacing: .saveItem) {
@@ -36,9 +36,9 @@ struct AppTapeApp: App {
                 }
                 .keyboardShortcut("w", modifiers: .command)
             }
-            CommandGroup(replacing: .printItem) { }
+            CommandGroup(replacing: .printItem) {}
             // No View menu: the spec's set is About/Quit, Close ⌘W, Edit, Window, Help.
-            CommandGroup(replacing: .toolbar) { }
+            CommandGroup(replacing: .toolbar) {}
         }
     }
 }

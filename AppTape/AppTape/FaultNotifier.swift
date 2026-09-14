@@ -34,8 +34,9 @@ enum FaultNotifier {
                 content.body = body
                 content.sound = .default
                 content.userInfo = [openEditorURLKey: recordingURL.absoluteString]
-                let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                                    content: content, trigger: nil)
+                let request = UNNotificationRequest(
+                    identifier: UUID().uuidString,
+                    content: content, trigger: nil)
                 UNUserNotificationCenter.current().add(request)
             case .denied, .notDetermined:
                 fallthrough
@@ -60,8 +61,9 @@ enum FaultNotifier {
                 content.body = "Your disk is almost full. Free up space to keep recording."
                 content.sound = .default
                 content.userInfo = [revealLibraryKey: true]
-                let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                                    content: content, trigger: nil)
+                let request = UNNotificationRequest(
+                    identifier: UUID().uuidString,
+                    content: content, trigger: nil)
                 UNUserNotificationCenter.current().add(request)
             case .denied, .notDetermined:
                 fallthrough
@@ -81,8 +83,9 @@ enum FaultNotifier {
                 content.title = "Export failed"
                 content.body = "Couldn’t export “\(recordingName).” \(detail)"
                 content.sound = .default
-                let request = UNNotificationRequest(identifier: UUID().uuidString,
-                                                    content: content, trigger: nil)
+                let request = UNNotificationRequest(
+                    identifier: UUID().uuidString,
+                    content: content, trigger: nil)
                 UNUserNotificationCenter.current().add(request)
             case .denied, .notDetermined:
                 fallthrough
@@ -111,23 +114,29 @@ final class FaultNotificationDelegate: NSObject, UNUserNotificationCenterDelegat
     static let shared = FaultNotificationDelegate()
 
     /// Show the banner even when the app is frontmost, so a fault end is never swallowed.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification) async
-        -> UNNotificationPresentationOptions {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async
+        -> UNNotificationPresentationOptions
+    {
         [.banner, .sound]
     }
 
     /// The click: open the editor on the Recording the notification named, or — for the
     /// 30-minute Runway warning — reveal the Library in Finder so the user can free space.
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                didReceive response: UNNotificationResponse) async {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
         let userInfo = response.notification.request.content.userInfo
         if userInfo[FaultNotifier.revealLibraryKey] != nil {
             await MainActor.run { FaultNotifier.revealLibrary() }
             return
         }
         guard let raw = userInfo[FaultNotifier.openEditorURLKey] as? String,
-              let url = URL(string: raw) else { return }
+            let url = URL(string: raw)
+        else { return }
         await MainActor.run { EditorPresenter.shared.open(selecting: url) }
     }
 }

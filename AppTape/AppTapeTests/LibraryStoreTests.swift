@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The Library/Recording store dropout: listing the folder and reconciling a fresh scan against
@@ -21,10 +22,10 @@ struct LibraryStoreTests {
         let reconciled = LibraryStore.reconcile(existing: [a, b], urls: reader.files, reader: reader)
 
         #expect(reconciled.count == 2)
-        #expect(reconciled.contains { $0 === b })                 // same object, not a fresh read
-        #expect(abs(b.trim.start - 0.5) < 1e-9)                   // its live Trim survived
-        #expect(reconciled.contains { $0.url == c.url })          // the new file was adopted
-        #expect(!reconciled.contains { $0.url == a.url })         // the vanished file dropped out
+        #expect(reconciled.contains { $0 === b })  // same object, not a fresh read
+        #expect(abs(b.trim.start - 0.5) < 1e-9)  // its live Trim survived
+        #expect(reconciled.contains { $0.url == c.url })  // the new file was adopted
+        #expect(!reconciled.contains { $0.url == a.url })  // the vanished file dropped out
     }
 
     @Test func aRenamedFileIsFollowedSilentlyNotDroppedAndReadded() {
@@ -38,10 +39,10 @@ struct LibraryStoreTests {
 
         let reconciled = LibraryStore.reconcile(existing: [recording], urls: reader.files, reader: reader)
         #expect(reconciled.count == 1)
-        #expect(reconciled[0] === recording)                  // same object, not a re-adopt
-        #expect(reconciled[0].url == renamed)                 // relocated to the new path
-        #expect(reconciled[0].name == "Kettle noises")        // the filename is the name
-        #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)   // its live Trim survived
+        #expect(reconciled[0] === recording)  // same object, not a re-adopt
+        #expect(reconciled[0].url == renamed)  // relocated to the new path
+        #expect(reconciled[0].name == "Kettle noises")  // the filename is the name
+        #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)  // its live Trim survived
     }
 
     @Test func aFileThatChangedLengthIsReAdoptedNotFollowed() {
@@ -54,7 +55,7 @@ struct LibraryStoreTests {
 
         let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: reader.files, reader: reader)
         #expect(reconciled.count == 1)
-        #expect(reconciled[0] !== adoptedEarly)               // re-adopted, not followed
+        #expect(reconciled[0] !== adoptedEarly)  // re-adopted, not followed
         #expect(reconciled[0].frameCount > adoptedEarly.frameCount)
     }
 
@@ -78,7 +79,7 @@ struct LibraryStoreTests {
         // Two names for one inode — a hard link.
         let reader = StubRecordingReader()
         let recording = reader.place("A")
-        let identity = recording.fileIdentity   // `place` always gives one
+        let identity = recording.fileIdentity  // `place` always gives one
         let first = recording.url.deletingLastPathComponent().appendingPathComponent("first.caf")
         let second = recording.url.deletingLastPathComponent().appendingPathComponent("second.caf")
         reader.remove(recording)
@@ -86,13 +87,14 @@ struct LibraryStoreTests {
             reader.files.append(url)
             reader.identities[url] = identity
             reader.byteCounts[url] = recording.openedByteCount
-            reader.adopted[url] = Recording.stub(url.deletingPathExtension().lastPathComponent,
-                                                 byteCount: recording.openedByteCount)
+            reader.adopted[url] = Recording.stub(
+                url.deletingPathExtension().lastPathComponent,
+                byteCount: recording.openedByteCount)
         }
 
         let reconciled = LibraryStore.reconcile(existing: [recording], urls: [first, second], reader: reader)
         #expect(reconciled.count == 2)
-        #expect(reconciled.filter { $0 === recording }.count == 1)   // followed exactly once
+        #expect(reconciled.filter { $0 === recording }.count == 1)  // followed exactly once
         #expect(reconciled[0] === recording)
         #expect(reconciled[1] !== recording)
     }
@@ -102,7 +104,7 @@ struct LibraryStoreTests {
         let reader = StubRecordingReader()
         let good = reader.place("good")
         let notes = good.url.deletingLastPathComponent().appendingPathComponent("notes.txt")
-        reader.files.append(notes)          // listed by the folder, but nothing reads it as a Recording
+        reader.files.append(notes)  // listed by the folder, but nothing reads it as a Recording
 
         let reconciled = LibraryStore.reconcile(existing: [], urls: reader.files, reader: reader)
         #expect(reconciled.map(\.url) == [good.url])
@@ -158,8 +160,8 @@ struct LibraryStoreTests {
 
         let reconciled = LibraryStore.reconcile(existing: [recording], urls: [url], reader: reader)
         #expect(reconciled.count == 1)
-        #expect(reconciled[0] === recording)                    // same object
-        #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)     // and its live Trim survived
+        #expect(reconciled[0] === recording)  // same object
+        #expect(abs(reconciled[0].trim.start - 1.0) < 1e-9)  // and its live Trim survived
     }
 
     @Test func aRealFileThatGrewInPlaceIsReAdopted() throws {
@@ -178,7 +180,7 @@ struct LibraryStoreTests {
         let reconciled = LibraryStore.reconcile(existing: [adoptedEarly], urls: [url], reader: reader)
         #expect(reconciled.count == 1)
         #expect(reconciled[0] !== adoptedEarly)
-        #expect(abs(reconciled[0].duration - 5) < 0.05)          // it reads the audio now there
+        #expect(abs(reconciled[0].duration - 5) < 0.05)  // it reads the audio now there
     }
 
     @Test func aNonAudioFileIsNotAdopted() throws {
@@ -247,25 +249,27 @@ struct LibraryStoreTests {
         store.refresh()
         let recording = try #require(store.recordings.first)
         recording.trim.setStart(1.0)
-        #expect(recording.displayName == "Test Source")   // the Source rides in the xattr
+        #expect(recording.displayName == "Test Source")  // the Source rides in the xattr
 
         #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
         #expect(store.recordings.count == 1)
-        #expect(store.recordings[0] === recording)             // same object, not a drop-and-re-add
+        #expect(store.recordings[0] === recording)  // same object, not a drop-and-re-add
         #expect(recording.name == "Interview")
-        #expect(abs(recording.trim.start - 1.0) < 1e-9)        // its live Trim survived
-        #expect(recording.displayName == "Interview")          // and the row now shows the new name
-        #expect(recording.source == "Test Source")             // the Source xattr is never rewritten
-        #expect(FileManager.default.fileExists(
-            atPath: dir.appendingPathComponent("Interview.caf").path))
+        #expect(abs(recording.trim.start - 1.0) < 1e-9)  // its live Trim survived
+        #expect(recording.displayName == "Interview")  // and the row now shows the new name
+        #expect(recording.source == "Test Source")  // the Source xattr is never rewritten
+        #expect(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("Interview.caf").path))
     }
 
     /// Issue #127, end to end: a rename while that Recording's own Export is running.
     @Test func aRenameDuringAnExportKeepsTheTellingWithItsRecording() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
-        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"),
-                                       seconds: 5)
+        _ = try AudioFixtures.writeCAF(
+            at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"),
+            seconds: 5)
 
         let store = LibraryStore(directory: dir, reader: RecordingReader())
         store.refresh()
@@ -276,10 +280,10 @@ struct LibraryStoreTests {
 
         #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
 
-        #expect(store.recordings[0] === recording)                     // the rename was followed
-        #expect(coordinator.subjectURL == recording.url)               // and so was the reporter
+        #expect(store.recordings[0] === recording)  // the rename was followed
+        #expect(coordinator.subjectURL == recording.url)  // and so was the reporter
         #expect(coordinator.subjectURL?.lastPathComponent == "Interview.caf")
-        #expect(coordinator.phase == .running(fraction: 0.42))         // still running, still shown
+        #expect(coordinator.phase == .running(fraction: 0.42))  // still running, still shown
     }
 
     @Test func aRefusedRenameLeavesTheFileExactlyWhereItWas() throws {

@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// What a `Recording` says about itself, now that saying it costs nothing.
@@ -50,7 +51,7 @@ struct RecordingFactsTests {
         recording.relocate(to: URL(filePath: "/Library/Interview.caf"))
         #expect(recording.source == "Interview")
         #expect(recording.displayName == "Interview")
-        #expect(recording.windowSubtitle.isEmpty)   // the origin is the title; there is nothing to add
+        #expect(recording.windowSubtitle.isEmpty)  // the origin is the title; there is nothing to add
     }
 
     /// The xattr, by contrast, is written once at capture and never rewritten — so it survives the
@@ -66,16 +67,18 @@ struct RecordingFactsTests {
 
     @Test func theWindowSubtitleNeverRepeatsTheTitle() {
         // Generated name: the title *is* the Source, so the subtitle says when instead.
-        let recording = Recording.stub("Google Chrome 2026-09-13 at 21.51.03",
-                                       recordedAt: Date(timeIntervalSince1970: 1_757_800_000))
+        let recording = Recording.stub(
+            "Google Chrome 2026-09-13 at 21.51.03",
+            recordedAt: Date(timeIntervalSince1970: 1_757_800_000))
         #expect(recording.displayName == "Google Chrome")
         #expect(!recording.windowSubtitle.contains("Google Chrome"))
         #expect(!recording.windowSubtitle.isEmpty)
     }
 
     @Test func theWindowSubtitleSaysTheSourceOnceTheTitleStopsBeingIt() {
-        let recording = Recording.stub("Interview", storedSource: "Google Chrome",
-                                       recordedAt: Date(timeIntervalSince1970: 1_757_800_000))
+        let recording = Recording.stub(
+            "Interview", storedSource: "Google Chrome",
+            recordedAt: Date(timeIntervalSince1970: 1_757_800_000))
         #expect(recording.displayName == "Interview")
         #expect(recording.windowSubtitle.hasPrefix("Google Chrome · "))
     }
@@ -131,8 +134,8 @@ struct RecordingFactsTests {
     @Test func aLengthThatMatchesStillDescribesTheFile() {
         let recording = Recording.stub(byteCount: 8_000)
         #expect(recording.stillDescribes(byteCount: 8_000))
-        #expect(!recording.stillDescribes(byteCount: 8_001))   // grew
-        #expect(!recording.stillDescribes(byteCount: 7_999))   // shrank
+        #expect(!recording.stillDescribes(byteCount: 8_001))  // grew
+        #expect(!recording.stillDescribes(byteCount: 7_999))  // shrank
     }
 
     @Test func twoUnreadableLengthsCompareEqual() {

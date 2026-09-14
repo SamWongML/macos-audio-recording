@@ -41,7 +41,8 @@ enum SourceResolution {
         }
         // Longest matching prefix wins, so `com.google.Chrome.helper` picks Chrome, not some
         // shorter `com.google` if one ever existed.
-        return apps
+        return
+            apps
             .map(\.bundleID)
             .filter { process.bundleID == $0 || process.bundleID.hasPrefix($0 + ".") }
             .max { $0.count < $1.count }
@@ -58,10 +59,11 @@ enum SourceResolution {
 
         return apps.map { app -> Source in
             let mine = byOwner[app.bundleID] ?? []
-            return Source(bundleID: app.bundleID,
-                          name: app.name,
-                          isPlaying: mine.contains(where: \.isRunningOutput),
-                          processObjectIDs: mine.map(\.id))
+            return Source(
+                bundleID: app.bundleID,
+                name: app.name,
+                isPlaying: mine.contains(where: \.isRunningOutput),
+                processObjectIDs: mine.map(\.id))
         }
         .sorted {
             $0.isPlaying == $1.isPlaying

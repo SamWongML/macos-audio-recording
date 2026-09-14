@@ -108,11 +108,13 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
 
     /// Arms capture: holds the idle-sleep token, creates and starts the tap (blocking, may raise
     /// the TCC prompt — call off the main thread), and spins up the writer thread.
-    init(processObjectIDs: [AudioObjectID],
-         sourceName: String,
-         onDenialInferred: (@Sendable () -> Void)? = nil,
-         onMasterCreated: (@Sendable (URL) -> Void)? = nil,
-         onEnded: (@Sendable (RecordingEndReason) -> Void)? = nil) throws {
+    init(
+        processObjectIDs: [AudioObjectID],
+        sourceName: String,
+        onDenialInferred: (@Sendable () -> Void)? = nil,
+        onMasterCreated: (@Sendable (URL) -> Void)? = nil,
+        onEnded: (@Sendable (RecordingEndReason) -> Void)? = nil
+    ) throws {
         self.sourceName = sourceName
         self.startDate = Date()
         self.processObjectIDs = processObjectIDs
@@ -196,7 +198,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
             let now = ProcessInfo.processInfo.systemUptime
 
             if produced == 0 {
-                usleep(5_000)   // 5 ms nap when the ring is empty — this thread may block
+                usleep(5_000)  // 5 ms nap when the ring is empty — this thread may block
             } else {
                 firstCallbackSeen = true
                 lastProducedAt = now
@@ -237,8 +239,10 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         // Publish the chunk's peak for the live meter, or hold the last one.
         let now = ProcessInfo.processInfo.systemUptime
         let peak = produced > 0 ? Self.peakMagnitude(in: scratch, sampleCount: produced) : 0
-        switch LevelMeter.publication(producedSamples: produced, peak: peak,
-                                      now: now, lastPublishedAt: lastLevelPublishedAt) {
+        switch LevelMeter.publication(
+            producedSamples: produced, peak: peak,
+            now: now, lastPublishedAt: lastLevelPublishedAt)
+        {
         case .publish(let value):
             publishedLevelBits.store(value.bitPattern, ordering: .releasing)
             if produced > 0 { lastLevelPublishedAt = now }
@@ -252,7 +256,7 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
 
         switch reducer.receive(frameCount: frames, firstNonSilentFrame: firstNonSilent) {
         case .elide:
-            break   // leading silence — write nothing, create no file
+            break  // leading silence — write nothing, create no file
         case .begin(let skip):
             createWriterIfNeeded()
             accountAndWrite(&scratch, sampleCount: produced, skipFrames: skip, writtenFrames: frames - skip)
@@ -266,11 +270,15 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
 
     /// Reconcile a written chunk against the wall clock, padding a Dropout before it if a gap opened,
     /// or ending the Recording if the gap is beyond 30 s.
-    private func accountAndWrite(_ scratch: inout [Float], sampleCount: Int, skipFrames: Int, writtenFrames: Int) {
+    private func accountAndWrite(
+        _ scratch: inout [Float], sampleCount: Int, skipFrames: Int, writtenFrames: Int
+    ) {
         let firstTapFrame = tapConsumedFrames + skipFrames
         let (host, valid) = hostTime(forTapFrame: firstTapFrame)
-        switch reconciler.account(hostTimeSeconds: host, hostTimeValid: valid,
-                                  newFrames: writtenFrames, rebuildInFlight: pendingRebuildDropout) {
+        switch reconciler.account(
+            hostTimeSeconds: host, hostTimeValid: valid,
+            newFrames: writtenFrames, rebuildInFlight: pendingRebuildDropout)
+        {
         case .append:
             writeChunk(&scratch, sampleCount: sampleCount, skipFrames: skipFrames)
         case .pad(let padFrames, _):
@@ -302,12 +310,14 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
         if produced > 0 {
             // A soft fault is all-zero-while-running; a non-zero chunk re-arms it and cancels any
             // pending hard rebuild (restore beating rebuild).
-            handle(fault.observe(allZero: lastChunkAllZero,
-                                 isRunningOutput: runningOutputThrottled(now: now), now: now))
+            handle(
+                fault.observe(
+                    allZero: lastChunkAllZero,
+                    isRunningOutput: runningOutputThrottled(now: now), now: now))
         } else if firstCallbackSeen, now - lastProducedAt > Self.famineWindow {
             // Callbacks have stopped entirely — a famine, the unambiguous hard fault.
             handle(fault.hardFault(now: now))
-            lastProducedAt = now   // the backoff governs from here; do not re-fire every 5 ms
+            lastProducedAt = now  // the backoff governs from here; do not re-fire every 5 ms
         }
         handle(fault.poll(now: now))
     }
@@ -354,7 +364,9 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
 
     /// Whether a rebuilt tap can continue the master: same rate, channels, and sample layout. A
     /// mismatch cannot be padded onto the master's ASBD, so it ends the Recording.
-    private static func formatsMatch(_ a: AudioStreamBasicDescription, _ b: AudioStreamBasicDescription) -> Bool {
+    private static func formatsMatch(
+        _ a: AudioStreamBasicDescription, _ b: AudioStreamBasicDescription
+    ) -> Bool {
         a.mSampleRate == b.mSampleRate
             && a.mChannelsPerFrame == b.mChannelsPerFrame
             && a.mBitsPerChannel == b.mBitsPerChannel
@@ -365,8 +377,9 @@ nonisolated final class CaptureEngine: @unchecked Sendable {
     /// Lazily creates the CAF at the first sound, in place at its final Library path.
     private func createWriterIfNeeded() {
         guard writer == nil else { return }
-        try? FileManager.default.createDirectory(at: LibraryLocation.directory,
-                                                 withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(
+            at: LibraryLocation.directory,
+            withIntermediateDirectories: true)
         let name = LibraryLocation.uniqueFileName(source: sourceName, date: startDate) {
             FileManager.default.fileExists(atPath: LibraryLocation.directory.appendingPathComponent($0).path)
         }

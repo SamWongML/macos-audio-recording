@@ -1,14 +1,20 @@
 import AVFoundation
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The non-modal export flow's file handling.
 struct ExportCoordinatorTests {
-    private func encode(_ source: URL, to dest: URL, frames: Int64 = 48_000,
-                        preset: QualityPreset = .high) throws {
-        try ExportEncoder().run(ExportRequest(source: source, destination: dest,
-                                              startFrame: 0, frameCount: frames, preset: preset)) { _ in }
+    private func encode(
+        _ source: URL, to dest: URL, frames: Int64 = 48_000,
+        preset: QualityPreset = .high
+    ) throws {
+        try ExportEncoder().run(
+            ExportRequest(
+                source: source, destination: dest,
+                startFrame: 0, frameCount: frames, preset: preset)
+        ) { _ in }
     }
 
     @Test func commitOverASiblingReplacesTheChosenFileAtomically() throws {
@@ -25,8 +31,8 @@ struct ExportCoordinatorTests {
         try encode(source, to: temp)
         try ExportCoordinator.commit(temp: temp, to: dest)
 
-        #expect(!FileManager.default.fileExists(atPath: temp.path))   // temp consumed by the swap
-        let out = try AVAudioFile(forReading: dest)                   // dest is now a real m4a
+        #expect(!FileManager.default.fileExists(atPath: temp.path))  // temp consumed by the swap
+        let out = try AVAudioFile(forReading: dest)  // dest is now a real m4a
         #expect(out.length > 0)
     }
 
@@ -35,7 +41,7 @@ struct ExportCoordinatorTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("master.caf"), seconds: 2)
 
-        let dest = dir.appendingPathComponent("Brand New.m4a")   // does not exist yet
+        let dest = dir.appendingPathComponent("Brand New.m4a")  // does not exist yet
         let temp = dir.appendingPathComponent(".apptape-export-\(UUID().uuidString).m4a")
         try encode(source, to: temp)
         try ExportCoordinator.commit(temp: temp, to: dest)
@@ -58,12 +64,15 @@ struct ExportCoordinatorTests {
         let encoder = ExportEncoder()
         encoder.cancel()
         #expect(throws: ExportEncoder.Failure.self) {
-            try encoder.run(ExportRequest(source: source, destination: temp,
-                                          startFrame: 0, frameCount: 48_000, preset: .high)) { _ in }
+            try encoder.run(
+                ExportRequest(
+                    source: source, destination: temp,
+                    startFrame: 0, frameCount: 48_000, preset: .high)
+            ) { _ in }
         }
         try? FileManager.default.removeItem(at: temp)
 
-        #expect(try Data(contentsOf: dest) == Data("ORIGINAL".utf8))   // untouched
+        #expect(try Data(contentsOf: dest) == Data("ORIGINAL".utf8))  // untouched
     }
 
     /// The gate in front of the save panel.
@@ -73,8 +82,9 @@ struct ExportCoordinatorTests {
         @Test func aCapturingRecordingIsRefusedBeforeTheSavePanel() {
             let coordinator = ExportCoordinator()
             let recording = Recording.stub()
-            coordinator.export(recording: recording, preset: .high,
-                               capture: PreviewCapture.capturing(recording))
+            coordinator.export(
+                recording: recording, preset: .high,
+                capture: PreviewCapture.capturing(recording))
 
             #expect(coordinator.phase == .failed(message: "This Recording is still capturing."))
             #expect(coordinator.subjectURL == recording.url)
@@ -93,8 +103,9 @@ struct ExportCoordinatorTests {
         /// said `There is nothing in the Trim to export.` the table is the one that ships.
         @Test func anEmptyTrimIsRefusedInTheDocksWording() {
             let coordinator = ExportCoordinator()
-            coordinator.export(recording: .stub(seconds: 0), preset: .high,
-                               capture: PreviewCapture.settled)
+            coordinator.export(
+                recording: .stub(seconds: 0), preset: .high,
+                capture: PreviewCapture.settled)
 
             #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
         }
@@ -103,8 +114,8 @@ struct ExportCoordinatorTests {
         /// divergence, from the side that always counted frames.
         @Test func aTrimWithNoFramesIsRefusedHoweverManySecondsItClaims() {
             let recording = Recording.stub(seconds: 0, storedTrim: Trim(duration: 90))
-            #expect(recording.trimmedDuration == 90)          // what the dock used to read
-            #expect(recording.trimmedFrameRange.count == 0)   // what the encoder actually gets
+            #expect(recording.trimmedDuration == 90)  // what the dock used to read
+            #expect(recording.trimmedFrameRange.count == 0)  // what the encoder actually gets
 
             let coordinator = ExportCoordinator()
             coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
@@ -120,10 +131,12 @@ struct ExportCoordinatorTests {
             #expect(coordinator.phase == .failed(message: "This quality can't encode this file."))
             // The same source on the preset row that can encode it is not refused — so the guard is
             // about the preset, never the file alone.
-            #expect(ExportReadiness.evaluate(isOpenable: true, isCapturing: false,
-                                             trimmedFrameCount: recording.trimmedFrameRange.count,
-                                             preset: .master, format: recording.sourceFormat,
-                                             isExporting: false) == .ready)
+            #expect(
+                ExportReadiness.evaluate(
+                    isOpenable: true, isCapturing: false,
+                    trimmedFrameCount: recording.trimmedFrameRange.count,
+                    preset: .master, format: recording.sourceFormat,
+                    isExporting: false) == .ready)
         }
 
         /// `guard case.idle` is not the one-at-a-time rule.
@@ -133,12 +146,13 @@ struct ExportCoordinatorTests {
             coordinator.enter(phase: .succeeded(url: recording.url), subject: recording)
 
             coordinator.export(recording: recording, preset: .high, capture: PreviewCapture.settled)
-            #expect(coordinator.phase == .succeeded(url: recording.url))   // unchanged, not refused
+            #expect(coordinator.phase == .succeeded(url: recording.url))  // unchanged, not refused
 
             // And a cancel reopens it: the blocker below proves the call now gets past the guard.
             coordinator.cancel()
-            coordinator.export(recording: .stub(seconds: 0), preset: .high,
-                               capture: PreviewCapture.settled)
+            coordinator.export(
+                recording: .stub(seconds: 0), preset: .high,
+                capture: PreviewCapture.settled)
             #expect(coordinator.phase == .failed(message: "Nothing in the Trim to export."))
         }
     }
@@ -157,8 +171,8 @@ struct ExportCoordinatorTests {
                 .appendingPathComponent("Interview.caf")
             recording.relocate(to: renamed)
 
-            #expect(coordinator.subjectURL == renamed)               // the dock still matches
-            #expect(coordinator.phase == .running(fraction: 0.42))   // and the encode is untouched
+            #expect(coordinator.subjectURL == renamed)  // the dock still matches
+            #expect(coordinator.phase == .running(fraction: 0.42))  // and the encode is untouched
         }
 
         /// And the subject is still asked *where it is*, not *which object it is* — because the

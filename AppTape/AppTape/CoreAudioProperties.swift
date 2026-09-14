@@ -3,14 +3,20 @@ import CoreAudio
 /// Thin typed readers over the `AudioObjectGetPropertyData` C API — the plumbing every Core Audio
 /// touch in the app goes through, so the raw pointer dance lives in exactly one place.
 nonisolated enum CAProperty {
-    static func address(_ selector: AudioObjectPropertySelector,
-                        scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal)
-        -> AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: selector, mScope: scope,
-                                   mElement: kAudioObjectPropertyElementMain)
+    static func address(
+        _ selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
+    )
+        -> AudioObjectPropertyAddress
+    {
+        AudioObjectPropertyAddress(
+            mSelector: selector, mScope: scope,
+            mElement: kAudioObjectPropertyElementMain)
     }
 
-    static func objectIDs(of object: AudioObjectID, _ selector: AudioObjectPropertySelector) -> [AudioObjectID] {
+    static func objectIDs(
+        of object: AudioObjectID, _ selector: AudioObjectPropertySelector
+    ) -> [AudioObjectID] {
         var a = address(selector)
         var size: UInt32 = 0
         guard AudioObjectGetPropertyDataSize(object, &a, 0, nil, &size) == noErr, size > 0 else { return [] }
@@ -54,10 +60,13 @@ nonisolated enum CAProperty {
 
     /// The tap's own stream format (`kAudioTapPropertyFormat`) — the ASBD the CAF master
     /// is written with, read at tap creation and never assumed.
-    static func streamFormat(of object: AudioObjectID,
-                             _ selector: AudioObjectPropertySelector,
-                             scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal)
-        -> AudioStreamBasicDescription? {
+    static func streamFormat(
+        of object: AudioObjectID,
+        _ selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
+    )
+        -> AudioStreamBasicDescription?
+    {
         var a = address(selector, scope: scope)
         var asbd = AudioStreamBasicDescription()
         var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)

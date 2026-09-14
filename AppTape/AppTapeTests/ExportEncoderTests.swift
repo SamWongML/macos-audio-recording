@@ -1,7 +1,8 @@
 import AVFoundation
 import AudioToolbox
-import Testing
 import Foundation
+import Testing
+
 @testable import AppTape
 
 /// The encode loop end to end: a real CAF master in, a real `.m4a` out, decoded back and checked.
@@ -42,17 +43,18 @@ struct ExportEncoderTests {
 
         // Export the middle second: frames [0.5 s, 1.5 s) = 24_000 frames at 48 kHz.
         var lastProgress = 0.0
-        let request = ExportRequest(source: source, destination: dest,
-                                    startFrame: 24_000, frameCount: 48_000, preset: preset)
+        let request = ExportRequest(
+            source: source, destination: dest,
+            startFrame: 24_000, frameCount: 48_000, preset: preset)
         try ExportEncoder().run(request) { lastProgress = $0 }
 
-        #expect(abs(lastProgress - 1.0) < 1e-9)   // progress reaches 1.0
+        #expect(abs(lastProgress - 1.0) < 1e-9)  // progress reaches 1.0
 
         let out = try AVAudioFile(forReading: dest)
         let asbd = out.fileFormat.streamDescription.pointee
-        #expect(out.fileFormat.channelCount == 2)                 // no downmix
-        #expect(abs(out.fileFormat.sampleRate - 48_000) < 1)      // no resample
-        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 1.0) < 0.1)   // ~1 s trimmed
+        #expect(out.fileFormat.channelCount == 2)  // no downmix
+        #expect(abs(out.fileFormat.sampleRate - 48_000) < 1)  // no resample
+        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 1.0) < 0.1)  // ~1 s trimmed
 
         switch preset {
         case .master:
@@ -60,7 +62,10 @@ struct ExportEncoderTests {
         case .high, .standard:
             #expect(asbd.mFormatID == kAudioFormatMPEG4AAC)
         case .compact:
-            #expect(asbd.mFormatID == kAudioFormatMPEG4AAC_HE, "compact format id = \(asbd.mFormatID) (aac=\(kAudioFormatMPEG4AAC) aach=\(kAudioFormatMPEG4AAC_HE))")
+            #expect(
+                asbd.mFormatID == kAudioFormatMPEG4AAC_HE,
+                "compact format id = \(asbd.mFormatID) (aac=\(kAudioFormatMPEG4AAC) aach=\(kAudioFormatMPEG4AAC_HE))"
+            )
         }
     }
 
@@ -72,15 +77,20 @@ struct ExportEncoderTests {
 
         func size(_ preset: QualityPreset) throws -> Int {
             let dest = dir.appendingPathComponent("\(preset.rawValue).m4a")
-            try ExportEncoder().run(ExportRequest(source: source, destination: dest,
-                                                  startFrame: 0, frameCount: 48_000 * 3,
-                                                  preset: preset)) { _ in }
+            try ExportEncoder().run(
+                ExportRequest(
+                    source: source, destination: dest,
+                    startFrame: 0, frameCount: 48_000 * 3,
+                    preset: preset)
+            ) { _ in }
             return fileSize(dest)
         }
 
         // Lossless noise is far larger than 64 kbps of it; the target bitrates order as chosen.
-        let master = try size(.master), high = try size(.high)
-        let standard = try size(.standard), compact = try size(.compact)
+        let master = try size(.master)
+        let high = try size(.high)
+        let standard = try size(.standard)
+        let compact = try size(.compact)
         #expect(master > high)
         #expect(high > standard)
         #expect(standard > compact)
@@ -97,8 +107,11 @@ struct ExportEncoderTests {
         let encoder = ExportEncoder()
         encoder.cancel()
         #expect(throws: ExportEncoder.Failure.self) {
-            try encoder.run(ExportRequest(source: source, destination: dest,
-                                          startFrame: 0, frameCount: 96_000, preset: .high)) { _ in }
+            try encoder.run(
+                ExportRequest(
+                    source: source, destination: dest,
+                    startFrame: 0, frameCount: 96_000, preset: .high)
+            ) { _ in }
         }
     }
 
@@ -126,11 +139,14 @@ struct ExportEncoderTests {
         let dest = dir.appendingPathComponent("out.m4a")
 
         // Master/ALAC preserves the mono source exactly.
-        try ExportEncoder().run(ExportRequest(source: source, destination: dest,
-                                              startFrame: 0, frameCount: 44_100, preset: .master)) { _ in }
+        try ExportEncoder().run(
+            ExportRequest(
+                source: source, destination: dest,
+                startFrame: 0, frameCount: 44_100, preset: .master)
+        ) { _ in }
         let out = try AVAudioFile(forReading: dest)
-        #expect(out.fileFormat.channelCount == 1)                 // no upmix to stereo
-        #expect(abs(out.fileFormat.sampleRate - 44_100) < 1)      // no resample
+        #expect(out.fileFormat.channelCount == 1)  // no upmix to stereo
+        #expect(abs(out.fileFormat.sampleRate - 44_100) < 1)  // no resample
     }
 
     @Test func aSubMinimumFileExportsWhole() throws {
@@ -138,16 +154,19 @@ struct ExportEncoderTests {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = dir.appendingPathComponent("blip.caf")
-        try AudioFixtures.writeCAF(at: source, seconds: 0.1)   // 4800 frames at 48 kHz
+        try AudioFixtures.writeCAF(at: source, seconds: 0.1)  // 4800 frames at 48 kHz
         let dest = dir.appendingPathComponent("out.m4a")
 
         let recording = try #require(AudioFixtures.adopt(source))
         let (start, count) = recording.trimmedFrameRange
-        try ExportEncoder().run(ExportRequest(source: source, destination: dest,
-                                              startFrame: start, frameCount: count, preset: .high)) { _ in }
+        try ExportEncoder().run(
+            ExportRequest(
+                source: source, destination: dest,
+                startFrame: start, frameCount: count, preset: .high)
+        ) { _ in }
         let out = try AVAudioFile(forReading: dest)
         #expect(out.length > 0)
-        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 0.1) < 0.05)   // ~whole 0.1 s
+        #expect(abs(Double(out.length) / out.fileFormat.sampleRate - 0.1) < 0.05)  // ~whole 0.1 s
     }
 
     @Test func anEmptyRangeIsRefused() throws {
@@ -156,9 +175,12 @@ struct ExportEncoderTests {
         let source = dir.appendingPathComponent("master.caf")
         try writeNoise(at: source, seconds: 1)
         #expect(throws: ExportEncoder.Failure.self) {
-            try ExportEncoder().run(ExportRequest(source: source,
-                                                  destination: dir.appendingPathComponent("x.m4a"),
-                                                  startFrame: 0, frameCount: 0, preset: .high)) { _ in }
+            try ExportEncoder().run(
+                ExportRequest(
+                    source: source,
+                    destination: dir.appendingPathComponent("x.m4a"),
+                    startFrame: 0, frameCount: 0, preset: .high)
+            ) { _ in }
         }
     }
 }

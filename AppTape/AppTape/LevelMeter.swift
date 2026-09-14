@@ -26,8 +26,10 @@ nonisolated enum LevelMeter {
     }
 
     /// The publish-or-hold decision, taken per drain.
-    static func publication(producedSamples: Int, peak: Float,
-                            now: TimeInterval, lastPublishedAt: TimeInterval) -> Publication {
+    static func publication(
+        producedSamples: Int, peak: Float,
+        now: TimeInterval, lastPublishedAt: TimeInterval
+    ) -> Publication {
         guard producedSamples <= 0 else { return .publish(peak) }
         return now - lastPublishedAt >= holdSeconds ? .publish(0) : .hold
     }

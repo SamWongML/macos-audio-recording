@@ -28,10 +28,10 @@ nonisolated enum ExportReadiness: Equatable {
         /// What the dock prints — the table, and the only wording for these five facts.
         var sentence: String {
             switch self {
-            case .unopenable:     "AppTape can't decode this file."
+            case .unopenable: "AppTape can't decode this file."
             case .stillCapturing: "This Recording is still capturing."
-            case .emptyTrim:      "Nothing in the Trim to export."
-            case .unencodable:    "This quality can't encode this file."
+            case .emptyTrim: "Nothing in the Trim to export."
+            case .unencodable: "This quality can't encode this file."
             case .alreadyRunning: "An Export is already running."
             }
         }
@@ -51,12 +51,14 @@ nonisolated enum ExportReadiness: Equatable {
     }
 
     /// The decision. First rule that matches wins, in declaration order.
-    static func evaluate(isOpenable: Bool,
-                         isCapturing: Bool,
-                         trimmedFrameCount: Int64,
-                         preset: QualityPreset,
-                         format: SourceFormat,
-                         isExporting: Bool) -> ExportReadiness {
+    static func evaluate(
+        isOpenable: Bool,
+        isCapturing: Bool,
+        trimmedFrameCount: Int64,
+        preset: QualityPreset,
+        format: SourceFormat,
+        isExporting: Bool
+    ) -> ExportReadiness {
         if !isOpenable { return .refused(.unopenable) }
         if isCapturing { return .refused(.stillCapturing) }
         if trimmedFrameCount <= 0 { return .refused(.emptyTrim) }

@@ -1,4 +1,5 @@
 import Testing
+
 @testable import AppTape
 
 /// The writer reconciles host-time gaps into padded Dropouts: integer frames, cause `overrun` or
@@ -11,9 +12,10 @@ struct DropoutReconcilerTests {
     @Test func aContiguousStreamPadsNothing() {
         var r = DropoutReconciler(sampleRate: rate)
         let chunk = 512
-        var host = 100.0   // arbitrary anchor
+        var host = 100.0  // arbitrary anchor
         for _ in 0..<50 {
-            let d = r.account(hostTimeSeconds: host, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
+            let d = r.account(
+                hostTimeSeconds: host, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
             #expect(d == .append)
             host += seconds(ofFrames: chunk)
         }
@@ -30,11 +32,12 @@ struct DropoutReconcilerTests {
         _ = r.account(hostTimeSeconds: host, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
         host += seconds(ofFrames: chunk)
         // The next buffer was dropped by the ring: the following chunk arrives one buffer late.
-        host += seconds(ofFrames: chunk)   // wall clock advanced by the lost buffer
-        let d = r.account(hostTimeSeconds: host, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
+        host += seconds(ofFrames: chunk)  // wall clock advanced by the lost buffer
+        let d = r.account(
+            hostTimeSeconds: host, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
         #expect(d == .pad(frames: chunk, cause: .overrun))
         #expect(r.dropouts == [Dropout(start: 512, frames: 512, cause: .overrun)])
-        #expect(r.masterFrames == 512 + 512 + 512)   // first chunk + pad + late chunk
+        #expect(r.masterFrames == 512 + 512 + 512)  // first chunk + pad + late chunk
     }
 
     /// A rebuild's ~1 s host-time delta pads a `rebuild` Dropout when a rebuild was in flight.
@@ -71,7 +74,7 @@ struct DropoutReconcilerTests {
         let d = r.account(hostTimeSeconds: 300, hostTimeValid: true, newFrames: 512, rebuildInFlight: false)
         #expect(d == .end)
         #expect(r.dropouts.isEmpty)
-        #expect(r.masterFrames == before)   // nothing padded, nothing appended
+        #expect(r.masterFrames == before)  // nothing padded, nothing appended
     }
 
     /// A gap just under 30 s is still padded, not ended — it is the backstop, not a load-bearing path.
@@ -95,7 +98,8 @@ struct DropoutReconcilerTests {
         for i in 0..<100 {
             // A few frames of wobble either way, always under `minDropoutFrames`.
             let wobble = seconds(ofFrames: (i % 3) - 1)
-            _ = r.account(hostTimeSeconds: host + wobble, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
+            _ = r.account(
+                hostTimeSeconds: host + wobble, hostTimeValid: true, newFrames: chunk, rebuildInFlight: false)
             host += seconds(ofFrames: chunk)
         }
         #expect(r.dropouts.isEmpty)

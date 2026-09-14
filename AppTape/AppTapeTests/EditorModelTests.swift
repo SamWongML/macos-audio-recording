@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+
 @testable import AppTape
 
 /// The editor's coordinator, and the rule it exists to keep: the selection stays honest as the
@@ -19,12 +20,15 @@ struct EditorModelTests {
             let coordinator = ExportCoordinator()
             self.coordinator = coordinator
             // A directory that does not exist, so `start` establishes no real folder watch.
-            self.model = EditorModel(store: LibraryStore(directory: URL(filePath: "/AppTapeTests-\(UUID().uuidString)"),
-                                                         reader: reader),
-                                     player: AudioPlayer(),
-                                     correction: LoudnessCorrectionModel(),
-                                     coordinator: coordinator,
-                                     preference: ExportPreference(defaults: UserDefaults(suiteName: "apptape-tests-\(UUID().uuidString)")!))
+            self.model = EditorModel(
+                store: LibraryStore(
+                    directory: URL(filePath: "/AppTapeTests-\(UUID().uuidString)"),
+                    reader: reader),
+                player: AudioPlayer(),
+                correction: LoudnessCorrectionModel(),
+                coordinator: coordinator,
+                preference: ExportPreference(
+                    defaults: UserDefaults(suiteName: "apptape-tests-\(UUID().uuidString)")!))
         }
     }
 
@@ -102,9 +106,10 @@ struct EditorModelTests {
         #expect(rig.model.selection === opened)
 
         // The same file, longer, and a fresh reading of it.
-        let grown = Recording.stub("growing", seconds: 90,
-                                   byteCount: (opened.openedByteCount ?? 0) + 1,
-                                   identity: opened.fileIdentity)
+        let grown = Recording.stub(
+            "growing", seconds: 90,
+            byteCount: (opened.openedByteCount ?? 0) + 1,
+            identity: opened.fileIdentity)
         rig.reader.grow(opened, to: grown)
         rig.model.activate()
 
