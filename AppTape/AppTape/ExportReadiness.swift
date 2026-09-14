@@ -12,7 +12,7 @@ import Foundation
 /// has an undefined Trim end (ADR-0012); a Trim holding nothing is the only refusal nothing else on
 /// screen explains; an unencodable Quality Preset is already stated on its own rung at full strength
 /// (ADR-0041), so the dock names the situation and leaves the specifics there; an Export already
-/// running is reachable only through issue #127's rename.
+/// running is the one the surfaces reach last and least (see `.alreadyRunning`).
 ///
 /// **Two callers, which is the whole reason this is a type.** `ExportInspector` renders the reason in
 /// the dock's sentence idiom (ADR-0042); `ExportCoordinator` refuses on it before a save panel opens.
@@ -58,9 +58,19 @@ nonisolated enum ExportReadiness: Equatable {
         /// which `sentence` deliberately does not print; see below.
         case unencodable(String)
 
-        /// An Export is already running. Reachable in the dock only when a rename moved
-        /// `recording.url` out from under a running job's `subjectURL` (issue #127); in the
-        /// coordinator it is the plain one-at-a-time rule.
+        /// An Export is already running — the rule that keeps the dock from ever offering a button
+        /// whose click the coordinator would swallow.
+        ///
+        /// **Rarely reached, and kept for what it guarantees rather than what it shows.** Its named
+        /// route was issue #127: a rename moved `recording.url` out from under a running job's
+        /// `subjectURL`, and the Recording being exported lost its own progress bar to this sentence.
+        /// The coordinator's subject follows a relocate now (ADR-0048). Two routes survive it, and
+        /// they are why the rule stays: `presentSavePanel` falls back to a **modeless** panel when
+        /// there is no key window, and a selection changed while that panel is up leaves `begin` to
+        /// start on a Recording the editor has navigated away from; and a Recording re-adopted
+        /// mid-Export (ADR-0021) leaves the telling on the object that was dropped, which a later
+        /// rename then parts from the one on screen. In the coordinator the rule is stated rather
+        /// than live: `export`'s `guard case .idle` returns before it can fire there at all.
         case alreadyRunning
 
         /// What the dock prints — ADR-0042's table, and the only wording for these five facts.

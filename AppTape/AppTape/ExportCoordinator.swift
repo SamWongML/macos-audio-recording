@@ -36,9 +36,27 @@ final class ExportCoordinator {
 
     private(set) var phase: Phase = .idle
 
-    /// Which Recording the current telling belongs to. The inspector shows running/success/failure
-    /// only when this matches the Recording on screen; every other selection reads idle.
-    private(set) var subjectURL: URL?
+    /// Which Recording the current telling belongs to — the **object**, not the path it had when
+    /// the Export was launched. A rename moves the path and the store relocates the same object
+    /// (ADR-0006/-0020), so a stored url was left naming a file that no longer exists: the dock lost
+    /// the running Recording's own progress bar and Cancel button mid-encode while the encode, which
+    /// reads a file it already has open, ran to completion unseen (issue #127). Held rather than
+    /// copied, so the telling stays attached to its subject wherever the subject goes.
+    ///
+    /// Private, and read only through `subjectURL`: the question this answers is *where is my
+    /// subject*, never *which object is it*. Cleared by `cancel`, which every path out of a telling
+    /// goes through, so nothing is kept alive behind an idle dock.
+    private var subject: Recording?
+
+    /// Where the subject is now. The inspector shows running/success/failure only when this matches
+    /// the Recording on screen; every other selection reads idle.
+    ///
+    /// **A path comparison, deliberately, over an object comparison.** The Recording on screen may be
+    /// a *fresh reading* of the same file — ADR-0021 re-adopts a file whose length changed, and the
+    /// editor rebinds its selection to the new object without navigating anywhere — and that one is
+    /// still looking at the Export it started. Asking which object it is would take the progress bar
+    /// away from it exactly as the stored url took it away from a rename.
+    var subjectURL: URL? { subject?.url }
 
     @ObservationIgnored private var encoder: ExportEncoder?
     /// Bumped on every launch and every cancel, so a completion handler from a superseded job is
@@ -61,9 +79,9 @@ final class ExportCoordinator {
     /// Recording first — opening is itself a selection change, which cancels (ADR-0012), so a
     /// coordinator born running would be idle again before the case began. Debug-only; the app's own
     /// path is `export`.
-    func park(in phase: Phase, subject subjectURL: URL?) {
+    func park(in phase: Phase, subject: Recording?) {
         self.phase = phase
-        self.subjectURL = subjectURL
+        self.subject = subject
     }
 #endif
 
@@ -114,7 +132,7 @@ final class ExportCoordinator {
                                                  trimmedFrameCount: frameCount,
                                                  preset: preset, format: recording.sourceFormat,
                                                  isExporting: isExporting).refusal {
-            present(.failed(message: reason.sentence), for: recording.url)
+            present(.failed(message: reason.sentence), for: recording)
             return
         }
         let snapshot = Snapshot(
@@ -130,7 +148,10 @@ final class ExportCoordinator {
 
         presentSavePanel(defaultName: snapshot.name) { [weak self] destination in
             guard let self, let destination else { return }
-            self.begin(snapshot, destination: destination)
+            // The Recording rides alongside the snapshot rather than inside it: the snapshot is the
+            // *encode's* parameters, frozen at click (ADR-0012), and this is the telling's subject,
+            // which is the one thing that must stay live.
+            self.begin(snapshot, subject: recording, destination: destination)
         }
     }
 
@@ -143,12 +164,12 @@ final class ExportCoordinator {
         encoder = nil
         jobID &+= 1
         phase = .idle
-        subjectURL = nil
+        subject = nil
     }
 
     // MARK: - Launch
 
-    private func begin(_ snapshot: Snapshot, destination: URL) {
+    private func begin(_ snapshot: Snapshot, subject: Recording, destination: URL) {
         // Pre-flight the destination volume. Refuse rather than fill it (ADR-0012).
         let free = DiskSpace.freeBytes(forVolumeContaining: destination)
         guard DiskSpace.hasRoom(estimatedBytes: snapshot.estimatedBytes, freeBytes: free) else {
@@ -168,7 +189,7 @@ final class ExportCoordinator {
             // #78 shortened `Reveal in Finder` to `Reveal` so the succeeded phase would fit the
             // same height. Keep any future wording inside two lines at `.caption`.
             fail(message: "Not enough space: needs \(need), \(have).",
-                 name: snapshot.name, for: snapshot.source)
+                 name: snapshot.name, for: subject)
             return
         }
 
@@ -184,7 +205,7 @@ final class ExportCoordinator {
         self.encoder = encoder
         jobID &+= 1
         let id = jobID
-        subjectURL = snapshot.source
+        self.subject = subject
         phase = .running(fraction: 0)
 
         queue.async { [weak self] in
@@ -241,16 +262,16 @@ final class ExportCoordinator {
 
     /// A pre-flight refusal, before any encode job exists. Tells in-window, and louder when the
     /// app is not frontmost.
-    private func fail(message: String, name: String, for url: URL) {
-        present(.failed(message: message), for: url)
+    private func fail(message: String, name: String, for recording: Recording) {
+        present(.failed(message: message), for: recording)
         if !NSApp.isActive {
             ExportNotifier.exportFailed(recordingName: name, detail: message)
         }
     }
 
-    private func present(_ phase: Phase, for url: URL) {
+    private func present(_ phase: Phase, for recording: Recording) {
         jobID &+= 1
-        subjectURL = url
+        subject = recording
         self.phase = phase
     }
 

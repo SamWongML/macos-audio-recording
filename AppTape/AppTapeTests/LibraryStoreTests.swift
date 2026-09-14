@@ -284,6 +284,35 @@ struct LibraryStoreTests {
             atPath: dir.appendingPathComponent("Interview.caf").path))
     }
 
+    /// Issue #127, end to end: a rename **while that Recording's own Export is running**. The store
+    /// relocates the object and the telling has to come with it, or the dock — which shows a phase
+    /// only while `subjectURL` matches the Recording on screen — swaps the progress bar and Cancel
+    /// button for `An Export is already running.` and the encode finishes unseen.
+    ///
+    /// A real `moveItem` and a real `RecordingReader`, like the rename case above: this is the wiring
+    /// between the store's relocate and the coordinator's subject, and a stub on either side would
+    /// leave it unpinned.
+    @Test func aRenameDuringAnExportKeepsTheTellingWithItsRecording() throws {
+        let dir = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        _ = try AudioFixtures.writeCAF(at: dir.appendingPathComponent("Google Chrome 2026-08-27 at 20.05.03.caf"),
+                                       seconds: 5)
+
+        let store = LibraryStore(directory: dir, reader: RecordingReader())
+        store.refresh()
+        let recording = try #require(store.recordings.first)
+
+        let coordinator = ExportCoordinator()
+        coordinator.park(in: .running(fraction: 0.42), subject: recording)
+
+        #expect(store.rename(recording, to: "Interview") == .rename(to: "Interview.caf"))
+
+        #expect(store.recordings[0] === recording)                     // the rename was followed
+        #expect(coordinator.subjectURL == recording.url)               // and so was the telling
+        #expect(coordinator.subjectURL?.lastPathComponent == "Interview.caf")
+        #expect(coordinator.phase == .running(fraction: 0.42))         // still running, still shown
+    }
+
     @Test func aRefusedRenameLeavesTheFileExactlyWhereItWas() throws {
         let dir = try AudioFixtures.makeScratchDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

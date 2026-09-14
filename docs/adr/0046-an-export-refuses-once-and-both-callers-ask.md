@@ -65,6 +65,9 @@ rides in the case's payload rather than being discarded.
 `.failed` telling in place until it is dismissed, which is what the inspector's `Retry…` relies on —
 it calls `cancel()` first. `.alreadyRunning` is the separate rule, and in the dock it is reachable
 only through [#127](https://github.com/SamWongML/macos-audio-recording/issues/127)'s rename.
+*(Amended by [ADR-0048](0048-an-exports-subject-is-the-recording-not-its-path.md): #127 closed that
+route and the case was kept, for the compound one that survives it. The claim that the coordinator
+reaches it as "the plain one-at-a-time rule" was never true — `guard case .idle` returns first.)*
 
 **`Reason` owns its SF Symbol, so the dock draws every refusal through one call.** The still-capturing
 sentence needed a branch of its own in `exportControl` purely because its glyph differed;
@@ -94,7 +97,9 @@ over the coordinator's gate, none of which could exist before, because reaching 
 
 **Three of the four refusals can now be seen in the canvas.** `unencodable` needed a doctored Library
 and a `defaults write` to photograph when ADR-0041 was written; `alreadyRunning` has never been seen at
-all, being reachable only through #127's rename mid-encode.
+all, being reachable only through #127's rename mid-encode — and after
+[ADR-0048](0048-an-exports-subject-is-the-recording-not-its-path.md) not even through that, so its
+preview is where it is looked at.
 
 ## Considered and rejected
 
@@ -122,5 +127,8 @@ two-phase thing, and it is not one.
 **Fixing [#127](https://github.com/SamWongML/macos-audio-recording/issues/127) here.** `subjectURL`
 following a relocate is the coordinator's *identity*, not this decision. `.alreadyRunning` being a
 named case rather than a branch in a view body is what #127 will need in order to delete it cleanly.
+*(Done in [ADR-0048](0048-an-exports-subject-is-the-recording-not-its-path.md), which deleted the
+route and kept the case — the named case is what made that a one-line docstring change rather than a
+view edit, which was the point.)*
 
 Prompted by the architecture review of 12 September 2026, candidate 4.
