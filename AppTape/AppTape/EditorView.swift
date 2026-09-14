@@ -15,9 +15,10 @@ import SwiftUI
 /// toolbar background so the waveform reads to the window's edge.
 struct EditorView: View {
     @State private var model = EditorModel.shared
-    /// Whether the selected Recording is the one capturing right now — the transport asks, as the
-    /// lane and the inspector already do (ADR-0021).
-    @State private var recorder = RecordingController.shared
+    /// What capture is doing (ADR-0045). Accepted, not reached for, and this window is the one
+    /// surface that passes it on: the transport reads it here, and the lane, the brief, the sidebar
+    /// row and the Export dock are each handed it below.
+    var capture: any CaptureState
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
     /// Whether the Library list holds the window's keyboard focus. Written, not just read:
@@ -76,7 +77,7 @@ struct EditorView: View {
             ForEach(days) { day in
                 Section(day.title) {
                     ForEach(day.recordings) { recording in
-                        LibraryRow(recording: recording, model: model)
+                        LibraryRow(recording: recording, model: model, capture: capture)
                             .tag(recording.url)
                     }
                 }
@@ -333,7 +334,7 @@ struct EditorView: View {
     @ViewBuilder
     private var inspectorColumn: some View {
         if let recording = model.selection, recording.isOpenable {
-            ExportInspector(recording: recording)
+            ExportInspector(recording: recording, capture: capture)
         } else {
             Color.clear
         }
@@ -375,12 +376,13 @@ struct EditorView: View {
             TrimTimeline(recording: recording,
                          envelope: recording.envelope,
                          player: model.player,
+                         capture: capture,
                          onTrimCommitted: { recording.persistTrim() })
                 .frame(minHeight: Self.laneMinimumHeight, maxHeight: Self.laneMaximumHeight)
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.lg)
 
-            RecordingBrief(recording: recording)
+            RecordingBrief(recording: recording, capture: capture)
                 .padding(.horizontal, Metrics.xl)
                 .padding(.top, Metrics.xl)
 
@@ -475,7 +477,7 @@ struct EditorView: View {
     private func transport(_ recording: Recording) -> some View {
         // A Recording whose audio is still arriving has no dependable length and nothing to play
         // (ADR-0021): the lane says so, and the transport must not contradict it.
-        let isStillArriving = recorder.isStillArriving(recording)
+        let isStillArriving = capture.isStillArriving(recording)
         return HStack(spacing: Metrics.lg) {
             Button {
                 model.player.toggle()
@@ -527,8 +529,8 @@ struct EditorView: View {
             // right in both states and *jumped by the width of `Reset`* at the moment capture
             // ended — the exact reflow ADR-0027 reserved the width to prevent, reintroduced one
             // control to the right of where it was fixed.
-            if !isStillArriving || recorder.isCapturing(recording) {
-                let capturing = recorder.isCapturing(recording)
+            if !isStillArriving || capture.isCapturing(recording) {
+                let capturing = capture.isCapturing(recording)
                 // Reserved the same way as the clock, and for the same reason. The two rows carry
                 // different fonts, so the reference is a `ZStack` of both — it takes the width of
                 // whichever is wider, which for a short Recording is the caption, not the figure.
@@ -544,7 +546,7 @@ struct EditorView: View {
                         // clock is `mm:ss` zero-padded (`00:27`) and every figure in the editor is
                         // `m:ss` (`0:30`); the sidebar column showed both at once until this was
                         // one function rather than two.
-                        Text(capturing ? Format.time(recorder.elapsed)
+                        Text(capturing ? Format.time(capture.elapsed)
                                        : recording.isTrimmed ? recording.trimRangeText
                                                              : Format.time(recording.duration))
                             .font(Metrics.readout)
@@ -559,7 +561,7 @@ struct EditorView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(capturing ? "Captured so far"
                                               : recording.isTrimmed ? "Trim" : "Length")
-                .accessibilityValue(capturing ? Format.time(recorder.elapsed)
+                .accessibilityValue(capturing ? Format.time(capture.elapsed)
                                               : recording.isTrimmed ? recording.trimRangeText
                                                                     : Format.time(recording.duration))
 
@@ -602,9 +604,11 @@ struct EditorView: View {
 /// in dB is already an inspector row, so there is nothing left for this block to add.
 private struct RecordingBrief: View {
     var recording: Recording
-    @State private var recorder = RecordingController.shared
+    /// Accepted from the window (ADR-0045). The brief asks it for the growing master's figure and
+    /// for whether there is a dependable one to state at all (ADR-0031).
+    var capture: any CaptureState
 
-    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+    private var isStillArriving: Bool { capture.isStillArriving(recording) }
 
     var body: some View {
         Grid(alignment: .leadingFirstTextBaseline,
@@ -645,8 +649,8 @@ private struct RecordingBrief: View {
     /// master they are the same number (ADR-0003), and for one that has grown since, ADR-0021 says
     /// the answer is a re-adoption rather than a patched figure.
     private var masterText: String {
-        if recorder.isCapturing(recording) {
-            let size = recorder.masterByteCount?.formatted(.byteCount(style: .file))
+        if capture.isCapturing(recording) {
+            let size = capture.masterByteCount?.formatted(.byteCount(style: .file))
             return size.map { "\($0) and growing" } ?? "—"
         }
         if isStillArriving { return "—" }
@@ -730,13 +734,13 @@ private struct LibraryRow: View {
     @State private var draft = ""
     @State private var refusal: LibraryLocation.NameRefusal?
     /// The row asks whether it is the one capturing, as the lane, the transport and the inspector
-    /// already do (ADR-0031).
-    @State private var recorder = RecordingController.shared
+    /// already do (ADR-0031) — accepted from the window, like `model` above it (ADR-0045).
+    var capture: any CaptureState
 
     private var isRenaming: Bool { model.renamingURL == recording.url }
 
-    private var isCapturing: Bool { recorder.isCapturing(recording) }
-    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+    private var isCapturing: Bool { capture.isCapturing(recording) }
+    private var isStillArriving: Bool { capture.isStillArriving(recording) }
 
     /// Whether this row is the selected one. A selected sidebar row is filled by macOS — with the
     /// accent at full saturation while the sidebar has focus, with a mid grey when it does not —
@@ -842,7 +846,7 @@ private struct LibraryRow: View {
                 // Still `Format.time`, so the column keeps one number format: the engine's own
                 // `elapsedText` is the menu bar's zero-padded `mm:ss`, which put `00:27` in a
                 // column of `0:30`s.
-                Text(Format.time(isCapturing ? recorder.elapsed : recording.duration))
+                Text(Format.time(isCapturing ? capture.elapsed : recording.duration))
                     .font(Metrics.metadata).monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(width: 42, alignment: .trailing)
@@ -947,6 +951,28 @@ extension FocusedValues {
     @Entry var librarySidebarRecording: URL?
 }
 
-#Preview {
-    EditorView()
+// `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too, so a fixture
+// that does not ship has to be guarded where it is used as well as where it is defined.
+#if DEBUG
+
+#Preview("Editor") {
+    EditorView(capture: PreviewCapture.settled)
 }
+
+/// The two states of the brief's `Master` row that ADR-0031 is about, neither of which could be seen
+/// before the brief accepted its capture state: a settled Recording states the length it was read at,
+/// and the one being written states what it weighs right now.
+#Preview("Brief · settled") {
+    RecordingBrief(recording: .stub(), capture: PreviewCapture.settled)
+        .frame(width: 420)
+        .padding(Metrics.xl)
+}
+
+#Preview("Brief · capturing") {
+    let recording = Recording.stub(seconds: 93)
+    RecordingBrief(recording: recording, capture: PreviewCapture.capturing(recording))
+        .frame(width: 420)
+        .padding(Metrics.xl)
+}
+
+#endif

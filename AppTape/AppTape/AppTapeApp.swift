@@ -20,7 +20,11 @@ struct AppTapeApp: App {
         // its existence — via `.editorActivationPolicy()` — is what flips the
         // app to `.regular` (ADR-0017).
         Window("AppTape", id: Self.editorWindowID) {
-            EditorView()
+            // **One of the two places an app singleton is named** (ADR-0045). The editor accepts what
+            // capture is doing rather than reaching for the shell that presses record; the shell's
+            // own two surfaces — the panel and the status item — are wired in `AppDelegate`, which is
+            // the other place.
+            EditorView(capture: RecordingController.shared.run)
                 // A floor under the three columns. Without one the window clamped to 418 × 400 —
                 // below the sidebar's own 232 pt minimum plus the inspector's 248 — and SwiftUI
                 // resolved the shortfall by **collapsing the Library entirely**, with no indication

@@ -18,13 +18,12 @@ struct TrimTimeline: View {
     var recording: Recording
     var envelope: Envelope
     var player: AudioPlayer
+    /// What capture is doing, accepted like the three above it (ADR-0045). The lane asks two things
+    /// of it: whether it has anything dependable to draw (ADR-0021), and — so the empty lane can say
+    /// *why* it is empty rather than just being blank — whether this is the Recording being captured.
+    var capture: any CaptureState
     /// Persist the Trim once, at gesture-end — never per drag frame (issue #7, ADR-0006).
     var onTrimCommitted: () -> Void
-
-    /// The Recording being captured right now, if any. Read here, as `ExportInspector` already
-    /// does, both to decide whether the lane has anything dependable to draw (ADR-0021) and so the
-    /// empty lane can say *why* it is empty rather than just being blank.
-    @State private var recorder = RecordingController.shared
 
     /// The loupe's material is the editor's one vibrant surface in the detail pane (issue #73,
     /// finding 15). Reduce Motion is handled by `.motion(_:value:)`, not read here.
@@ -47,12 +46,12 @@ struct TrimTimeline: View {
     /// Whether the lane has anything dependable to draw. The Recording always fits the width, so a
     /// reading of a file still being written is drawn as though it were the whole Recording — which
     /// is how a fraction of a second became a solid slab across the lane (issue #80, ADR-0021).
-    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+    private var isStillArriving: Bool { capture.isStillArriving(recording) }
 
     /// What the lane says in place of that picture. A capture in progress is named as such; a file
     /// merely arriving in the Library has no better word than that it holds no audio yet.
     private var arrivingTelling: String {
-        recorder.isCapturing(recording) ? "Still capturing" : "No audio yet"
+        capture.isCapturing(recording) ? "Still capturing" : "No audio yet"
     }
 
     var body: some View {
@@ -529,3 +528,50 @@ struct TrimTimeline: View {
         return candidates.first { $0 / safeDuration * width >= minimumSpacing } ?? candidates.last!
     }
 }
+
+// MARK: - Previews
+
+// `#if DEBUG`, as `PreviewFixtures.swift` is: a preview body is compiled in Release too, so a fixture
+// that does not ship has to be guarded where it is used as well as where it is defined.
+#if DEBUG
+
+/// The lane's three states, which is the whole reason `capture` is accepted rather than reached for
+/// (ADR-0045). Before this, none of them could be rendered without a live tap: the second and third
+/// require a Recording that is *being written*, which only Core Audio and a noisy Source produce.
+
+#Preview("Lane · settled") {
+    TrimTimeline(recording: .stub(),
+                 envelope: .preview(),
+                 player: AudioPlayer(),
+                 capture: PreviewCapture.settled,
+                 onTrimCommitted: {})
+        .frame(width: 760, height: 300)
+        .padding(Metrics.xl)
+}
+
+/// A Recording still being captured: the lane declines to draw a reading of a file that is still
+/// growing and says why (ADR-0021, issue #80), and the transport offers no Play.
+#Preview("Lane · capturing") {
+    let recording = Recording.stub(seconds: 93)
+    TrimTimeline(recording: recording,
+                 envelope: .preview(),
+                 player: AudioPlayer(),
+                 capture: PreviewCapture.capturing(recording),
+                 onTrimCommitted: {})
+        .frame(width: 760, height: 300)
+        .padding(Metrics.xl)
+}
+
+/// A Recording with no frames at all — adopted moments after the first sound created it, or one that
+/// could not be opened. The other half of `isStillArriving`, and the half zero-frames alone was.
+#Preview("Lane · no audio yet") {
+    TrimTimeline(recording: .stub(seconds: 0),
+                 envelope: Envelope(),
+                 player: AudioPlayer(),
+                 capture: PreviewCapture.settled,
+                 onTrimCommitted: {})
+        .frame(width: 760, height: 300)
+        .padding(Metrics.xl)
+}
+
+#endif

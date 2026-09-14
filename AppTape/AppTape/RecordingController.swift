@@ -39,24 +39,27 @@ final class RecordingController {
         self.run = run
     }
 
-    // MARK: - What the views read
+    // MARK: - What the panel and the status item read
     //
-    // Forwards, not copies. Observation tracks through a computed property, so a view reading
+    // Forwards, not copies. Observation tracks through a computed property, so a surface reading
     // `recorder.isRecording` registers on the run's own stored property and nothing re-renders more
     // often than it did before the run existed.
+    //
+    // **These are the transport's two surfaces only** — the panel and the status item, which press
+    // record and stop and therefore hold the shell. The editor reads capture through `CaptureState`
+    // instead, over the run itself, so what used to be fifteen forwards for five editor views plus
+    // two transport surfaces is now the nine the transport actually asks for. A forward added back
+    // here for the editor's benefit is a reach-through with an extra step in it (ADR-0045).
 
     var isRecording: Bool { run.isRecording }
     var recordingSourceID: String? { run.recordingSourceID }
     var elapsed: TimeInterval { run.elapsed }
     var elapsedText: String { run.elapsedText }
-    var masterByteCount: Int64? { run.masterByteCount }
-    var currentLevel: Double { run.currentLevel }
     var meterColumns: [Double] { run.meterColumns }
     var hasFirstSound: Bool { run.hasFirstSound }
     var permissionRecovery: Bool { run.permissionRecovery }
     var runwayTier: RunwayGuard.Tier { run.runwayTier }
     var startRefusal: DiskGuardRefusal? { run.startRefusal }
-    var capturingURL: URL? { run.capturingURL }
 
     /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
     /// The subtraction happens here because the run reads no clock; it publishes the press time and
@@ -64,9 +67,6 @@ final class RecordingController {
     var sincePress: TimeInterval? {
         run.pressedAt.map { ProcessInfo.processInfo.systemUptime - $0 }
     }
-
-    func isCapturing(_ recording: Recording) -> Bool { run.isCapturing(recording) }
-    func isStillArriving(_ recording: Recording) -> Bool { run.isStillArriving(recording) }
 
     // MARK: - The presses
 

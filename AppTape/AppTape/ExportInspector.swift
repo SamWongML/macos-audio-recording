@@ -12,10 +12,13 @@ import SwiftUI
 /// progress bar while an Export runs, in place, so a two-second job never seizes a sheet (ADR-0012).
 struct ExportInspector: View {
     var recording: Recording
+    /// What capture is doing (ADR-0045). The dock asks it two questions: whether this Recording is
+    /// the one being written — which is a refusal of its own (ADR-0012) — and whether its audio is
+    /// still arriving, which is what nothing about the Trim's length may be claimed under (ADR-0021).
+    var capture: any CaptureState
 
     @State private var preference = ExportPreference.shared
     @State private var coordinator = ExportCoordinator.shared
-    @State private var recorder = RecordingController.shared
     @State private var editor = EditorModel.shared
 
     private var format: SourceFormat { recording.sourceFormat }
@@ -36,7 +39,7 @@ struct ExportInspector: View {
 
     /// Whether this Recording's audio is still arriving, so nothing may be claimed about its
     /// length (ADR-0021, ADR-0031). The lane, the transport and the sidebar row ask the same.
-    private var isStillArriving: Bool { recorder.isStillArriving(recording) }
+    private var isStillArriving: Bool { capture.isStillArriving(recording) }
 
     /// The preset actually shown selected and exported: the per-file display-over if one was chosen,
     /// otherwise the sticky preference.
@@ -448,7 +451,7 @@ struct ExportInspector: View {
 
     @ViewBuilder
     private var exportControl: some View {
-        if recorder.isCapturing(recording) {
+        if capture.isCapturing(recording) {
             // Its `.caf` is still growing and its Trim end is undefined until Stop (ADR-0012).
             // In ink, like every other sentence in this slot: `.secondary` here measured
             // **3.89 : 1 in Light** (issue #125), the same figure #119 rejected for the rungs.
