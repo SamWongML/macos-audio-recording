@@ -48,16 +48,20 @@ final class ExportCoordinator {
 
     var isExporting: Bool { if case .running = phase { return true } else { return false } }
 
-    /// The app's one coordinator starts idle. Spelled out because the preview initializer below
-    /// would otherwise take the implicit one's place.
-    init() {}
-
 #if DEBUG
-    /// A coordinator parked in one phase, for a preview. The four phases are reachable in the running
-    /// app only by starting a real Export through the save panel, which is exactly why ADR-0012's
-    /// claim that they all render at **one height** went unseen until a two-second job moved the dock
-    /// twice (issue #78). Debug-only, and the app's own path still goes through `export`.
-    init(previewing phase: Phase, subject subjectURL: URL?) {
+    /// Park the coordinator in one phase, for a preview or a test.
+    ///
+    /// The four phases are reachable in the running app only by starting a real Export through the
+    /// save panel — which is why ADR-0012's claim that they all render at **one height** went unseen
+    /// until a two-second job moved the dock twice (issue #78), and why nothing could check that
+    /// navigating away cancels a *running* Export rather than merely an idle one.
+    ///
+    /// A method rather than an initializer because both callers need it **after** the surface is
+    /// established: a preview builds the dock around it, and a test has to open the editor on a
+    /// Recording first — opening is itself a selection change, which cancels (ADR-0012), so a
+    /// coordinator born running would be idle again before the case began. Debug-only; the app's own
+    /// path is `export`.
+    func park(in phase: Phase, subject subjectURL: URL?) {
         self.phase = phase
         self.subjectURL = subjectURL
     }

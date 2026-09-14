@@ -962,8 +962,20 @@ extension FocusedValues {
 // that does not ship has to be guarded where it is used as well as where it is defined.
 #if DEBUG
 
+/// The whole editor over a Library that does not exist. It used to be `EditorView()`, which bound to
+/// `EditorModel.shared` and `RecordingController.shared` and therefore listed whatever was in the real
+/// Library folder and opened Core Audio to do it (ADR-0045).
 #Preview("Editor") {
-    EditorView(model: .shared, capture: PreviewCapture.settled)
+    EditorView(model: .preview(), capture: PreviewCapture.settled)
+}
+
+/// The same editor with its newest Recording still being written: no waveform, no Play, a live clock
+/// in the row and a growing figure in the brief (ADR-0031).
+#Preview("Editor · capturing") {
+    let library = Recording.previewLibrary()
+    let capturing = library.max { ($0.recordedAt ?? .distantPast) < ($1.recordedAt ?? .distantPast) }
+    return EditorView(model: .preview(recordings: library),
+                      capture: capturing.map { PreviewCapture.capturing($0) } ?? PreviewCapture.settled)
 }
 
 /// The two states of the brief's `Master` row that ADR-0031 is about, neither of which could be seen

@@ -118,4 +118,61 @@ extension Envelope {
     }
 }
 
+/// A Library that is not a folder: the Recordings a preview was handed, answered from memory.
+///
+/// A third conformance of `RecordingReading`, and it does not weaken the two-conformance bar
+/// ADR-0043 set — that bar is about a second *production* conformance, which would make the seam a
+/// layer. This one opens no files, which is the whole point: the editor preview below renders a
+/// 44-Recording Library on a machine that has none.
+struct PreviewLibraryReader: RecordingReading {
+    var recordings: [Recording]
+
+    func audioFiles(in directory: URL) -> [URL] { recordings.map(\.url) }
+    func adopt(_ url: URL) -> Recording? { recordings.first { $0.url == url } }
+    func byteCount(of url: URL) -> Int64? { adopt(url)?.openedByteCount }
+    func identity(of url: URL) -> FileIdentity? { adopt(url)?.fileIdentity }
+}
+
+extension EditorModel {
+    /// The editor over a Library that does not exist, with Export objects nothing else is watching
+    /// and a defaults suite of its own, so a preview can never write the user's sticky Quality
+    /// Preset (issue #9).
+    ///
+    /// Sources repeat within a day and the days are real days, because that is what the sidebar
+    /// groups by (`RecordingDay`) and what the silhouette is a comparison aid for.
+    /// Two overloads rather than one default argument: a default argument is evaluated in a
+    /// nonisolated context, and `previewLibrary()` is main-actor isolated — the trap `LibraryStore`
+    /// and `EditorModel` each have two initializers for.
+    static func preview() -> EditorModel { preview(recordings: Recording.previewLibrary()) }
+
+    static func preview(recordings: [Recording]) -> EditorModel {
+        let model = EditorModel(store: LibraryStore(directory: URL(filePath: "/PreviewLibrary"),
+                                                    reader: PreviewLibraryReader(recordings: recordings)),
+                                player: AudioPlayer(),
+                                correction: LoudnessCorrectionModel(),
+                                coordinator: ExportCoordinator(),
+                                preference: ExportPreference(defaults: UserDefaults(suiteName: "com.apptape.previews")
+                                    ?? .standard))
+        model.activate()
+        return model
+    }
+}
+
+extension Recording {
+    /// A few days of Recordings from a handful of Sources, newest last so the store's own sort has
+    /// something to do.
+    static func previewLibrary() -> [Recording] {
+        let sources = ["Google Chrome", "Music", "Zoom", "Podcasts"]
+        let day: TimeInterval = 86_400
+        let base = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        return (0..<12).map { i in
+            let source = sources[i % sources.count]
+            return .stub("\(source) 2026-09-\(10 + i / 4) at 21.\(10 + i).03",
+                         seconds: Double(30 + i * 37),
+                         storedSource: source,
+                         recordedAt: base.addingTimeInterval(Double(i / 4) * day + Double(i) * 900))
+        }
+    }
+}
+
 #endif

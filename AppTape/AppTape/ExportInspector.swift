@@ -669,25 +669,25 @@ private func previewDock(_ recording: Recording,
 
 #Preview("Dock · running") {
     let recording = Recording.stub()
-    return previewDock(recording, capture: PreviewCapture.settled,
-                       coordinator: ExportCoordinator(previewing: .running(fraction: 0.42),
-                                                      subject: recording.url))
+    let coordinator = ExportCoordinator()
+    coordinator.park(in: .running(fraction: 0.42), subject: recording.url)
+    return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
 #Preview("Dock · succeeded") {
     let recording = Recording.stub()
-    return previewDock(recording, capture: PreviewCapture.settled,
-                       coordinator: ExportCoordinator(previewing: .succeeded(url: recording.url),
-                                                      subject: recording.url))
+    let coordinator = ExportCoordinator()
+    coordinator.park(in: .succeeded(url: recording.url), subject: recording.url)
+    return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
 /// The tallest phase — a two-line failure — which is the one `exportControlHeight` is sized to.
 #Preview("Dock · failed") {
     let recording = Recording.stub()
-    let message = "The destination is on a volume that has since been ejected."
-    return previewDock(recording, capture: PreviewCapture.settled,
-                       coordinator: ExportCoordinator(previewing: .failed(message: message),
-                                                      subject: recording.url))
+    let coordinator = ExportCoordinator()
+    coordinator.park(in: .failed(message: "The destination is on a volume that has since been ejected."),
+                     subject: recording.url)
+    return previewDock(recording, capture: PreviewCapture.settled, coordinator: coordinator)
 }
 
 /// An empty Recording — a hand-adopted file with no audio in it. The dock refuses, and the wording is
