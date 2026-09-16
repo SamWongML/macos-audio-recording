@@ -24,6 +24,7 @@ final class StubRecordingReader: RecordingReading {
 
     private(set) var adoptCount = 0
     private(set) var probeCount = 0
+    private(set) var listCount = 0
 
     /// Every file in the folder is a settled Recording: it lists, it adopts, and its length and
     /// identity agree with what it read. The state every case starts from.
@@ -92,7 +93,10 @@ final class StubRecordingReader: RecordingReading {
 
     // MARK: - RecordingReading
 
-    func audioFiles(in directory: URL) -> [URL] { files }
+    func audioFiles(in directory: URL) -> [URL] {
+        listCount += 1
+        return files
+    }
 
     func adopt(_ url: URL) -> Recording? {
         adoptCount += 1

@@ -38,6 +38,15 @@ enum AudioFixtures {
     @MainActor
     static func adopt(_ url: URL) -> Recording? { RecordingReader().adopt(url) }
 
+    /// Waits for an asynchronous side effect to land instead of sleeping through a fixed delay —
+    /// the whole suite shares one main actor, so a fixed delay is a race under load. Falling out of
+    /// the loop is not itself a failure: the caller's `#expect` reports the miss.
+    static func waitUntil(attempts: Int = 400, _ condition: () -> Bool) async throws {
+        for _ in 0..<attempts where !condition() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+    }
+
     /// A fresh empty scratch directory the caller is responsible for removing.
     static func makeScratchDirectory() throws -> URL {
         let dir = FileManager.default.temporaryDirectory

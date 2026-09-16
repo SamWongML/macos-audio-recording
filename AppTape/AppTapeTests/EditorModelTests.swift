@@ -34,6 +34,18 @@ struct EditorModelTests {
 
     // MARK: - What is selected when the editor opens
 
+    /// Opening the editor lists the folder exactly once. `start()` already re-lists on its first
+    /// call, and opening the window activates the app, which re-lists again.
+    @Test func openingTheEditorListsTheFolderOnce() {
+        let rig = Rig()
+        rig.reader.place("one")
+        rig.reader.place("two")
+
+        rig.model.activate()
+
+        #expect(rig.reader.listCount == 1)
+    }
+
     /// The path capture takes on every Stop: the editor is opened naming the Recording just made,
     /// which the store has only just listed.
     @Test func theRecordingJustCapturedIsSelectedOnceItLists() {

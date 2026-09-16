@@ -116,11 +116,12 @@ extension LibraryLocation {
         return .rename(to: newFileName)
     }
 
+    /// Compiled once, at build time: the sidebar asks this of every row it draws.
+    private static let generatedNamePattern = /^.+ \d{4}-\d{2}-\d{2} at \d{2}\.\d{2}\.\d{2}( \d+)?$/
+
     /// Whether `baseName` still looks like a name this app generated at capture — the
     /// `baseName(source:date:)` pattern above, optionally carrying `uniqueFileName`'s ` 2` suffix.
     static func isGeneratedName(_ baseName: String) -> Bool {
-        baseName.range(
-            of: #"^.+ \d{4}-\d{2}-\d{2} at \d{2}\.\d{2}\.\d{2}( \d+)?$"#,
-            options: .regularExpression) != nil
+        baseName.contains(generatedNamePattern)
     }
 }

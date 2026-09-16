@@ -59,7 +59,6 @@ final class EditorModel {
     func activate(selecting url: URL? = nil) {
         if let url { pendingSelectionURL = url }
         store.start()
-        store.refresh()
         if !tracking { tracking = true; trackStore() }
         reconcileSelection()
     }

@@ -53,3 +53,4 @@ it costs. Source files do not cite these — start here.
 | [0046](0046-export-refuses-once.md) | An Export refuses once, and both callers ask | accepted |
 | [0047](0047-single-points-to-seconds-mapping.md) | The lane maps points to seconds in one place | accepted |
 | [0048](0048-export-identifies-by-recording.md) | An Export's subject is the Recording, not the path it had at launch | accepted |
+| [0049](0049-envelope-cache-is-derived-data.md) | The envelope cache is derived data, and is keyed on the file | accepted |
