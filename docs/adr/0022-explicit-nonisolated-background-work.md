@@ -35,6 +35,17 @@ which is what this record is for.
   be called from outside of the actor"*. A clean build of the whole target reports each one, which is
   how the audit this ADR came from was run: `CAFMasterWriter`, `ExportEncoder`, `Envelope`/
   `EnvelopeLoader` and `DropoutReconciler` all came back clean. Treat that warning as an error in review.
+
+  **Corrected: the audit has a false negative, and `EnvelopeLoader` was it.** The warning fires only
+  on a *synchronous* cross-actor call. `await` on an unannotated `async` function is legal and
+  silent, so `EnvelopeLoader.scan` — `async`, unannotated, therefore main-actor isolated, and called
+  with `await` from inside a `Task.detached` — hopped straight back and decoded the whole file on
+  the main thread without producing a single diagnostic. "Came back clean" meant only that nothing
+  called it *synchronously*, which is not the claim the audit was making. A clean build is evidence
+  about one shape of the hop and no evidence at all about the other; the reliable check is a
+  per-type thread-assertion test, and `theEnvelopeScanNeverRunsOnTheMainThread` is now `Envelope`'s.
+  `columns(over:count:)` and `normalised(_:)` carried the same silent isolation and now say
+  `nonisolated` too.
 - **The build setting hides the size of the win.** Debug measures 120 s of stereo 48 kHz audio in
   69.3 s; Release does it in 0.84 s — **82× faster**, because Release specialises the generics the
   inner filter loop pays for. Extrapolated to a 20-minute master that is ~11.5 minutes against 8.4 s,

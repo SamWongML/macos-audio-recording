@@ -19,7 +19,9 @@ struct Envelope: Equatable, Sendable {
 
     /// One column per pixel over `range`, reduced from whatever buckets it spans. The lane asks
     /// for exactly its own width in columns, so the waveform always fits the width.
-    func columns(over range: ClosedRange<Double>, count: Int) -> [Column] {
+    /// `nonisolated` is load-bearing: this is a pure reduction, and the default isolation would
+    /// otherwise pin every one of these loops to the main actor.
+    nonisolated func columns(over range: ClosedRange<Double>, count: Int) -> [Column] {
         guard count > 0, !mins.isEmpty else { return [] }
         let perBucket = Double(framesPerBucket) / sampleRate
         var out = [Column]()
@@ -64,7 +66,8 @@ struct Envelope: Equatable, Sendable {
 
     /// Rescale a slice so its loudest point fills the view. Only ever used by the loupe: the
     /// main lane must keep an absolute scale or the picture would lie about level.
-    static func normalised(_ columns: [Column]) -> [Column] {
+    /// `nonisolated` is load-bearing: the loupe's window is reduced wherever the drag runs.
+    nonisolated static func normalised(_ columns: [Column]) -> [Column] {
         let peak = columns.reduce(Float(0)) { Swift.max($0, Swift.max($1.max, -$1.min)) }
         guard peak > 0.0001, peak < 0.9 else { return columns }
         let k = 0.9 / peak
@@ -74,27 +77,60 @@ struct Envelope: Equatable, Sendable {
 
 /// Fills in each Recording's own envelope.
 enum EnvelopeLoader {
+    /// How many masters are decoded at once. More than a few compete for the same cores and the
+    /// same disk, which finishes the set no sooner and the first row later.
+    @MainActor private static let concurrentScans = 3
+    @MainActor private static var inFlight = 0
+    @MainActor private static var waiting: [(recording: Recording, cacheDirectory: URL)] = []
+
     @MainActor
-    static func load(_ recording: Recording) {
+    static func load(_ recording: Recording, cacheDirectory: URL = EnvelopeCache.directory) {
         guard recording.envelopeState == .idle else { return }
+        guard inFlight < concurrentScans else {
+            recording.envelopeState = .queued
+            waiting.append((recording, cacheDirectory))
+            return
+        }
+        begin(recording, cacheDirectory: cacheDirectory)
+    }
+
+    @MainActor
+    private static func begin(_ recording: Recording, cacheDirectory: URL) {
         recording.envelopeState = .building
+        inFlight += 1
         let url = recording.url
+        let key = recording.cacheKey
         Task.detached(priority: .userInitiated) {
-            await scan(url: url) { partial in
-                await MainActor.run { recording.envelope = partial }
+            if let key, let cached = EnvelopeCache.read(key: key, in: cacheDirectory) {
+                await MainActor.run { recording.envelope = cached }
+            } else {
+                let built = await scan(url: url) { partial in
+                    await MainActor.run { recording.envelope = partial }
+                }
+                if let key, let built { EnvelopeCache.write(built, key: key, in: cacheDirectory) }
             }
-            await MainActor.run { recording.envelopeState = .done }
+            await MainActor.run {
+                recording.envelopeState = .done
+                inFlight -= 1
+                if !waiting.isEmpty {
+                    let next = waiting.removeFirst()
+                    begin(next.recording, cacheDirectory: next.cacheDirectory)
+                }
+            }
         }
     }
 
     /// Reads the master once, publishing roughly twenty times so a long Recording draws
     /// progressively instead of after a stall.
-    private static func scan(url: URL, publish: @Sendable (Envelope) async -> Void) async {
-        guard let file = try? AVAudioFile(forReading: url) else { return }
+    /// `nonisolated` is load-bearing: without it the detached task hops back and decodes on the
+    /// main actor, freezing the editor for the whole file.
+    @discardableResult
+    nonisolated static func scan(url: URL, publish: @Sendable (Envelope) async -> Void) async -> Envelope? {
+        guard let file = try? AVAudioFile(forReading: url) else { return nil }
         let format = file.processingFormat
         let framesPerBucket = 256
         let chunk = AVAudioFrameCount(framesPerBucket * 512)  // 131072 frames ~ 2.7 s
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return nil }
 
         var env = Envelope(framesPerBucket: framesPerBucket, sampleRate: format.sampleRate)
         let bucketTotal = Int(file.length) / framesPerBucket + 1
@@ -130,6 +166,7 @@ enum EnvelopeLoader {
 
         env.complete = true
         await publish(env)
+        return env
     }
 
     /// The loupe re-reads on every drag frame, so the open file is held rather than reopened

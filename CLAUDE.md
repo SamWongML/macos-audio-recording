@@ -33,7 +33,7 @@ comment. Do not cite ADRs or issue numbers from source — `docs/adr/README.md` 
 
 ## Decisions
 
-48 records in `docs/adr/`, indexed by `docs/adr/README.md`. Read the ones touching the area you are
+49 records in `docs/adr/`, indexed by `docs/adr/README.md`. Read the ones touching the area you are
 changing. If a change contradicts one, say so and amend that ADR rather than silently overriding it.
 
 ## Vocabulary

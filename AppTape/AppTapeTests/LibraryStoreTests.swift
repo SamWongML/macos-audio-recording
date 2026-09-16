@@ -142,6 +142,59 @@ struct LibraryStoreTests {
         #expect(store.recordings.map(\.name) == ["dated", "undated"])
     }
 
+    /// Listing the folder must not scan it: `List` renders rows lazily, so the envelopes are
+    /// loaded lazily too, or a large Library pays for every file it never shows.
+    @Test func theStoreDoesNotScanEveryRecordingItLists() {
+        let reader = StubRecordingReader()
+        reader.place("one")
+        reader.place("two")
+        reader.place("three")
+
+        let store = LibraryStore(directory: URL(filePath: "/Library"), reader: reader)
+        store.refresh()
+
+        #expect(store.recordings.count == 3)
+        #expect(store.recordings.allSatisfy { $0.envelopeState == .idle })
+    }
+
+    /// A burst of folder writes lists the folder once. During a capture the watch fires on every
+    /// write, and a listing per write is a listing per buffer flushed.
+    @Test func aBurstOfFolderWritesRelistsOnce() async throws {
+        let reader = StubRecordingReader()
+        reader.place("one")
+        let store = LibraryStore(
+            directory: URL(filePath: "/Library"), reader: reader, refreshDebounce: .milliseconds(20))
+
+        store.refreshSoon()
+        store.refreshSoon()
+        store.refreshSoon()
+        try await AudioFixtures.waitUntil { reader.listCount > 0 }
+
+        #expect(reader.listCount == 1)
+    }
+
+    /// Listing the folder drops the cached pictures of files that are no longer in it.
+    @Test func relistingDropsCachedEnvelopesNoRecordingClaims() async throws {
+        let cache = try AudioFixtures.makeScratchDirectory()
+        defer { try? FileManager.default.removeItem(at: cache) }
+        let reader = StubRecordingReader()
+        let kept = reader.place("kept")
+        let keptKey = try #require(kept.cacheKey)
+        let staleKey = EnvelopeCache.key(identity: FileIdentity(device: 9, inode: 9), byteCount: 9)
+        var envelope = Envelope(sampleRate: 48_000)
+        envelope.complete = true
+        EnvelopeCache.write(envelope, key: keptKey, in: cache)
+        EnvelopeCache.write(envelope, key: staleKey, in: cache)
+
+        let store = LibraryStore(
+            directory: URL(filePath: "/Library"), reader: reader, cacheDirectory: cache)
+        store.refresh()
+        try await AudioFixtures.waitUntil { EnvelopeCache.read(key: staleKey, in: cache) == nil }
+
+        #expect(EnvelopeCache.read(key: keptKey, in: cache) != nil)
+        #expect(EnvelopeCache.read(key: staleKey, in: cache) == nil)
+    }
+
     // MARK: - On disk, where the file is the subject
 
     @Test func persistingTheTrimAndGainDoesNotCostTheRecordingItsObject() throws {

@@ -71,7 +71,7 @@ final class Recording: Identifiable {
     var envelope: Envelope
     var envelopeState: EnvelopeState = .idle
 
-    enum EnvelopeState { case idle, building, done }
+    enum EnvelopeState { case idle, queued, building, done }
 
     var id: URL { url }
 
@@ -143,6 +143,12 @@ final class Recording: Identifiable {
         let duration = sampleRate > 0 ? Double(frameCount) / sampleRate : 0
         self.trim = storedTrim ?? Trim(duration: duration)
         self.envelope = Envelope(sampleRate: sampleRate)
+    }
+
+    /// What this Recording's envelope is filed under, or nil for a file that could not be stat'd.
+    var cacheKey: String? {
+        guard let fileIdentity, let openedByteCount else { return nil }
+        return EnvelopeCache.key(identity: fileIdentity, byteCount: openedByteCount)
     }
 
     /// Whether this Recording's reading still describes the file at `url` — that is, whether the

@@ -479,6 +479,8 @@ private struct LibraryRow: View {
         .background(alignment: .leading) {
             if !isRenaming, recording.isOpenable, !isStillArriving { rowWaveform }
         }
+        // The row is what asks for its own waveform: the store lists the folder without reading it.
+        .onAppear { EnvelopeLoader.load(recording) }
         .contextMenu {
             RenameButton()
             Button("Reveal in Finder") { model.reveal(recording) }

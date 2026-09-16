@@ -23,29 +23,44 @@ final class LibraryStore {
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var started = false
 
+    /// How long a burst of folder writes is collected before it is listed.
+    @ObservationIgnored private let refreshDebounce: Duration
+    @ObservationIgnored private var pendingRefresh: Task<Void, Never>?
+
+    /// Where cached envelopes live, or nil to leave the cache alone entirely.
+    @ObservationIgnored private let cacheDirectory: URL?
+
     /// The production wiring: the real folder and the real reader.
     convenience init() {
-        self.init(directory: LibraryLocation.directory, reader: RecordingReader())
+        self.init(
+            directory: LibraryLocation.directory, reader: RecordingReader(),
+            cacheDirectory: EnvelopeCache.directory)
     }
 
     /// For a test: a scratch folder, or a reader with no disk behind it at all.
-    init(directory: URL, reader: any RecordingReading) {
+    init(
+        directory: URL, reader: any RecordingReading,
+        refreshDebounce: Duration = .milliseconds(200), cacheDirectory: URL? = nil
+    ) {
         self.directory = directory
         self.reader = reader
+        self.refreshDebounce = refreshDebounce
+        self.cacheDirectory = cacheDirectory
     }
 
-    /// Idempotent. Reads the folder once, begins watching it, and re-reads whenever the app is
-    /// activated — the two triggers names. Safe to call on every editor open.
+    /// Sets the watch and the activation observer up once, and lists the folder every time: an
+    /// editor opened after a capture must not still read the master at its creation length.
     func start() {
-        guard !started else { return }
-        started = true
-        refresh()
-        beginWatching()
-        activationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+        if !started {
+            started = true
+            beginWatching()
+            activationObserver = NotificationCenter.default.addObserver(
+                forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshSoon() }
+            }
         }
+        refresh()
     }
 
     /// Re-list the folder and reconcile, preserving surviving `Recording` objects.
@@ -54,8 +69,30 @@ final class LibraryStore {
         // Newest first, by the one notion of a Recording's date there is.
         recordings = Self.reconcile(existing: recordings, urls: urls, reader: reader)
             .sorted { ($0.recordedAt ?? .distantPast) > ($1.recordedAt ?? .distantPast) }
-        for recording in recordings { EnvelopeLoader.load(recording) }
+        purgeUnclaimedEnvelopes()
         if source == nil { beginWatching() }
+    }
+
+    /// Re-list after the debounce window. During a capture the folder watch fires on every
+    /// write, and activating the app fires again on top of it.
+    func refreshSoon() {
+        pendingRefresh?.cancel()
+        pendingRefresh = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(for: self.refreshDebounce)
+            guard !Task.isCancelled else { return }
+            self.refresh()
+        }
+    }
+
+    /// The cache holds pictures of files that are still here; the rest are dropped in the
+    /// background, because nothing is waiting on them.
+    private func purgeUnclaimedEnvelopes() {
+        guard let cacheDirectory else { return }
+        let claimed = Set(recordings.compactMap(\.cacheKey))
+        Task.detached(priority: .background) {
+            EnvelopeCache.purge(keeping: claimed, in: cacheDirectory)
+        }
     }
 
     /// Move a Recording's file to the Trash and re-list.
@@ -134,7 +171,7 @@ final class LibraryStore {
             if source.data.contains(.delete) || source.data.contains(.revoke) {
                 self.stopWatching()
             }
-            self.refresh()
+            self.refreshSoon()
         }
         source.setCancelHandler { [weak self] in
             if let fd = self?.watchedFD, fd >= 0 { close(fd) }
@@ -150,6 +187,7 @@ final class LibraryStore {
     }
 
     isolated deinit {
+        pendingRefresh?.cancel()
         source?.cancel()
         if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
     }
