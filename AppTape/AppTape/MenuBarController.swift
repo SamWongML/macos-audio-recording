@@ -175,6 +175,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func showPanel() {
+        NSApp.unhideWithoutActivation()
         let popover = self.popover ?? makePopover()
         self.popover = popover
 
@@ -261,6 +262,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     // MARK: - NSPopoverDelegate
 
+    func popoverWillShow(_ notification: Notification) {
+        ActivationPolicyController.shared.panelVisibilityDidChange(isVisible: true)
+    }
+
     func popoverDidShow(_ notification: Notification) {
         installEscapeMonitor()
     }
@@ -268,5 +273,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         removeEscapeMonitor()
         teardownFallbackAnchor()
+        ActivationPolicyController.shared.panelVisibilityDidChange(isVisible: false)
     }
 }

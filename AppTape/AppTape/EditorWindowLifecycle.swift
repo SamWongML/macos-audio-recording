@@ -1,15 +1,13 @@
 import SwiftUI
 
 extension View {
-    /// Reports the editor window's existence to the activation-policy controller so the app is
-    /// `.regular` for exactly as long as the window is open, and cancels a running Export when it
-    /// closes.
+    /// Tracks the editor's activation policy and cancels a running Export when it closes.
     func editorActivationPolicy(cancelling exportCoordinator: ExportCoordinator) -> some View {
         background(EditorWindowLifecycle(exportCoordinator: exportCoordinator))
     }
 }
 
-/// Bridges the SwiftUI editor window to the AppKit activation-policy flip.
+/// Bridges the SwiftUI editor window to the AppKit activation-policy handoff.
 private struct EditorWindowLifecycle: NSViewRepresentable {
     var exportCoordinator: ExportCoordinator
 
@@ -27,7 +25,6 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
         /// Accepted from the modifier.
         var exportCoordinator: ExportCoordinator?
         private weak var trackedWindow: NSWindow?
-        private var isOpen = false
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -45,7 +42,7 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
                 )
             }
             trimViewMenu()
-            markOpen()
+            ActivationPolicyController.shared.editorDidOpen(ObjectIdentifier(window))
         }
 
         /// The spec's menu set has no View menu, but AppKit auto-inserts "Enter Full Screen" into
@@ -61,23 +58,17 @@ private struct EditorWindowLifecycle: NSViewRepresentable {
             }
         }
 
-        private func markOpen() {
-            guard !isOpen else { return }
-            isOpen = true
-            ActivationPolicyController.shared.editorDidOpen()
-        }
-
-        @objc private func windowDidBecomeKey() {
+        @objc private func windowDidBecomeKey(_ notification: Notification) {
+            guard let window = notification.object as? NSWindow else { return }
             trimViewMenu()
-            markOpen()
+            ActivationPolicyController.shared.editorDidOpen(ObjectIdentifier(window))
         }
 
-        @objc private func windowWillClose() {
-            guard isOpen else { return }
-            isOpen = false
+        @objc private func windowWillClose(_ notification: Notification) {
+            guard let window = notification.object as? NSWindow else { return }
             // Closing the editor navigates away from any running Export, which cancels it unwarned.
             exportCoordinator?.cancel()
-            ActivationPolicyController.shared.editorDidClose()
+            ActivationPolicyController.shared.editorDidClose(ObjectIdentifier(window))
         }
     }
 }

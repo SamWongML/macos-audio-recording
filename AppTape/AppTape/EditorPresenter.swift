@@ -13,7 +13,10 @@ final class EditorPresenter {
 
     /// Opens the editor, optionally selecting the Recording just captured.
     func open(selecting url: URL? = nil) {
+        guard let openWindow else { return }
+        ActivationPolicyController.shared.editorWillOpen()
+        NSApp.unhideWithoutActivation()
         EditorModel.shared.activate(selecting: url)
-        openWindow?(id: AppTapeApp.editorWindowID)
+        openWindow(id: AppTapeApp.editorWindowID)
     }
 }

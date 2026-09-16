@@ -1,32 +1,115 @@
 import AppKit
+import OSLog
 
-/// Flips the app between `.accessory` at rest and `.regular` while the editor window is open.
+/// Returns to accessory mode only after the editor closes and the menu bar belongs to another app.
 @MainActor
 final class ActivationPolicyController {
-    static let shared = ActivationPolicyController()
-
-    /// How many editor windows are open. A single `Window` scene tops out at
-    /// one, but a count keeps the flip robust against paired open/close reports.
-    private var openEditorCount = 0
-
-    func editorDidOpen() {
-        openEditorCount += 1
-        apply()
+    enum MenuBarOwner {
+        case thisApp, anotherApp, unknown
     }
 
-    func editorDidClose() {
-        openEditorCount = max(0, openEditorCount - 1)
-        apply()
+    struct Environment {
+        var policy: () -> NSApplication.ActivationPolicy
+        var isActive: () -> Bool
+        var menuBarOwner: () -> MenuBarOwner
+        var setPolicy: (NSApplication.ActivationPolicy) -> Bool
+        var hide: () -> Void
+        var enqueue: (@escaping @MainActor @Sendable () -> Void) -> Void
+
+        static var live: Self {
+            Self(
+                policy: { NSApp.activationPolicy() },
+                isActive: { NSApp.isActive },
+                menuBarOwner: {
+                    guard let owner = NSWorkspace.shared.menuBarOwningApplication else { return .unknown }
+                    return owner.processIdentifier == ProcessInfo.processInfo.processIdentifier
+                        ? .thisApp : .anotherApp
+                },
+                setPolicy: { NSApp.setActivationPolicy($0) },
+                hide: { NSApp.hide(nil) },
+                enqueue: { DispatchQueue.main.async(execute: $0) }
+            )
+        }
     }
 
-    /// The policy implied by how many editor windows are open.
-    nonisolated static func policy(forOpenEditorCount count: Int) -> NSApplication.ActivationPolicy {
-        count > 0 ? .regular : .accessory
+    static let shared = ActivationPolicyController(environment: .live)
+    private static let logger = Logger(subsystem: "com.samwongml.AppTape", category: "ActivationPolicy")
+
+    private let environment: Environment
+    private var editors: Set<ObjectIdentifier> = []
+    private var returnToAccessoryPending = false
+    private var hideRequested = false
+    private var reconciliationEnqueued = false
+    private var isPanelVisible = false
+
+    init(environment: Environment) {
+        self.environment = environment
     }
 
-    private func apply() {
-        let policy = Self.policy(forOpenEditorCount: openEditorCount)
-        guard NSApp.activationPolicy() != policy else { return }
-        NSApp.setActivationPolicy(policy)
+    func editorWillOpen() {
+        returnToAccessoryPending = false
+        hideRequested = false
+    }
+
+    func editorDidOpen(_ editor: ObjectIdentifier) {
+        editors.insert(editor)
+        editorWillOpen()
+        apply(.regular)
+    }
+
+    func editorDidClose(_ editor: ObjectIdentifier) {
+        guard editors.remove(editor) != nil, editors.isEmpty else { return }
+        returnToAccessoryPending = true
+        scheduleReconciliation()
+    }
+
+    func applicationStateDidChange() {
+        guard returnToAccessoryPending else { return }
+        scheduleReconciliation()
+    }
+
+    func panelVisibilityDidChange(isVisible: Bool) {
+        isPanelVisible = isVisible
+        applicationStateDidChange()
+    }
+
+    private func scheduleReconciliation() {
+        guard !reconciliationEnqueued else { return }
+        reconciliationEnqueued = true
+        environment.enqueue { [weak self] in
+            guard let self else { return }
+            self.reconciliationEnqueued = false
+            self.reconcile()
+        }
+    }
+
+    private func reconcile() {
+        guard returnToAccessoryPending, editors.isEmpty, !isPanelVisible else { return }
+        if environment.policy() == .accessory {
+            returnToAccessoryPending = false
+            return
+        }
+
+        // Being inactive does not imply that another application already owns the menu bar.
+        if environment.isActive() || environment.menuBarOwner() == .thisApp {
+            guard !hideRequested else { return }
+            hideRequested = true
+            environment.hide()
+            return
+        }
+        guard environment.menuBarOwner() == .anotherApp else { return }
+        if apply(.accessory) {
+            returnToAccessoryPending = false
+        }
+    }
+
+    @discardableResult
+    private func apply(_ policy: NSApplication.ActivationPolicy) -> Bool {
+        guard environment.policy() != policy else { return true }
+        guard environment.setPolicy(policy) else {
+            Self.logger.error("AppKit refused activation policy \(policy.rawValue)")
+            return false
+        }
+        return true
     }
 }

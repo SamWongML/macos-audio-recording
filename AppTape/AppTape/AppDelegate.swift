@@ -5,8 +5,14 @@ import UserNotifications
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let menuBar = MenuBarController(recorder: .shared, presenter: .shared)
+    private var menuBarOwnerObservation: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        menuBarOwnerObservation = NSWorkspace.shared.observe(\.menuBarOwningApplication) { _, _ in
+            DispatchQueue.main.async {
+                ActivationPolicyController.shared.applicationStateDidChange()
+            }
+        }
         menuBar.install()
         // A fault notification's click opens the editor on that Recording.
         UNUserNotificationCenter.current().delegate = FaultNotificationDelegate.shared
@@ -14,8 +20,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingController.shared.installLifecycleObservers()
     }
 
-    /// Closing the editor returns the app to `.accessory`; it must
-    /// not quit — the status item is still the transport.
+    func applicationDidResignActive(_ notification: Notification) {
+        ActivationPolicyController.shared.applicationStateDidChange()
+    }
+
+    func applicationDidHide(_ notification: Notification) {
+        ActivationPolicyController.shared.applicationStateDidChange()
+    }
+
+    /// Closing the editor leaves the status item and capture running.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }

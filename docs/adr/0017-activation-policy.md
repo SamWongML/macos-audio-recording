@@ -8,11 +8,11 @@ At rest AppTape is a pure menu-bar utility — no Dock icon, no app-switcher ent
 no application menu bar — because the transport is entirely the `NSStatusItem`
 (ADR-0004) and the editor is launch-suppressed. When the editor window opens the
 app flips to **`.regular`**, giving that window a Dock icon, a ⌘-Tab entry, and a
-standard menu bar for exactly as long as it lives; closing the window flips back to
-`.accessory`. This is the hybrid a menu-bar app that owns a real window wants, and
-it extends ADR-0004 rather than contradicting it: the app is still `.accessory`
-whenever the panel shows, so ADR-0004's "an `LSUIElement` app is not frontmost, so
-`NSApp.activate` is needed" stays true.
+standard menu bar while it lives. Closing the last editor requests a return to
+`.accessory` after AppKit transfers activation and menu bar ownership. The app can
+briefly remain `.regular` without an editor while that handoff completes or while
+the status panel remains open. This extends ADR-0004: the status panel still
+explicitly activates the app so its controls work in accessory mode.
 
 The scaffold (issue #11) set no `LSUIElement` and never called `setActivationPolicy`,
 so as built AppTape was `.regular` — a permanent Dock icon — by omission. Nobody had
@@ -23,9 +23,9 @@ decided this; issue #42 did.
 **`.accessory` fixed** — never a Dock icon, never a menu bar. Simplest: one policy,
 no transitions, no launch flash. Rejected because the editor (issue #7) is the app's
 primary editing surface — a three-column window with a sidebar, waveform, Trim and an
-Export inspector — and `.accessory` denies it every first-class window affordance:
-no ⌘W/⌘Q or standard Edit menu, no ⌘-Tab entry, and no Dock icon to re-reveal it if
-it is hidden behind other windows. A real window deserves to behave like one.
+Export inspector — and `.accessory` removes its application menu bar, ⌘-Tab entry,
+and Dock icon for re-revealing it behind other windows. Accessory apps can implement
+keyboard handling, but do not provide this standard application-menu surface.
 
 **`.regular` fixed** — a permanent Dock icon. Rejected because at rest there is
 nothing behind the icon to open: the editor is launch-suppressed and, per issue #33,
@@ -40,17 +40,34 @@ window while it is open.
 
 ## Consequences
 
-**The flip is existence-based.** `.regular` from editor-open to editor-close,
-independent of focus. Set `LSUIElement` in `Info.plist` so the app launches
-`.accessory` with no Dock-icon flash, then `NSApp.setActivationPolicy(.regular)`
-on editor open and `.accessory` on its close. SwiftUI 27 exposes no scene-level
-activation-policy API (verified against the SDK's what's-new set), so this stays an
-AppKit call in the app shell — which ADR-0004 already hand-rolls.
+**The desired policy is existence-based; demotion requires a completed handoff.**
+`LSUIElement` launches the app as `.accessory` without a Dock flash. An editor
+promotes it to `.regular`, independent of focus. Closing its window cancels Export
+immediately but only schedules reconciliation on the main queue. Outside the
+window-close notification, the app calls `hide(nil)` once if it is still active or
+owns the menu bar. It applies `.accessory` only when it is inactive **and**
+`NSWorkspace.menuBarOwningApplication` positively identifies another process.
+An unknown owner is not evidence of a completed handoff.
 
-**The Dock icon can never open nothing.** Because the icon exists if and only if the
-editor window does, the "Dock icon that opens nothing" failure the fixed-`.regular`
-option carried cannot arise: there is always a window behind it, and clicking it just
-re-reveals that window.
+The controller receives app deactivation/hide notifications and observes menu bar
+ownership through documented KVO. It waits for these events, without a timed delay,
+polling, forcing Finder/Dock to activate, private APIs, or hiding the system menu
+bar. A pending transition is cancelled as soon as opening an editor is requested,
+before SwiftUI attaches the window. Editor identities make duplicate reports
+idempotent. The status panel suspends the handoff while it is open, and presentation
+entry points unhide AppTape before showing UI again.
+
+This sequencing replaces the original synchronous `.accessory` change inside
+`NSWindow.willCloseNotification`, which could withdraw the active application's
+menu bar while AppKit was still closing its window. The associated global icon
+bounce remains a visual validation item; see the
+[investigation](../investigations/2026-09-16-editor-close-menu-bar.md).
+
+**The Dock icon is transient at rest.** It remains during the close handoff and is
+removed after another application owns the menu bar. If AppKit cannot establish
+that condition or refuses the policy change, keeping `.regular` is safer than
+forcing a system UI transition. Policy failures are logged and may retry on a later
+lifecycle event; they do not start a retry timer.
 
 **The editor's menu bar is the standard system set**, trimmed of what does not apply
 (App: About/Quit; File: Close ⌘W; Edit: the standard items; Window; Help). Issue #7
