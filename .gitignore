@@ -1,5 +1,6 @@
 # Claude Code
 .claude/
+.agents/
 
 # Local throwaway prototypes (not part of the app target)
 prototypes/

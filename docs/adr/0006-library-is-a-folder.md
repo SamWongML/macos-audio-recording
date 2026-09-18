@@ -4,7 +4,7 @@ status: accepted
 
 # 0006. The Library is an ordinary folder, and a Recording's metadata rides in extended attributes
 
-The Library is `~/Music/AppTape/`, a **visible folder the user may edit in Finder**, and the app keeps **no index of its own**: the folder is the truth, a Recording's **filename is its name**, and its Trim, Gain and Source are stored as **extended attributes on the file itself**. The forcing fact is the master's size — [ADR-0003](./0003-immutable-lossless-caf-master.md) puts a Recording at 1.4 GB/hour, which makes the Library by far the largest thing this app puts on the disk, and an opaque store would leave the user unable to see or reclaim that space without going through our UI.
+The Library is `~/Music/AppTape/`, a **visible folder the user may edit in Finder**, and the app keeps **no index of its own**: the folder is the truth, a Recording's **filename is its name**, and its Trim, Gain and Source are stored as **extended attributes on the file itself**. The forcing fact is the master's size — [ADR-0003](0003-immutable-caf-master.md) puts a Recording at 1.4 GB/hour, which makes the Library by far the largest thing this app puts on the disk, and an opaque store would leave the user unable to see or reclaim that space without going through our UI.
 
 ## Considered options
 
@@ -12,7 +12,7 @@ The Library is `~/Music/AppTape/`, a **visible folder the user may edit in Finde
 
 **The metadata store** had three real candidates. A **`Library.json` index** keyed by filename is simple and inspectable, but a rename in Finder reads as "one Recording vanished, a new one appeared" and silently drops its Trim. A **package directory per Recording** (`… .apptape/` holding `audio.caf` plus `meta.json`) carries metadata perfectly and renames atomically, at the cost of a declared UTI and of the user no longer being able to drag the audio straight out. **Extended attributes** won because they are the only option that keeps "the filename is the name" honest without inventing a document type: verified on this machine, they survive `mv`, a move into another directory, plain `cp` (macOS `cp` preserves them by default, unlike GNU `cp`) and an APFS clone.
 
-**Writing Trim into the CAF's own `info` chunk** is possible and is the official Core Audio mechanism, and it was rejected for a specific reason: it would mutate a file [ADR-0003](./0003-immutable-lossless-caf-master.md) promises never to mutate, and that promise is exactly what buys the crash-safety story. Extended attributes leave the file's bytes untouched, so write-once stays literally true.
+**Writing Trim into the CAF's own `info` chunk** is possible and is the official Core Audio mechanism, and it was rejected for a specific reason: it would mutate a file [ADR-0003](0003-immutable-caf-master.md) promises never to mutate, and that promise is exactly what buys the crash-safety story. Extended attributes leave the file's bytes untouched, so write-once stays literally true.
 
 **A user-relocatable Library** was rejected for v1. It is a genuine want — 1.4 GB/hour on a small internal SSD is a real reason to prefer an external drive — but a movable Library drags in relocating existing Recordings and handling an absent volume mid-Recording. A symlink at `~/Music/AppTape` is a fair v1 escape hatch and costs nothing.
 

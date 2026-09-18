@@ -22,7 +22,7 @@ swift-format lint --strict --recursive AppTape   # $(xcrun --find swift-format)
 
 ## How it is put together
 
-The app target is one flat directory of 61 files. The shape that matters:
+The app target uses one flat source directory. The shape that matters:
 
 - **Capture** — `CaptureRun` owns one run start to stop and makes every decision; `CaptureEngine`
   owns the tap, the writer thread and the CAF master. They meet at four protocols in
@@ -34,7 +34,7 @@ The app target is one flat directory of 61 files. The shape that matters:
 - **Export** — `ExportReadiness` decides once whether an Export can run; `ExportCoordinator` runs
   it off the main actor and `ExportEncoder` does the encode.
 
-Decisions live in [`docs/adr/`](docs/adr/README.md) — 48 records, indexed. Source files do not cite
+Decisions live in [`docs/adr/`](docs/adr/README.md) — indexed by work area. Source files do not cite
 them inline.
 
 ## Conventions
@@ -48,23 +48,8 @@ them inline.
 
 ## Vocabulary
 
-Terms that mean something specific here, and are used consistently in code, tests and ADRs.
-
-| Term | Meaning |
-|---|---|
-| **Source** | The single running application whose audio is captured. Chosen once and remembered. |
-| **Recording** | The audio captured in one continuous run, saved automatically. Its content begins at the first sound the Source produces, so silence before playback is never part of it — and if the Source never makes a sound, nothing is saved. A file placed in the Library by hand is adopted as a Recording and behaves identically. |
-| **Dropout** | A stretch of silence inside a Recording standing in for audio that never arrived, because capture was interrupted or a buffer was lost under load. It keeps the Recording true against the clock, so everything after it still sits where it was heard. |
-| **Library** | The folder of Recordings the app lists — an ordinary visible folder, so the user can rearrange it in Finder and the app follows. |
-| **Trim** | The start and end points selecting which part of a Recording is Exported. Choosing them never alters the Recording. |
-| **Trimmed-away** | The part of a Recording outside its Trim. Still audio and still shown, quieter than the kept part rather than removed from the picture. |
-| **Export** | Producing a finished audio file from a Recording at a chosen Quality Preset. |
-| **Quality Preset** | A named audio-quality setting offered at Export. It determines the file's size, which is only ever estimated, never promised. |
-| **Runway** | How much longer a Recording could keep capturing before the disk runs short. Always a length of time, never free bytes. |
-| **Loudness** | How loud a Recording sounds over time, measured to BS.1770 rather than read off its peaks. Export can correct it to a fixed target. |
-| **Gain** | A manual decibel offset for one Recording, applied on top of any Loudness correction. Like Trim, it never alters the Recording. |
-| **Ceiling** | The highest true peak an Export lets the audio reach while correcting Loudness. |
-| **Amplification cap** | The largest boost a Loudness correction will apply, so a very quiet, noisy Recording is left below target rather than having its noise floor lifted into audibility. |
+Canonical domain terms are defined in [CONTEXT.md](CONTEXT.md). Read the glossary when naming
+concepts in code, tests, issues or ADRs.
 
 ## Licence
 

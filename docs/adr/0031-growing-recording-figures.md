@@ -4,7 +4,6 @@ status: accepted
 
 # 0031. A growing Recording states the engine's figures, or nothing
 
-**Status**: Accepted
 **Date**: 2026-09-07
 **Issue**: [#98](https://github.com/SamWongML/macos-audio-recording/issues/98)
 

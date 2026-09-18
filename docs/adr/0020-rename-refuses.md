@@ -4,7 +4,7 @@ status: accepted
 
 # 0020. The Library shows the name you chose, and a rename refuses rather than fixes
 
-[ADR-0006](./0006-the-library-is-a-folder.md) made the Library an ordinary folder, a Recording's **filename its name**, and a rename something the app **follows silently** when Finder does it. This is the other half: the app doing the rename itself, from a row action in the sidebar. Two things had to be decided that ADR-0006 never had to face, because it was only ever *watching* a rename someone else made — **what the Library then shows**, and **what happens to a name it cannot use**.
+[ADR-0006](0006-library-is-a-folder.md) made the Library an ordinary folder, a Recording's **filename its name**, and a rename something the app **follows silently** when Finder does it. This is the other half: the app doing the rename itself, from a row action in the sidebar. Two things had to be decided that ADR-0006 never had to face, because it was only ever *watching* a rename someone else made — **what the Library then shows**, and **what happens to a name it cannot use**.
 
 ## The Library shows the Source until you name a Recording yourself
 
@@ -25,7 +25,7 @@ This is the opposite of what capture does two functions away, where `uniqueFileN
 Two of the four are not manners but safety, and they are why this ADR exists at all:
 
 - **A leading dot** would hide the file, and `LibraryStore.audioFiles(in:)` lists with `.skipsHiddenFiles`. The Recording would drop out of the Library and the editor would close on it as a vanish — a rename that reads as a deletion.
-- **An edited extension** would fail `Recording.init?`'s `public.audio` adoption gate ([ADR-0015](./0015-an-adopted-file-is-faithful-or-refused.md)) with the same result, so the extension is **never the user's to edit**. They type the base name; the extension is carried over.
+- **An edited extension** would fail `Recording.init?`'s `public.audio` adoption gate ([ADR-0015](0015-adopted-file-faithful-or-refused.md)) with the same result, so the extension is **never the user's to edit**. They type the base name; the extension is carried over.
 
 ## Consequences
 
@@ -37,6 +37,6 @@ Two of the four are not manners but safety, and they are why this ADR exists at 
 
 **The File menu grows past Close ⌘W.** A context menu alone is undiscoverable and unreachable from the keyboard, so Rename, Reveal in Finder ⇧⌘R and Move to Trash ⌘⌫ are mirrored there. Finder is the model throughout: Rename carries no key equivalent, because Return does it in the list. **Move to Trash is gated on the sidebar having focus** and the other two are not — ⌘⌫ moves a file to the Trash, and firing that out of a search field someone is typing into is the one outcome worth spending a focus value on.
 
-**The row-action set is exactly three.** `Duplicate` is deliberately absent: a master is 1.4 GB/hour ([ADR-0003](./0003-immutable-lossless-caf-master.md)), and the other reading — one master carrying a second Trim — has nowhere to live under ADR-0006, which makes the folder the only truth.
+**The row-action set is exactly three.** `Duplicate` is deliberately absent: a master is 1.4 GB/hour ([ADR-0003](0003-immutable-caf-master.md)), and the other reading — one master carrying a second Trim — has nowhere to live under ADR-0006, which makes the folder the only truth.
 
 Settled in issue #75.
