@@ -1,52 +1,189 @@
 {
-  "fill-specializations": [
+  "features" : [
+    "refractivity"
+  ],
+  "fill-specializations" : [
     {
-      "value": {
-        "automatic-gradient": "extended-srgb:0.90196,0.90196,0.94902,1.00000"
+      "value" : {
+        "automatic-gradient" : "extended-srgb:0.94118,0.94118,0.97255,1.00000"
       }
     },
     {
-      "appearance": "dark",
-      "value": {
-        "automatic-gradient": "extended-srgb:0.10196,0.09804,0.16078,1.00000"
+      "appearance" : "dark",
+      "value" : {
+        "automatic-gradient" : "extended-srgb:0.08627,0.08627,0.12549,1.00000"
       }
     }
   ],
-  "groups": [
+  "groups" : [
     {
-      "layers": [
+      "layers" : [
         {
-          "image-name": "1-bars.svg",
-          "name": "Waveform",
-          "fill-specializations": [
+          "blend-mode-specializations" : [
             {
-              "value": {
-                "solid": "extended-srgb:0.34510,0.33725,0.83922,1.00000"
-              }
+              "value" : "multiply"
             },
             {
-              "appearance": "dark",
-              "value": {
-                "solid": "extended-srgb:0.58824,0.58039,0.94118,1.00000"
-              }
+              "appearance" : "dark",
+              "value" : "screen"
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "normal"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "system-light"
+            }
+          ],
+          "image-name" : "01-lavender.svg",
+          "name" : "01-lavender",
+          "opacity-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : 0.82
+            }
+          ]
+        },
+        {
+          "blend-mode-specializations" : [
+            {
+              "value" : "multiply"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "screen"
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "normal"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "system-light"
+            }
+          ],
+          "glass" : true,
+          "image-name" : "02-blue.svg",
+          "name" : "02-blue",
+          "opacity-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : 0.82
+            }
+          ]
+        },
+        {
+          "blend-mode-specializations" : [
+            {
+              "value" : "multiply"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "screen"
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "normal"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "system-light"
+            }
+          ],
+          "image-name" : "03-indigo.svg",
+          "name" : "03-indigo",
+          "opacity-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : 0.82
+            }
+          ]
+        },
+        {
+          "blend-mode-specializations" : [
+            {
+              "value" : "multiply"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "screen"
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "normal"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "system-light"
+            }
+          ],
+          "image-name" : "04-violet.svg",
+          "name" : "04-violet",
+          "opacity-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : 0.82
+            }
+          ]
+        },
+        {
+          "blend-mode-specializations" : [
+            {
+              "value" : "multiply"
+            },
+            {
+              "appearance" : "dark",
+              "value" : "screen"
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "normal"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "system-light"
+            }
+          ],
+          "image-name" : "05-azure.svg",
+          "name" : "05-azure",
+          "opacity-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : 0.82
             }
           ]
         }
       ],
-      "shadow": {
-        "kind": "neutral",
-        "opacity": 0.5
+      "name" : "Prism waveform",
+      "refractivity" : {
+        "depth" : 0.16,
+        "enabled" : true,
+        "strength" : 0.24
       },
-      "translucency": {
-        "enabled": true,
-        "value": 0.5
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.22
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.32
       }
     }
   ],
-  "supported-platforms": {
-    "circles": [
-      "watchOS"
-    ],
-    "squares": "shared"
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
   }
 }
