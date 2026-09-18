@@ -4,6 +4,8 @@ status: accepted
 
 # 0011. The panel stays hand-rolled; the expanded-interface session is not worth the left-click
 
+[ADR-0050](0050-dock-first-app.md) amends the helper's interaction and stop-presentation behavior for the Dock-first redesign: clicks open controls and stopping saves quietly; the historical API measurements below remain evidence to recheck.
+
 AppTape's panel is an `NSPopover` the app manages itself: `.transient`, closed by an outside
 click, by a second click on the status item, and by **Escape**, and opened with a
 `NSApp.activate()` the app calls. It does **not** adopt

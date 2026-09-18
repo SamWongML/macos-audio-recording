@@ -5,6 +5,8 @@ supersedes: "issue #7's *no ruler in the editor*"
 
 # 0023. The detail pane is ruler, lane, summary, dock
 
+[ADR-0050](0050-dock-first-app.md) amends this layout for the Dock-first redesign with a separate capture strip and editable Trim time fields; the historical layout and framework measurements below remain evidence rather than constraints on the new composition.
+
 The editor's detail pane read as a scaffold, and the reason was structural rather than decorative:
 `editorDetail` was a `VStack` holding a `TrimTimeline` whose `GeometryReader` is greedy, so the
 waveform lane stretched to whatever height the window had — four hundred points of one row waveform —

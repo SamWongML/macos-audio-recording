@@ -4,6 +4,8 @@ status: accepted
 
 # 0012. Export runs non-blocking in the inspector, and navigating away from the Recording cancels it
 
+[ADR-0050](0050-dock-first-app.md) amends Export lifetime for the Dock-first redesign: selection changes, inspector collapse and window closure no longer cancel it, progress and Cancel are app-wide, and Quit requires confirmation while Export is unfinished; the snapshot and atomic-write guarantees remain.
+
 Export is **not modal**. It runs in the trailing Export inspector [ADR-0006](0006-library-is-a-folder.md)'s save panel feeds, with the Export button itself becoming the running control, and the editor stays fully live around it. It writes to a **sibling temporary file in the destination directory** and finishes with an atomic `replaceItemAtURL:`, so the file the user chose is never touched until the encode has succeeded. It is **cancellable**, and it cancels **on its own** whenever the user navigates away from the Recording being exported — closing the editor, selecting another Recording, or quitting. Only **one** Export runs at a time.
 
 The forcing fact is speed. On this machine `afconvert` encodes Float32 stereo at 48 kHz at **205–290× realtime** across all four Quality Presets — a 10-minute Recording exports in 2–3 s, an hour in under 20 s, and the 3-hour amber-Runway Recording [ADR-0009](0009-runway-clock-disk-guard.md) warns about in roughly a minute. [Issue #9](https://github.com/SamWongML/macos-audio-recording/issues/9) sized this as "seconds to minutes"; it is the seconds end. A modal sheet that seizes the window for two seconds costs more than it tells.

@@ -4,6 +4,8 @@ status: accepted
 
 # 0024. The trailing pane is a column, not a SwiftUI inspector
 
+[ADR-0050](0050-dock-first-app.md) amends the permanent-column decision to a collapsible inspector for the Dock-first redesign; the historical framework failures below still require validation before choosing its implementation.
+
 Three symptoms were reported or measured against this editor, and they looked like three problems:
 
 1. A toggle for the trailing pane flickered into the toolbar for a fraction of a second whenever the

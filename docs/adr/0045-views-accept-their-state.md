@@ -4,6 +4,10 @@ status: accepted
 
 # 0045. The views accept their state; they do not reach for it
 
+[ADR-0050](0050-dock-first-app.md) amends the editor's capture-reader-only role so the main window can also command capture; views still receive their dependencies rather than reaching for app singletons.
+
+It also replaces the selection-disappearance behavior described below: the primary window remains open with no selection, and Export lifetime no longer follows selection or window visibility.
+
 Nine lines across seven view types read an app singleton out of thin air. Five of them were
 `@State private var recorder = RecordingController.shared`; four more were `EditorModel.shared`,
 `ExportPreference.shared` and `ExportCoordinator.shared`, the last three of them consecutive lines at

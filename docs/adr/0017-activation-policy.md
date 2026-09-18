@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded by ADR-0050
 ---
 
 # 0017. AppTape is `.accessory` at rest and `.regular` while the editor is open
+
+Superseded for the Dock-first redesign by [ADR-0050](0050-dock-first-app.md); implementation is pending, and the historical behavior and evidence below are retained.
 
 At rest AppTape is a pure menu-bar utility — no Dock icon, no app-switcher entry,
 no application menu bar — because the transport is entirely the `NSStatusItem`

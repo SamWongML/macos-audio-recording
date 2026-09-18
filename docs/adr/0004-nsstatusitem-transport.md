@@ -4,6 +4,8 @@ status: accepted
 
 # 0004. The menu bar item is an NSStatusItem, and it is the transport
 
+[ADR-0050](0050-dock-first-app.md) amends the menu-bar-only capture entry point for the Dock-first redesign; the helper's gestures and implementation remain under review.
+
 AppTape's menu bar item is a hand-built **`NSStatusItem`**, not a SwiftUI `MenuBarExtra`. While a Recording is running the item reads **`● 01:23`** in red, and a **left-click stops the Recording** — it does not open anything. A **right-click** opens the panel; while idle, either click opens it. The panel itself stays SwiftUI, hosted in an `NSPopover` the app manages.
 
 The constraint this serves is that starting and stopping a Recording each cost **one click**. Issue #6 settled the start half: the panel is a list of applications and the row *is* the record control, so starting is one click on a row. The stop half is what forces this decision.
