@@ -1,22 +1,66 @@
-import SwiftUI
+import AppKit
 
-/// Opens the editor window from outside SwiftUI — specifically from the status item's
-/// stop-click, which is an AppKit event with no `@Environment(\.openWindow)` of its own.
+@MainActor
+protocol EditorWindow: AnyObject {
+    func reveal()
+}
+
+extension NSWindow: EditorWindow {
+    func reveal() {
+        if isMiniaturized { deminiaturize(nil) }
+        makeKeyAndOrderFront(nil)
+    }
+}
+
 @MainActor
 final class EditorPresenter {
-    static let shared = EditorPresenter()
+    static let shared = EditorPresenter(
+        model: .shared,
+        activateApplication: {
+            NSApp.unhideWithoutActivation()
+            NSApp.activate()
+        })
 
-    private var openWindow: OpenWindowAction?
+    private let model: EditorModel
+    private let activateApplication: () -> Void
+    private var openWindow: (() -> Void)?
+    private var openingPending = false
+    private weak var window: (any EditorWindow)?
 
-    /// Called from a SwiftUI view's environment to hand over its `openWindow` action.
-    func bind(_ action: OpenWindowAction) { openWindow = action }
+    init(model: EditorModel, activateApplication: @escaping () -> Void) {
+        self.model = model
+        self.activateApplication = activateApplication
+    }
 
-    /// Opens the editor, optionally selecting the Recording just captured.
+    func bind(_ action: @escaping () -> Void) {
+        openWindow = action
+        if openingPending { open() }
+    }
+
+    func attach(_ window: any EditorWindow) {
+        self.window = window
+        model.activate()
+        if openingPending { open() }
+    }
+
+    func detach(_ window: any EditorWindow) {
+        if self.window === window { self.window = nil }
+    }
+
     func open(selecting url: URL? = nil) {
-        guard let openWindow else { return }
-        ActivationPolicyController.shared.editorWillOpen()
-        NSApp.unhideWithoutActivation()
-        EditorModel.shared.activate(selecting: url)
-        openWindow(id: AppTapeApp.editorWindowID)
+        model.activate(selecting: url)
+        if let window {
+            openingPending = false
+            activateApplication()
+            window.reveal()
+            return
+        }
+        guard let openWindow else {
+            openingPending = true
+            return
+        }
+        openingPending = false
+        activateApplication()
+        openWindow()
     }
 }

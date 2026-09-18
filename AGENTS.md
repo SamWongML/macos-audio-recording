@@ -1,6 +1,6 @@
 # AppTape
 
-macOS menu-bar app that records one running application's audio via Core Audio process taps, then
+macOS Dock app with a menu-bar recording helper that records one running application's audio via Core Audio process taps, then
 trims and exports it. One Xcode project, two targets, no package manager. Builds require Xcode 27
 and the macOS 27 SDK; the deployment target is macOS 27.
 
@@ -36,7 +36,7 @@ signature; see [ADR-0002](docs/adr/0002-personal-team-code-signing.md).
 | Library | `AppTape/AppTape/LibraryStore.swift`, `RecordingReader.swift`, `RecordingMetadata.swift`, `EnvelopeCache.swift` | Folder reconciliation, file facts, persisted edits and derived waveform data. |
 | Editor | `AppTape/AppTape/EditorModel.swift`, `EditorView.swift`, `TrimTimeline.swift`, `TimelineGeometry.swift` | Selection, playback and Trim; views accept their state. |
 | Export | `AppTape/AppTape/ExportReadiness.swift`, `ExportCoordinator.swift`, `ExportEncoder.swift`, `LoudnessMeter.swift` | Shared refusal rules, cancellable work, encoding and Loudness measurement. |
-| App lifecycle | `AppTape/AppTape/MenuBarController.swift`, `EditorPresenter.swift`, `ActivationPolicyController.swift` | Menu-bar transport, editor windows and activation policy. |
+| App lifecycle | `AppTape/AppTape/MenuBarController.swift`, `EditorPresenter.swift`, `EditorWindowLifecycle.swift` | Menu-bar transport and primary-window presentation. |
 | Tests and CI | `AppTape/AppTapeTests/`, `.github/workflows/ci.yml` | Swift Testing with capture/recording doubles and real-file integration checks. |
 
 The shared `AppTape` scheme builds `AppTape` and tests `AppTapeTests`.

@@ -199,8 +199,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             }
         }
 
-        // An `LSUIElement` app is not frontmost, so without this the panel's controls come up
-        // inactive.
+        // Activate the app so the helper accepts keyboard input.
         NSApp.activate()
     }
 
@@ -262,10 +261,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     // MARK: - NSPopoverDelegate
 
-    func popoverWillShow(_ notification: Notification) {
-        ActivationPolicyController.shared.panelVisibilityDidChange(isVisible: true)
-    }
-
     func popoverDidShow(_ notification: Notification) {
         installEscapeMonitor()
     }
@@ -273,6 +268,5 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
         removeEscapeMonitor()
         teardownFallbackAnchor()
-        ActivationPolicyController.shared.panelVisibilityDidChange(isVisible: false)
     }
 }

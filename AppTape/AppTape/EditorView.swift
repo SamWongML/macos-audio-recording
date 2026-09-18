@@ -12,8 +12,6 @@ struct EditorView: View {
     /// Whether the Library list holds the window's keyboard focus. Written as well as read:
     /// picking a row is what puts focus here.
     @FocusState private var isSidebarFocused: Bool
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
     /// Reduce Motion rides the token set's `.motion(_:value:)` helper rather than being read here.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -40,13 +38,6 @@ struct EditorView: View {
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         }
         .navigationSplitViewStyle(.balanced)
-        .task { model.activate() }
-        .onChange(of: model.vanishedTick) {
-            // The open Recording was deleted or moved out from under the editor: close the window
-            // rather than hold a stale one.
-            dismissWindow(id: AppTapeApp.editorWindowID)
-        }
-        .editorActivationPolicy(cancelling: model.coordinator)
     }
 
     // MARK: - Sidebar (the Library)
@@ -156,6 +147,10 @@ struct EditorView: View {
             }
             .navigationTitle(recording.displayName)
             .navigationSubtitle(recording.windowSubtitle)
+        } else if model.selectionUnavailable {
+            ContentUnavailableView(
+                "Recording unavailable", systemImage: "waveform",
+                description: Text("The selected file is no longer in the Library."))
         } else {
             ContentUnavailableView {
                 Label(
