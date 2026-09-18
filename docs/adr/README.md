@@ -30,7 +30,7 @@ it costs. Source files do not cite these — start here.
 | [0023](0023-detail-pane-layout.md) | The detail pane is ruler, lane, summary, dock | accepted |
 | [0024](0024-trailing-column-not-inspector.md) | The trailing pane is a column, not a SwiftUI inspector | accepted |
 | [0025](0025-library-row-and-inspector.md) | The Library row is one line; the inspector states the Export | accepted |
-| [0026](0026-app-icon.md) | The icon is the waveform on a pale ground | accepted |
+| [0026](0026-app-icon.md) | Prism Pulse is the app icon | accepted |
 | [0027](0027-transport-readout-width.md) | The transport reserves its widest readout | accepted |
 | [0028](0028-motion-is-feedback.md) | Motion is feedback | accepted |
 | [0029](0029-selection-and-focus-fills.md) | The selection fill is the system's; the focus ring is ours | accepted |
