@@ -1,5 +1,7 @@
 # AppTape
 
+hello from chatgpt chat
+
 A macOS menu-bar utility that records the audio of one running application and lets you trim and
 export it. Capture uses Core Audio process taps, so only the chosen app is recorded — not the
 system mix, and not your microphone.
