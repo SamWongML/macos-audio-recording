@@ -20,10 +20,10 @@ and an Apple Development signed Debug build.
 
 Finder reopen exercises the application reopen callback; it does not establish the visual Dock-click behavior.
 
-## Still to verify manually
+## User-verified checks (23 September 2026)
 
-- Direct Dock clicks, stable Dock/app-switcher presence and absence of visual flicker through the lifecycle.
-- Fresh launch with an empty Library (covered at the model/presenter seam, not exercised against the populated user Library).
-- Closing the editor during live capture and returning while capture continues.
+- Passed: direct Dock clicks, stable Dock/app-switcher presence and absence of visual flicker through the lifecycle.
+- Passed: fresh launch with an empty Library.
+- Passed: closing the editor during live capture and returning while capture continues.
 
-The native UI tool provided access to the editor and Finder but did not provide usable Dock/helper controls; attempts to inspect the Dock timed out. No UI-test target was added.
+The user reported all three checks passing after running the supplied manual steps. These checks were performed by the user; the native UI tool provided access to the editor and Finder but did not provide usable Dock/helper controls. No UI-test target was added.
