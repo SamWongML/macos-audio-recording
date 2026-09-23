@@ -103,7 +103,7 @@ struct EditorModelTests {
         rig.model.activate()
 
         #expect(rig.model.selection == nil)
-        #expect(rig.model.vanishedTick == 0)
+        #expect(rig.model.selectionUnavailable == false)
     }
 
     // MARK: - What happens when the open Recording changes underneath
@@ -130,11 +130,9 @@ struct EditorModelTests {
         #expect(rig.model.player.recording === grown)
     }
 
-    /// The open Recording disappearing from the folder is the one case that closes the window: the
-    /// selection goes, playback stops, a running Export is cancelled because the editor has
-    /// navigated away from it, and the tick is what the view closes on.
-    @Test func theOpenRecordingVanishingClosesTheEditorAndCancelsTheExport() {
+    @Test func theOpenRecordingVanishingClearsSelectionAndCancelsTheExport() {
         let rig = Rig()
+        let other = rig.reader.place("other")
         let opened = rig.reader.place("about to vanish")
         rig.model.activate(selecting: opened.url)
         // Parked *after* the open: opening is itself a selection change, which cancels, so an
@@ -145,10 +143,30 @@ struct EditorModelTests {
         rig.model.activate()
 
         #expect(rig.model.selection == nil)
-        #expect(rig.model.vanishedTick == 1)
+        #expect(rig.model.selectionUnavailable == true)
         #expect(rig.coordinator.phase == .idle)
         #expect(rig.coordinator.subjectURL == nil)
         #expect(rig.model.player.isPlaying == false)
+        rig.model.activate()
+        #expect(rig.model.selection == nil)
+        #expect(rig.model.selectionUnavailable)
+        rig.model.select(other)
+        #expect(!rig.model.selectionUnavailable)
+    }
+
+    @Test func clearingTheListSelectionAfterRemovalStillExplainsTheMissingFile() {
+        let rig = Rig()
+        let opened = rig.reader.place("removed")
+        rig.model.activate(selecting: opened.url)
+        rig.reader.remove(opened)
+        rig.model.store.refresh()
+
+        rig.model.select(nil)
+        rig.model.activate()
+
+        #expect(rig.model.selection == nil)
+        #expect(rig.model.selectionUnavailable)
+        #expect(!rig.model.player.isPlaying)
     }
 
     // MARK: - Navigating away from an Export

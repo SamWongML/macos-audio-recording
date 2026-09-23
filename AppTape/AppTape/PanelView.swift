@@ -5,13 +5,12 @@ import SwiftUI
 /// The hand-rolled panel's transport surface: the list *is* the panel and a row *is* the record
 /// control — no button chrome (variant H).
 struct PanelView: View {
-    @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = SourceModel()
     /// The transport, accepted from the status item that hosts this panel.
     var recorder: RecordingController
-    /// How the panel hands its `openWindow` action to the shell, below.
+    /// Presents the primary window.
     var presenter: EditorPresenter
     /// Rescans the world for the list's live ordering (playing first). Slow enough not to churn.
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -34,9 +33,6 @@ struct PanelView: View {
         // Reduce Transparency: swap the popover's vibrant material for an opaque window background.
         .background(reduceTransparency ? Color(nsColor: .windowBackgroundColor) : Color.clear)
         .onAppear {
-            // Capture the SwiftUI open-window action so a status-item stop-click can open the
-            // editor from AppKit (EditorPresenter).
-            presenter.bind(openWindow)
             model.refresh()
         }
         .onReceive(tick) { _ in model.refresh() }
@@ -180,7 +176,7 @@ struct PanelView: View {
 
     private var footer: some View {
         HStack {
-            Button("Open Editor") { openWindow(id: AppTapeApp.editorWindowID) }
+            Button("Open Editor") { presenter.open() }
                 .buttonStyle(.link)
             Spacer()
             Button("Quit") { NSApplication.shared.terminate(nil) }

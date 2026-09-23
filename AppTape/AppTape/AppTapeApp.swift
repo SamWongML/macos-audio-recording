@@ -2,8 +2,7 @@ import SwiftUI
 
 @main
 struct AppTapeApp: App {
-    /// Owns the hand-rolled `NSStatusItem` transport and the activation-policy
-    /// flip — the pieces SwiftUI cannot express.
+    /// Owns the AppKit transport and lifecycle callbacks.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     /// Identifies the single editor window so the menu bar can open it.
@@ -16,12 +15,12 @@ struct AppTapeApp: App {
         // One editor window, not a WindowGroup: a Recording is edited in place.
         Window("AppTape", id: Self.editorWindowID) {
             EditorView(model: model, capture: capture)
+                .editorWindow(presenter: .shared, cancelling: model.coordinator)
                 // A floor under the three columns.
                 .frame(minWidth: 960, minHeight: 604)
         }
         // The trailing column sets this height, not the waveform.
         .defaultSize(width: 1200, height: 680)
-        .defaultLaunchBehavior(.suppressed)
         .commands {
             // Trim the standard menu set to what applies: keep the app's About/Quit, the window's
             // Close ⌘W, the standard Edit items,

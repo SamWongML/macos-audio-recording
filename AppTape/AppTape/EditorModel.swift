@@ -23,9 +23,7 @@ final class EditorModel {
 
     private(set) var selection: Recording?
 
-    /// Bumped when the open Recording vanishes from disk, so the view can close the window
-    /// rather than hold a stale one.
-    private(set) var vanishedTick = 0
+    private(set) var selectionUnavailable = false
 
     /// The Recording whose name is being edited inline in the sidebar, or nil.
     var renamingURL: URL?
@@ -67,8 +65,15 @@ final class EditorModel {
         // Selecting a different Recording navigates away from any running Export, which cancels it
         // unwarned.
         if selection?.url != recording?.url { coordinator.cancel() }
+        if recording == nil {
+            if let selection, self.recording(for: selection.url) == nil {
+                selectionUnavailable = true
+            }
+            player.stop()
+        }
         selection = recording
         guard let recording else { return }
+        selectionUnavailable = false
         didInitialSelect = true
         player.load(recording)
         EnvelopeLoader.load(recording)
@@ -80,10 +85,8 @@ final class EditorModel {
 
     /// Trash a Recording — the escape hatch for a can't-open adopted file.
     func trash(_ recording: Recording) {
-        if selection?.url == recording.url {
-            select(store.recordings.first { $0.url != recording.url })
-        }
         store.trash(recording)
+        reconcileSelection()
     }
 
     func beginRename(_ recording: Recording) { renamingURL = recording.url }
@@ -106,7 +109,7 @@ final class EditorModel {
     /// Keeps the selection honest as the folder changes underneath it:
     /// - a Recording just captured (a pending URL) is selected once it lists;
     /// - the open Recording being re-adopted rebinds the selection to the fresh object;
-    /// - the open Recording vanishing closes the editor;
+    /// - the open Recording vanishing clears selection;
     /// - on the first open with nothing pending, the newest Recording is selected.
     private func reconcileSelection() {
         if let url = pendingSelectionURL, let recording = recording(for: url) {
@@ -116,10 +119,7 @@ final class EditorModel {
         }
         if let selection {
             guard let current = recording(for: selection.url) else {
-                coordinator.cancel()  // the open Recording vanished — navigate away
-                self.selection = nil
-                player.stop()
-                vanishedTick += 1
+                select(nil)
                 return
             }
             // Same file, freshly read: the store re-adopted it because its length had changed, so

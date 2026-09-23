@@ -6,7 +6,7 @@ status: accepted
 
 AppTape has one primary Library/editor window with Source selection and recording controls available even when the Library is empty, and keeps its Dock identity while running so launching and returning to the app always has a useful destination. The menu bar helper belongs to the same application: closing the window leaves capture running, while Quit exits both surfaces; an independent background service would complicate ownership and the meaning of Quit without serving the agreed workflow. The redesign rethinks presentation and interaction around the existing recording, Trim, Gain, Loudness and Export capabilities.
 
-This supersedes ADR-0017's conditional Dock identity and launch-suppressed editor, and amends the menu-bar-only capture entry points in ADR-0004 and ADR-0034. The decision is accepted for the redesign; implementation is pending the design interview.
+This supersedes ADR-0017's conditional Dock identity and launch-suppressed editor, and amends the menu-bar-only capture entry points in ADR-0004 and ADR-0034. The decision is accepted for the redesign; the lifecycle slice is implemented, while the remaining recording controls, inspector, commands and Export lifetime work are pending.
 
 ## Recording interaction
 
@@ -23,3 +23,9 @@ Capture, playback and Export have keyboard-accessible commands, and Trim has edi
 ## Export lifetime
 
 One Export at a time continues through selection changes, inspector collapse and window closure, with app-wide progress and Cancel available when the window is shown. Quitting with an unfinished Export requires confirmation, amending ADR-0012's automatic cancellation on navigation or close while preserving its parameter snapshot and atomic destination replacement. This makes Export an application-owned operation rather than work whose lifetime depends on the selected Recording's view.
+
+## Lifecycle implementation
+
+Issue #140 implements a stable regular application identity and automatic launch of the single Library/editor window, including an empty Library; Dock reopen reveals that window after hide, minimize or close without involving the helper. The shared `EditorPresenter` owns presentation, and removing a selected file clears selection and stops playback while leaving the workspace open with an unavailable explanation. Closing the window leaves capture running; Export still cancels on navigation and window closure until its dedicated lifetime ticket implements the decision above.
+
+The [Apple design research](../research/macos-27-dock-first-design.md) remains the supporting evidence, and ADR-0017 retains the measurements and rationale for the superseded conditional identity.

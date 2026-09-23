@@ -1,18 +1,12 @@
 import AppKit
 import UserNotifications
 
-/// The AppKit shell: owns the menu bar and the activation policy.
+/// Owns the menu bar and handles application lifecycle events.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let menuBar = MenuBarController(recorder: .shared, presenter: .shared)
-    private var menuBarOwnerObservation: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        menuBarOwnerObservation = NSWorkspace.shared.observe(\.menuBarOwningApplication) { _, _ in
-            DispatchQueue.main.async {
-                ActivationPolicyController.shared.applicationStateDidChange()
-            }
-        }
         menuBar.install()
         // A fault notification's click opens the editor on that Recording.
         UNUserNotificationCenter.current().delegate = FaultNotificationDelegate.shared
@@ -20,12 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingController.shared.installLifecycleObservers()
     }
 
-    func applicationDidResignActive(_ notification: Notification) {
-        ActivationPolicyController.shared.applicationStateDidChange()
-    }
-
-    func applicationDidHide(_ notification: Notification) {
-        ActivationPolicyController.shared.applicationStateDidChange()
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        EditorPresenter.shared.open()
+        return false
     }
 
     /// Closing the editor leaves the status item and capture running.
