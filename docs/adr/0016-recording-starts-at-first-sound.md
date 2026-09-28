@@ -4,6 +4,8 @@ status: accepted
 
 # 0016. A Recording begins at the first sound, not the first press
 
+[ADR-0051](0051-recording-strip.md) states the armed-waiting window in the main window's recording strip — *Waiting for audio*, with no clock until the first sound — while the master's timing below is unchanged.
+
 The tap's IOProc is not called at all until the Source produces audio (issue #12),
 so the stretch between pressing record and the first sound has no frames. The policy
 is that **the master's clock begins at the first sound**: the head is elided, not

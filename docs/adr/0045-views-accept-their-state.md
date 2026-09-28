@@ -8,6 +8,8 @@ status: accepted
 
 It also replaces the selection-disappearance behavior described below: the primary window remains open with no selection, and Export lifetime no longer follows selection or window visibility.
 
+[ADR-0051](0051-recording-strip.md)'s recording strip is capture's face in the window, so, like the panel, it is handed `RecordingController` concretely; the editor's own views still read capture through `CaptureState`.
+
 Nine lines across seven view types read an app singleton out of thin air. Five of them were
 `@State private var recorder = RecordingController.shared`; four more were `EditorModel.shared`,
 `ExportPreference.shared` and `ExportCoordinator.shared`, the last three of them consecutive lines at

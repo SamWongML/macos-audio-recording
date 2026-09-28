@@ -8,6 +8,8 @@ amends: "ADR-0023's *the empty state stays a `ContentUnavailableView` and gains 
 
 [ADR-0050](0050-dock-first-app.md) amends the menu-bar-only first-capture entry point: the Dock-first window will offer recording controls even when the Library is empty; the single-owner empty-state principle remains.
 
+[ADR-0051](0051-recording-strip.md) delivers those controls, so the empty Library's second line now reads *Choose a Source, then press Record.*; the strip beside it does not repeat the instruction.
+
 On a first run the editor rendered **three empty states at once**, and two of them gave an
 instruction the user could not follow:
 

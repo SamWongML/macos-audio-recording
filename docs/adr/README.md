@@ -14,7 +14,8 @@ wins for the amended part and the earlier record still explains the remaining tr
 - [0035](0035-trailing-column-top-edge.md) clarifies 0032's trailing-column extent.
 - [0038](0038-dock-fill.md) corrects 0036's dock-fill measurements.
 - [0040](0040-trimmed-away-colour.md) changes 0019 and 0033's Trimmed-away treatment.
-- [0050](0050-dock-first-app.md) supersedes 0017 and amends 0004, 0011, 0012, 0023, 0024, 0034 and 0045's capture, helper, editor and Export decisions for the agreed Dock-first redesign; the lifecycle slice is implemented and the remaining redesign is pending.
+- [0050](0050-dock-first-app.md) supersedes 0017 and amends 0004, 0011, 0012, 0023, 0024, 0034 and 0045's capture, helper, editor and Export decisions for the agreed Dock-first redesign; the lifecycle and recording-strip slices are implemented and the remaining redesign is pending.
+- [0051](0051-recording-strip.md) states 0016's waiting window in the main window's recording strip, adds the strip's two controls to 0019's Liquid Glass controls, and changes 0034's empty-Library sentence to point at the strip.
 
 ## Work areas
 
@@ -60,7 +61,8 @@ wins for the amended part and the earlier record still explains the remaining tr
 | [0004](0004-nsstatusitem-transport.md) | The menu bar item is an NSStatusItem, and it is the transport | accepted |
 | [0011](0011-hand-rolled-menu-bar-panel.md) | The panel stays hand-rolled; the expanded-interface session is not worth the left-click | accepted |
 | [0017](0017-activation-policy.md) | AppTape is `.accessory` at rest and `.regular` while the editor is open | superseded by 0050 |
-| [0050](0050-dock-first-app.md) | AppTape is a Dock-first app with a secondary recording helper | accepted; lifecycle implemented, remaining redesign pending |
+| [0050](0050-dock-first-app.md) | AppTape is a Dock-first app with a secondary recording helper | accepted; lifecycle and recording strip implemented, remaining redesign pending |
+| [0051](0051-recording-strip.md) | The recording strip floats above the editor, and each surface answers its own presses | accepted |
 
 ### Build, concurrency and test boundaries
 

@@ -6,7 +6,7 @@ status: accepted
 
 AppTape has one primary Library/editor window with Source selection and recording controls available even when the Library is empty, and keeps its Dock identity while running so launching and returning to the app always has a useful destination. The menu bar helper belongs to the same application: closing the window leaves capture running, while Quit exits both surfaces; an independent background service would complicate ownership and the meaning of Quit without serving the agreed workflow. The redesign rethinks presentation and interaction around the existing recording, Trim, Gain, Loudness and Export capabilities.
 
-This supersedes ADR-0017's conditional Dock identity and launch-suppressed editor, and amends the menu-bar-only capture entry points in ADR-0004 and ADR-0034. The decision is accepted for the redesign; the lifecycle slice is implemented, while the remaining recording controls, inspector, commands and Export lifetime work are pending.
+This supersedes ADR-0017's conditional Dock identity and launch-suppressed editor, and amends the menu-bar-only capture entry points in ADR-0004 and ADR-0034. The decision is accepted for the redesign; the lifecycle and main-window recording slices are implemented, while the helper's redesign, inspector, commands and Export lifetime work are pending.
 
 ## Recording interaction
 
@@ -27,5 +27,9 @@ One Export at a time continues through selection changes, inspector collapse and
 ## Lifecycle implementation
 
 Issue #140 implements a stable regular application identity and automatic launch of the single Library/editor window, including an empty Library; Dock reopen reveals that window after hide, minimize or close without involving the helper. The shared `EditorPresenter` owns presentation, and removing a selected file clears selection and stops playback while leaving the workspace open with an unavailable explanation. Closing the window leaves capture running; Export still cancels on navigation and window closure until its dedicated lifetime ticket implements the decision above.
+
+## Recording strip implementation
+
+Issue #141 implements the main window's recording strip, as recorded in [ADR-0051](0051-recording-strip.md): a remembered Source chosen separately from Record, waiting and recording states, elapsed time and Stop above every detail state, one `RecordingController` commanded by both surfaces, and a window Stop that selects the saved Recording in place. The helper keeps its left-click stop, which still opens the editor, until its dedicated ticket.
 
 The [Apple design research](../research/macos-27-dock-first-design.md) remains the supporting evidence, and ADR-0017 retains the measurements and rationale for the superseded conditional identity.

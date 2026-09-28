@@ -32,6 +32,7 @@ signature; see [ADR-0002](docs/adr/0002-personal-team-code-signing.md).
 | Area | Start here | Boundary |
 |---|---|---|
 | Capture | `AppTape/AppTape/CaptureRun.swift`, `CaptureAdapters.swift` | One run accepts capture, disk and reporting dependencies; its clock is passed to `tick(now:)`. |
+| Capture controls | `AppTape/AppTape/RecordingController.swift`, `RecordingStrip.swift`, `SourceChoice.swift` | Both surfaces command one run; the remembered Source is never replaced by another app. |
 | Audio I/O | `AppTape/AppTape/CaptureEngine.swift`, `ProcessTap.swift`, `CAFMasterWriter.swift` | Core Audio tap, realtime buffers and the master writer. |
 | Library | `AppTape/AppTape/LibraryStore.swift`, `RecordingReader.swift`, `RecordingMetadata.swift`, `EnvelopeCache.swift` | Folder reconciliation, file facts, persisted edits and derived waveform data. |
 | Editor | `AppTape/AppTape/EditorModel.swift`, `EditorView.swift`, `TrimTimeline.swift`, `TimelineGeometry.swift` | Selection, playback and Trim; views accept their state. |

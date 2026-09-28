@@ -4,6 +4,8 @@ status: accepted
 
 # 0019. The app owns two content colours and nothing else
 
+[ADR-0051](0051-recording-strip.md) adds the recording strip's glass bar and its red Record/Stop to the controls that take Liquid Glass; the content layer still takes none.
+
 AppTape's editor read as a scaffold: sober everywhere, with `.tint` sprinkled at two opacities
 across the waveform and whatever else wanted emphasis, and an **empty `AccentColor.colorset`** — so
 the app had no colour of its own at all, only the user's System Settings accent wearing the app's

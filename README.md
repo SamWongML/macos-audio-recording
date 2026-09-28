@@ -1,8 +1,8 @@
 # AppTape
 
-A macOS menu-bar utility that records the audio of one running application and lets you trim and
-export it. Capture uses Core Audio process taps, so only the chosen app is recorded — not the
-system mix, and not your microphone.
+A macOS app that records the audio of one running application — from its main window or its menu
+bar helper — and lets you trim and export it. Capture uses Core Audio process taps, so only the
+chosen app is recorded — not the system mix, and not your microphone.
 
 ## Requirements
 
@@ -27,6 +27,8 @@ The app target uses one flat source directory. The shape that matters:
 - **Capture** — `CaptureRun` owns one run start to stop and makes every decision; `CaptureEngine`
   owns the tap, the writer thread and the CAF master. They meet at four protocols in
   `CaptureAdapters.swift`, which is what lets the suite drive a whole run with no audio hardware.
+  `RecordingController` is the one shell both the window's recording strip and the menu bar helper
+  command, and it remembers the Source.
 - **Library** — `LibraryStore` lists an ordinary folder. A `Recording` is a file; Trim and Gain
   ride in its extended attributes, so a Finder rename or move is followed silently.
 - **Editor** — `EditorModel` coordinates store, selection, playback and Export. Views accept their
