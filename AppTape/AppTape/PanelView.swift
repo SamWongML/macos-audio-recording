@@ -169,7 +169,7 @@ struct PanelView: View {
     /// at a time), so rows are inert until stop.
     private func pick(_ source: Source) {
         guard !recorder.run.isRecording else { return }
-        recorder.start(source)
+        recorder.start(source, from: .helper)
     }
 
     // MARK: - Footer

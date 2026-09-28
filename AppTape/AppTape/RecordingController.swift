@@ -1,9 +1,9 @@
 import AppKit
 import Observation
 
-/// The shell around one `CaptureRun`: the record presses, the lifecycle notifications, the one
-/// timer that gives the run its sense of time, and the observation the menu bar and the panel
-/// render.
+/// The shell around one `CaptureRun`: the record presses of both surfaces, the remembered Source,
+/// the lifecycle notifications, the one timer that gives the run its sense of time, and the
+/// observation the menu bar, the panel and the recording strip render.
 @MainActor
 @Observable
 final class RecordingController {
@@ -13,19 +13,33 @@ final class RecordingController {
     /// a run with doubles in it.
     let run: CaptureRun
 
+    /// The Source both surfaces offer to record next — and, while a Recording runs, the one it is
+    /// capturing, since every press remembers what it starts.
+    private(set) var source: SourceChoice?
+
+    /// The surface that pressed Record last, so a refused press is explained where it was made.
+    private(set) var lastPressSurface: CaptureSurface?
+
+    @ObservationIgnored private let defaults: UserDefaults
+
     /// The production wiring: a real Core Audio capture, a real `statfs`, a real notification
-    /// centre, the real editor window and the real file system.
-    init() {
-        self.run = CaptureRun(
-            builder: CoreAudioCaptureBuilder(),
-            runway: LibraryVolumeProbe(),
-            reporter: SystemCaptureReporter(),
-            reader: RecordingReader())
+    /// centre, the real editor window, the real file system and the user's own defaults.
+    convenience init() {
+        self.init(
+            run: CaptureRun(
+                builder: CoreAudioCaptureBuilder(),
+                runway: LibraryVolumeProbe(),
+                reporter: SystemCaptureReporter(),
+                reader: RecordingReader()),
+            defaults: .standard)
     }
 
-    /// For a test or a preview: a controller over a run with doubles in it.
-    init(run: CaptureRun) {
+    /// For a test or a preview: a controller over a run with doubles in it, remembering its Source
+    /// in a defaults suite of its own.
+    init(run: CaptureRun, defaults: UserDefaults) {
         self.run = run
+        self.defaults = defaults
+        self.source = SourceChoice(defaults: defaults)
     }
 
     /// Seconds since the current record press, or nil at rest — `RowRecordGlyph`'s grace input.
@@ -35,14 +49,32 @@ final class RecordingController {
 
     // MARK: - The presses
 
-    func start(_ source: Source) {
+    /// Remembers `source` for the next Record without starting anything. Refused while a Recording
+    /// runs, so one Recording never changes its origin.
+    func choose(_ source: Source) {
+        guard !run.isRecording else { return }
+        remember(source)
+    }
+
+    /// Records the remembered Source as it is running now, so a relaunched app's fresh processes
+    /// are the ones tapped. An unavailable Source is never swapped for another app.
+    func record(among sources: [Source], from surface: CaptureSurface) {
+        guard case .ready(let running) = SourceReadiness(choice: self.source, among: sources) else { return }
+        start(running, from: surface)
+    }
+
+    /// Chooses and records `source` in one press — the helper's row is both.
+    func start(_ source: Source, from surface: CaptureSurface) {
+        guard !run.isRecording else { return }
+        remember(source)
+        lastPressSurface = surface
         run.start(source, now: uptime)
         // A press refused below the disk floor never enters a recording state, so there is nothing
         // to clock.
         if run.isRecording { startClock() }
     }
 
-    func stop() { run.stop() }
+    func stop(from surface: CaptureSurface) { run.stop(from: surface) }
 
     /// System sleep or fast user switching, folded together.
     func endForSleep() { run.end(.sleep) }
@@ -51,6 +83,13 @@ final class RecordingController {
     func endForQuit() {
         run.endForQuit()
         stopClock()
+    }
+
+    private func remember(_ source: Source) {
+        let choice = SourceChoice(bundleID: source.bundleID, name: source.name)
+        guard choice != self.source else { return }
+        self.source = choice
+        choice.save(to: defaults)
     }
 
     /// Registers the lifecycle ends that arrive as notifications: sleep, fast user switching, and

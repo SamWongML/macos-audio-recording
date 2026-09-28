@@ -45,7 +45,7 @@ struct CaptureRunTests {
         func completeARecording() {
             let capture = startCapturing()
             capture.outcome = CaptureOutcome(result: Self.result, selfEndReason: nil)
-            run.stop()
+            run.stop(from: .helper)
         }
 
         static let source = Source(
@@ -75,7 +75,7 @@ struct CaptureRunTests {
 
         // The second click is the cancel gesture: the UI returns to idle at once, because the
         // blocked Core Audio call cannot be interrupted.
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         #expect(rig.run.isRecording == false)
 
         // The blocked call finally returns. It must be torn down, not attached.
@@ -88,7 +88,7 @@ struct CaptureRunTests {
     @Test func aLateCaptureDoesNotAttachToALaterPress() {
         let rig = Rig()
         rig.run.start(Rig.source, now: 0)  // attempt 1, blocked
-        rig.run.stop()  // cancelled
+        rig.run.stop(from: .helper)  // cancelled
         rig.run.start(Rig.source, now: 1)  // attempt 2, its own bring-up
         let live = rig.builder.finish(build: 1)
         #expect(rig.run.isRecording)
@@ -120,7 +120,7 @@ struct CaptureRunTests {
     @Test func aDenialFromAnAbandonedAttemptChangesNothing() {
         let rig = Rig()
         rig.run.start(Rig.source, now: 0)
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         rig.builder.hooks(forBuild: 0).onDenialInferred()
         #expect(rig.run.permissionRecovery == false)
         #expect(rig.run.isRecording == false)
@@ -129,7 +129,7 @@ struct CaptureRunTests {
     @Test func aMasterCreatedByAnAbandonedAttemptIsNotTheCapturingURL() {
         let rig = Rig()
         rig.startCapturing()
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         rig.run.start(Rig.source, now: 1)
         rig.builder.finish(build: 1)
 
@@ -142,7 +142,7 @@ struct CaptureRunTests {
     @Test func aSelfEndFromAnAbandonedAttemptDoesNotFinalizeTheLiveOne() {
         let rig = Rig()
         let first = rig.startCapturing()
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         #expect(first.stopCount == 1)
 
         rig.run.start(Rig.source, now: 1)
@@ -200,15 +200,51 @@ struct CaptureRunTests {
 
     // MARK: - The six ends (/0010)
 
-    @Test func aUserStopRequestsAuthorizationOnceAndOpensTheEditor() {
+    @Test(arguments: [CaptureSurface.helper, .window])
+    func aUserStopRequestsAuthorizationOnceAndNamesTheSurfaceThatStopped(_ surface: CaptureSurface) {
         let rig = Rig()
         let capture = rig.startCapturing()
         capture.outcome = CaptureOutcome(result: Rig.result, selfEndReason: nil)
-        rig.run.stop()
+        rig.run.stop(from: surface)
 
-        #expect(rig.reporter.reported == [.authorizationRequested, .editorOpened(Rig.result.url)])
+        // The run reports who stopped it; what that surface does with a saved Recording is the
+        // presenter's business.
+        let url = Rig.result.url
+        #expect(rig.reporter.reported == [.authorizationRequested, .saved(url, stoppedFrom: surface)])
         #expect(rig.run.hasCompletedACapture)
         #expect(rig.run.isRecording == false)
+    }
+
+    @Test func aWindowStopDuringBringUpCancelsItAndReportsNothing() {
+        let rig = Rig()
+        rig.run.start(Rig.source, now: 0)
+        rig.run.stop(from: .window)
+        #expect(rig.run.isRecording == false)
+
+        // The blocked bring-up returns into a run that has moved on: torn down, never attached.
+        let orphan = rig.builder.finish()
+        #expect(orphan.stopCount == 1)
+        #expect(rig.run.isRecording == false)
+        #expect(rig.reporter.reported.isEmpty)
+    }
+
+    @Test func aWindowStopBeforeTheFirstSoundSavesNothingAndTellsNothing() {
+        let rig = Rig()
+        let capture = rig.startCapturing()  // the default outcome carries no file
+        rig.run.stop(from: .window)
+
+        #expect(capture.stopCount == 1)
+        #expect(rig.reporter.reported.isEmpty)
+    }
+
+    @Test func aFaultThatEndedTheRecordingOutranksTheWindowsStop() {
+        let rig = Rig()
+        let capture = rig.startCapturing()
+        // The capture had already given up; the press arrives after.
+        capture.outcome = CaptureOutcome(result: Rig.result, selfEndReason: .recoveryExhausted)
+        rig.run.stop(from: .window)
+
+        #expect(rig.reporter.reported == [.end(.recoveryExhausted, Rig.result.url)])
     }
 
     @Test func quitFinalizesSynchronouslyAndTellsNothing() {
@@ -250,7 +286,7 @@ struct CaptureRunTests {
     @Test func armThenNeverPlaySavesNothingAndTellsNothing() {
         let rig = Rig()
         let capture = rig.startCapturing()  // the default outcome carries no file
-        rig.run.stop()
+        rig.run.stop(from: .helper)
 
         #expect(capture.stopCount == 1)
         #expect(rig.reporter.reported.isEmpty)
@@ -399,7 +435,7 @@ struct CaptureRunTests {
         #expect(rig.run.currentLevel > 0)
         #expect(rig.run.meterColumns.allSatisfy { $0 > 0 })
 
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         #expect(rig.run.currentLevel == 0)
         #expect(rig.run.meterColumns.allSatisfy { $0 == 0 })
 
@@ -440,7 +476,7 @@ struct CaptureRunTests {
         #expect(rig.run.isCapturing(settledRecording) == false)
         #expect(rig.run.isStillArriving(settledRecording) == false)
 
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         #expect(rig.run.isCapturing(growingRecording) == false)
         #expect(rig.run.isStillArriving(growingRecording) == false)
     }
@@ -497,7 +533,7 @@ struct CaptureRunTests {
         #expect(rig.run.masterByteCount == 4_096)
 
         // The figure belongs to the file being written, so it goes back with it.
-        rig.run.stop()
+        rig.run.stop(from: .helper)
         #expect(rig.run.masterByteCount == nil)
     }
 

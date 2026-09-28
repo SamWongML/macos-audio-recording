@@ -6,6 +6,13 @@ nonisolated private struct Attempt: Equatable, Sendable {
     let id: Int
 }
 
+/// An end the run was asked for: the user's Stop, pressed on one of the two surfaces, or an end
+/// arriving from outside the run or from the capture itself.
+nonisolated private enum EndRequest: Sendable {
+    case stop(CaptureSurface)
+    case end(RecordingEndReason)
+}
+
 /// One run of capture, start to stop: the six ends, the denial inference, the Runway guard and
 /// the generation rule all live here.
 @MainActor
@@ -241,16 +248,16 @@ final class CaptureRun {
 
     // MARK: - Ending
 
-    /// The user pressed stop — one of the two *requested* ends.
-    func stop() {
+    /// The user pressed stop on `surface` — one of the two *requested* ends.
+    func stop(from surface: CaptureSurface) {
         guard let attempt = phase.attempt else { return }
-        finalize(reason: .userStopped, attempt)
+        finalize(.stop(surface), attempt)
     }
 
     /// An end arriving from outside the run: system sleep, or fast user switching folded into it.
     func end(_ reason: RecordingEndReason) {
         guard let attempt = phase.attempt else { return }
-        finalize(reason: reason, attempt)
+        finalize(.end(reason), attempt)
     }
 
     /// App quit or logout: finalize and save unwarned.
@@ -265,11 +272,11 @@ final class CaptureRun {
     /// the four unrequested ends.
     private func captureEndedItself(_ reason: RecordingEndReason, _ attempt: Attempt) {
         guard isLive(attempt) else { return }
-        finalize(reason: reason, attempt)
+        finalize(.end(reason), attempt)
     }
 
     /// The one finalization path every end funnels through.
-    private func finalize(reason: RecordingEndReason, _ attempt: Attempt) {
+    private func finalize(_ request: EndRequest, _ attempt: Attempt) {
         guard isLive(attempt) else { return }
         let capture = phase.capture
         returnToIdle()
@@ -278,30 +285,29 @@ final class CaptureRun {
         // `attach` will orphan-stop it, and the fresh attempt makes that certain.
         guard let capture else { return }
         capture.stop { [weak self] outcome in
-            self?.didFinalize(outcome, requested: reason)
+            self?.didFinalize(outcome, requested: request)
         }
     }
 
     /// Back with the finalized file (or nil for arm-then-never-play). Tells the user what happened
     /// per the end's kind.
-    private func didFinalize(_ outcome: CaptureOutcome, requested: RecordingEndReason) {
+    private func didFinalize(_ outcome: CaptureOutcome, requested: EndRequest) {
         // A Recording that captured audio — even one a fault ended — means the grant is known
         // good, so a later slow bring-up is a wedge to time out rather than a human at the prompt.
         if outcome.result != nil { hasCompletedACapture = true }
         guard let result = outcome.result else { return }  // nothing saved, nothing to tell.
 
         // If the capture had already ended itself on a fault, its own reason wins over the caller's.
-        switch outcome.selfEndReason ?? requested {
-        case .userStopped:
+        switch (outcome.selfEndReason, requested) {
+        case (nil, .stop(let surface)):
             // The first *completed* Recording is where notification authorization is requested, so
             // a later unrequested end has a channel — never stacked onto a failure.
             reporter.requestNotificationAuthorizationOnce()
-            reporter.openEditor(selecting: result.url)
-        case .quit:
-            break  // you asked for it; the app is leaving. No window, no notification.
-        case .diskGuard, .recoveryExhausted, .formatMismatch, .sleep:
-            // Name the reason and open the editor on the click — or directly, if auth is absent.
-            reporter.report(end: outcome.selfEndReason ?? requested, recordingURL: result.url)
+            reporter.recordingSaved(at: result.url, stoppedFrom: surface)
+        case (let reason?, _), (nil, .end(let reason)):
+            // Quit is asked for and says nothing; the four unrequested ends name their reason.
+            guard reason.isUnrequested else { return }
+            reporter.report(end: reason, recordingURL: result.url)
         }
     }
 

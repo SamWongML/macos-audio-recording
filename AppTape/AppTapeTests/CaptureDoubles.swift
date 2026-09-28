@@ -106,7 +106,7 @@ final class CaptureReportLog: CaptureReporting {
         case authorizationRequested
         case end(RecordingEndReason, URL)
         case runwayLow
-        case editorOpened(URL)
+        case saved(URL, stoppedFrom: CaptureSurface)
     }
 
     private(set) var reported: [Told] = []
@@ -119,5 +119,26 @@ final class CaptureReportLog: CaptureReporting {
 
     func reportRunwayLow() { reported.append(.runwayLow) }
 
-    func openEditor(selecting url: URL) { reported.append(.editorOpened(url)) }
+    func recordingSaved(at url: URL, stoppedFrom surface: CaptureSurface) {
+        reported.append(.saved(url, stoppedFrom: surface))
+    }
+}
+
+/// The production reporter's one presentation duty, with the presenter under test in place of the
+/// app's: a saved Recording goes to the surface that stopped it, and nothing else is said.
+@MainActor
+final class PresentingReporter: CaptureReporting {
+    let presenter: EditorPresenter
+
+    init(presenter: EditorPresenter) { self.presenter = presenter }
+
+    func requestNotificationAuthorizationOnce() {}
+
+    func report(end reason: RecordingEndReason, recordingURL: URL) {}
+
+    func reportRunwayLow() {}
+
+    func recordingSaved(at url: URL, stoppedFrom surface: CaptureSurface) {
+        presenter.presentSavedRecording(url, stoppedFrom: surface)
+    }
 }

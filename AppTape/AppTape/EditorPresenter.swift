@@ -63,4 +63,13 @@ final class EditorPresenter {
         activateApplication()
         openWindow()
     }
+
+    /// A Recording the user stopped: Stop in the window selects it where the user already is, and
+    /// Stop in the helper opens the editor on it.
+    func presentSavedRecording(_ url: URL, stoppedFrom surface: CaptureSurface) {
+        switch surface {
+        case .window: model.activate(selecting: url)
+        case .helper: open(selecting: url)
+        }
+    }
 }

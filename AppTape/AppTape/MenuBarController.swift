@@ -66,7 +66,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             } ?? false
         // The one-click stop: a left-click while recording finalizes and opens the editor.
         if recorder.run.isRecording && !isRightClick {
-            recorder.stop()
+            recorder.stop(from: .helper)
             return
         }
         togglePanel()
@@ -128,11 +128,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     /// Raise the panel the moment a record press is blocked — a denial or a blocker below the
-    /// floor — so its one blocking-message surface reaches the user who just pressed record.
+    /// floor — so its one blocking-message surface reaches the user who just pressed record. A press
+    /// made in the window is answered by the window's recording strip instead.
     private func raisePanelOnBlockingMessage() {
         let blocked = recorder.run.permissionRecovery || recorder.run.startBlocker != nil
         defer { lastBlocked = blocked }
-        guard blocked, !lastBlocked else { return }
+        guard blocked, !lastBlocked, recorder.lastPressSurface == .helper else { return }
         if popover?.isShown != true { showPanel() }
     }
 

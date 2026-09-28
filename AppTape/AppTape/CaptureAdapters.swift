@@ -10,6 +10,14 @@ nonisolated struct CaptureOutcome: Sendable {
     var selfEndReason: RecordingEndReason?
 }
 
+/// The surface a capture command was pressed on, so each surface answers its own presses.
+nonisolated enum CaptureSurface: Equatable, Sendable {
+    /// The Library/editor window's recording strip.
+    case window
+    /// The menu bar helper.
+    case helper
+}
+
 /// The three callbacks a capture makes while it runs, handed over at bring-up so they are set
 /// before the writer thread starts — a denial inferred before the capture is attached is still
 /// delivered.
@@ -72,8 +80,9 @@ protocol CaptureReporting {
     func report(end reason: RecordingEndReason, recordingURL: URL)
     /// The 30-minute Runway warning, posted once.
     func reportRunwayLow()
-    /// Open the editor directly — the user stop's own ending.
-    func openEditor(selecting url: URL)
+    /// A Recording the user stopped was saved — the user stop's own ending, presented by the
+    /// surface that pressed Stop.
+    func recordingSaved(at url: URL, stoppedFrom surface: CaptureSurface)
 }
 
 // MARK: - The production adapters
@@ -158,5 +167,7 @@ struct SystemCaptureReporter: CaptureReporting {
 
     func reportRunwayLow() { FaultNotifier.runwayLow() }
 
-    func openEditor(selecting url: URL) { EditorPresenter.shared.open(selecting: url) }
+    func recordingSaved(at url: URL, stoppedFrom surface: CaptureSurface) {
+        EditorPresenter.shared.presentSavedRecording(url, stoppedFrom: surface)
+    }
 }
