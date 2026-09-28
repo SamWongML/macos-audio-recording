@@ -112,6 +112,38 @@
         func identity(of url: URL) -> FileIdentity? { adopt(url)?.fileIdentity }
     }
 
+    /// Bring-up that never finishes, a volume that cannot be stat'd, and a report nobody reads: the
+    /// world a preview's recording strip sits in, without Core Audio behind it.
+    struct PreviewCaptureBuilder: CaptureBuilding {
+        func build(
+            source: Source, hooks: CaptureHooks,
+            then: @escaping @Sendable @MainActor ((any Capturing)?) -> Void
+        ) {}
+    }
+
+    struct PreviewRunway: RunwayProbing {
+        func freeBytesForLibraryVolume() -> Int64? { nil }
+    }
+
+    struct PreviewCaptureReporter: CaptureReporting {
+        func requestNotificationAuthorizationOnce() {}
+        func report(end reason: RecordingEndReason, recordingURL: URL) {}
+        func reportRunwayLow() {}
+        func recordingSaved(at url: URL, stoppedFrom surface: CaptureSurface) {}
+    }
+
+    extension RecordingController {
+        /// A controller at rest over that world, remembering its Source in the previews' own
+        /// defaults suite.
+        static func preview() -> RecordingController {
+            RecordingController(
+                run: CaptureRun(
+                    builder: PreviewCaptureBuilder(), runway: PreviewRunway(),
+                    reporter: PreviewCaptureReporter(), reader: PreviewLibraryReader(recordings: [])),
+                defaults: UserDefaults(suiteName: "com.apptape.previews") ?? .standard)
+        }
+    }
+
     extension EditorModel {
         /// The editor over a Library that does not exist, with Export objects nothing else is watching
         /// and a defaults suite of its own, so a preview can never write the user's sticky Quality

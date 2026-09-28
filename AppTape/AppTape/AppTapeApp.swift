@@ -9,12 +9,14 @@ struct AppTapeApp: App {
     static let editorWindowID = "editor"
 
     private let model = EditorModel.shared
-    private let capture = RecordingController.shared.run
+    private let recorder = RecordingController.shared
+    /// The running apps the recording strip offers as Sources.
+    @State private var sources = SourceModel()
 
     var body: some Scene {
         // One editor window, not a WindowGroup: a Recording is edited in place.
         Window("AppTape", id: Self.editorWindowID) {
-            EditorView(model: model, capture: capture)
+            EditorView(model: model, capture: recorder.run, recorder: recorder, sources: sources)
                 .editorWindow(presenter: .shared, cancelling: model.coordinator)
                 // A floor under the three columns.
                 .frame(minWidth: 960, minHeight: 604)

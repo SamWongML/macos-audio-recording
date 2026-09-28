@@ -7,6 +7,10 @@ struct EditorView: View {
     var model: EditorModel
     /// What capture is doing.
     var capture: any CaptureState
+    /// The capture shell the recording strip commands — the one the helper commands too.
+    var recorder: RecordingController
+    /// The running apps the recording strip offers as Sources.
+    var sources: SourceModel
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
     /// Whether the Library list holds the window's keyboard focus. Written as well as read:
@@ -35,6 +39,11 @@ struct EditorView: View {
             // The hidden window-toolbar background is unconditional (the spec asks for it on the
             // title bar, not only when a Recording is shown), so it rides the detail wrapper —
             detail
+                // Above every detail state, the empty Library included, and over the trailing
+                // column too: capture is not the selected Recording's.
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    RecordingStrip(recorder: recorder, sources: sources)
+                }
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         }
         .navigationSplitViewStyle(.balanced)
@@ -160,7 +169,7 @@ struct EditorView: View {
                 Text(
                     hasRecordings
                         ? "Choose one in the Library to play it, set its Trim, and Export it."
-                        : "Record from the AppTape icon in the menu bar.")
+                        : "Choose a Source, then press Record.")
             }
         }
     }
@@ -634,7 +643,9 @@ extension FocusedValues {
 
     /// The whole editor, over a Library that does not exist.
     #Preview("Editor · empty") {
-        EditorView(model: .preview(recordings: []), capture: PreviewCapture.settled)
+        EditorView(
+            model: .preview(recordings: []), capture: PreviewCapture.settled,
+            recorder: .preview(), sources: SourceModel())
     }
 
     /// The two states of the brief's `Master` row: a settled Recording states the length it was read
