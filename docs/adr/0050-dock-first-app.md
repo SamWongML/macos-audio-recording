@@ -12,7 +12,18 @@ This supersedes ADR-0017's conditional Dock identity and launch-suppressed edito
 
 Clicking the helper consistently opens its controls, including an explicit Stop button, rather than ending a Recording immediately; this amends ADR-0004 and removes the one-click-stop requirement behind ADR-0011 without assuming that its measured framework problems have disappeared. Stopping from the helper saves quietly and offers Show Recording, while stopping in the main window selects the completed Recording for editing; quitting during capture asks the user to choose Stop Recording and Quit or Keep Recording. The helper is enabled by default and can be disabled in Settings, because the main window supports the complete workflow.
 
-Both surfaces separate Source selection from Record, remember the chosen Source and prevent changing it during capture. A compact recording strip above the editor content keeps Source, recording status and Stop independent of playback and the selected Recording.
+Both surfaces separate Source selection from Record, remember the chosen Source and prevent changing it during capture. In the main window, Source, recording status and Stop live in the window toolbar, independent of playback and the selected Recording; see [Where recording lives in the window](#where-recording-lives-in-the-window).
+
+## Where recording lives in the window
+
+The window toolbar holds only window-level state. Its centre is a recording console: the Source menu, then what capture is doing (ready, waiting for audio, recording with elapsed time and a meter, Source unavailable, or low Runway). Record, which becomes Stop while capturing, is the toolbar's single primary action on its trailing edge. The selected Recording's name moves out of the toolbar into a header at the top of the editor content, so nothing that describes the selection sits beside capture.
+
+Prototypes rejected a recording strip above the editor. In a split view the detail pane and its title describe the selection, so a strip reading “Zoom” under a title reading “Safari” looked like a contradiction. Two other placements were also rejected:
+
+- A recorder card at the top of the Library sidebar, because capture would need a second home in the toolbar whenever the sidebar hides.
+- A Recorder destination in the sidebar, because it adds a step and shows the same state in two places.
+
+Bottom bars and floating panels were ruled out by the HIG. Windows are often moved so their bottom edge is hidden, and panels hide when their app is inactive. The HIG also keeps trailing toolbar items visible at every window size, which keeps Stop reachable in a narrow window.
 
 ## Editing while recording
 
